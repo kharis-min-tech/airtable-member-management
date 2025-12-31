@@ -31,26 +31,26 @@ This implementation plan covers the AWS Lambda automation layer and React fronte
     - Set up app client for frontend
     - _Requirements: 20.1, 20.2, 20.3_
 
-- [ ] 2. Airtable Service Client
-  - [ ] 2.1 Implement AirtableClient class with rate limiting
+- [x] 2. Airtable Service Client
+  - [x] 2.1 Implement AirtableClient class with rate limiting
     - Create client with configurable base ID and API key
     - Implement request throttling (5 requests/second)
     - Implement exponential backoff retry logic
     - _Requirements: 14.1, 14.2, 14.3_
 
-  - [ ] 2.2 Implement record CRUD operations
+  - [x] 2.2 Implement record CRUD operations
     - Implement getRecord, createRecord, updateRecord methods
     - Implement findRecords with filterFormula support
     - Implement batch operations (batchCreate, batchUpdate)
     - _Requirements: 14.3, 14.4_
 
-  - [ ] 2.3 Implement findByUniqueKey method for deduplication
+  - [x] 2.3 Implement findByUniqueKey method for deduplication
     - Search by phone number with normalization
     - Search by email with case-insensitive matching
     - Return first match or null
     - _Requirements: 11.1, 2.1, 3.1_
 
-  - [ ] 2.4 Write property test for Member Search Correctness
+  - [x] 2.4 Write property test for Member Search Correctness
     - **Property 2: Member Search Correctness**
     - **Validates: Requirements 2.1, 3.1**
 
