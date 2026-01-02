@@ -19,10 +19,9 @@ const queryService = new QueryService(airtableClient, {
   attendanceThreshold: parseInt(process.env.ATTENDANCE_THRESHOLD || '85', 10),
 });
 
-const cacheService = new CacheService({
-  tableName: process.env.CACHE_TABLE_NAME || 'ChurchCache',
-  region: process.env.AWS_REGION || 'eu-west-2',
-});
+const cacheService = new CacheService(
+  process.env.CACHE_TABLE_NAME || 'ChurchCache'
+);
 
 function successResponse(data: unknown): APIGatewayProxyResult {
   return {
@@ -126,8 +125,8 @@ async function handleServiceKPIs(params: QueryParams, forceRefresh: boolean): Pr
 
   const cacheKey = CACHE_KEYS.SERVICE_KPIS(serviceId);
   if (!forceRefresh) {
-    const cached = await cacheService.get(cacheKey);
-    if (cached.found) return successResponse({ ...cached.value, cached: true, cachedAt: cached.cachedAt });
+    const cached = await cacheService.getWithMetadata<Record<string, unknown>>(cacheKey);
+    if (cached) return successResponse({ ...cached.data, cached: true, cachedAt: cached.lastUpdated });
   }
 
   const data = await queryService.getServiceKPIs(serviceId);
@@ -140,8 +139,8 @@ async function handleEvangelismStats(params: QueryParams, forceRefresh: boolean)
   const cacheKey = CACHE_KEYS.EVANGELISM_STATS(period);
 
   if (!forceRefresh) {
-    const cached = await cacheService.get(cacheKey);
-    if (cached.found) return successResponse({ ...cached.value, cached: true, cachedAt: cached.cachedAt });
+    const cached = await cacheService.getWithMetadata<Record<string, unknown>>(cacheKey);
+    if (cached) return successResponse({ ...cached.data, cached: true, cachedAt: cached.lastUpdated });
   }
 
   const data = await queryService.getEvangelismStats(period);
@@ -152,8 +151,8 @@ async function handleEvangelismStats(params: QueryParams, forceRefresh: boolean)
 async function handleFollowUpSummary(forceRefresh: boolean): Promise<APIGatewayProxyResult> {
   const cacheKey = 'follow-up:summary';
   if (!forceRefresh) {
-    const cached = await cacheService.get(cacheKey);
-    if (cached.found) return successResponse({ ...cached.value, cached: true, cachedAt: cached.cachedAt });
+    const cached = await cacheService.getWithMetadata<Record<string, unknown>>(cacheKey);
+    if (cached) return successResponse({ ...cached.data, cached: true, cachedAt: cached.lastUpdated });
   }
 
   const data = await queryService.getFollowUpSummary();
@@ -174,8 +173,8 @@ async function handleAttendanceBreakdown(params: QueryParams, forceRefresh: bool
 
   const cacheKey = `attendance:breakdown:${serviceId}`;
   if (!forceRefresh) {
-    const cached = await cacheService.get(cacheKey);
-    if (cached.found) return successResponse({ ...cached.value, cached: true, cachedAt: cached.cachedAt });
+    const cached = await cacheService.getWithMetadata<Record<string, unknown>>(cacheKey);
+    if (cached) return successResponse({ ...cached.data, cached: true, cachedAt: cached.lastUpdated });
   }
 
   const data = await queryService.getServiceAttendanceBreakdown(serviceId);
@@ -189,8 +188,8 @@ async function handleDepartmentAttendance(params: QueryParams, forceRefresh: boo
 
   const cacheKey = `attendance:department:${serviceId}`;
   if (!forceRefresh) {
-    const cached = await cacheService.get(cacheKey);
-    if (cached.found) return successResponse({ data: cached.value, cached: true, cachedAt: cached.cachedAt });
+    const cached = await cacheService.getWithMetadata(cacheKey);
+    if (cached) return successResponse({ data: cached.data, cached: true, cachedAt: cached.lastUpdated });
   }
 
   const data = await queryService.getDepartmentAttendance(serviceId);
@@ -205,8 +204,8 @@ async function handleServiceComparison(params: QueryParams, forceRefresh: boolea
 
   const cacheKey = `attendance:compare:${serviceAId}:${serviceBId}`;
   if (!forceRefresh) {
-    const cached = await cacheService.get(cacheKey);
-    if (cached.found) return successResponse({ ...cached.value, cached: true, cachedAt: cached.cachedAt });
+    const cached = await cacheService.getWithMetadata<Record<string, unknown>>(cacheKey);
+    if (cached) return successResponse({ ...cached.data, cached: true, cachedAt: cached.lastUpdated });
   }
 
   const data = await queryService.compareTwoServices(serviceAId, serviceBId);
@@ -220,8 +219,8 @@ async function handleMemberJourney(params: QueryParams, forceRefresh: boolean): 
 
   const cacheKey = CACHE_KEYS.MEMBER_JOURNEY(memberId);
   if (!forceRefresh) {
-    const cached = await cacheService.get(cacheKey);
-    if (cached.found) return successResponse({ ...cached.value, cached: true, cachedAt: cached.cachedAt });
+    const cached = await cacheService.getWithMetadata<Record<string, unknown>>(cacheKey);
+    if (cached) return successResponse({ ...cached.data, cached: true, cachedAt: cached.lastUpdated });
   }
 
   const data = await queryService.getMemberJourney(memberId);
@@ -239,8 +238,8 @@ async function handleMemberSearch(params: QueryParams): Promise<APIGatewayProxyR
 async function handleTodaysFollowUps(forceRefresh: boolean): Promise<APIGatewayProxyResult> {
   const cacheKey = 'admin:todays-followups';
   if (!forceRefresh) {
-    const cached = await cacheService.get(cacheKey);
-    if (cached.found) return successResponse({ data: cached.value, cached: true, cachedAt: cached.cachedAt });
+    const cached = await cacheService.getWithMetadata(cacheKey);
+    if (cached) return successResponse({ data: cached.data, cached: true, cachedAt: cached.lastUpdated });
   }
 
   const data = await queryService.getTodaysFollowUps();
@@ -253,8 +252,8 @@ async function handleNewFirstTimers(params: QueryParams, forceRefresh: boolean):
   const cacheKey = `admin:new-first-timers:${days}`;
 
   if (!forceRefresh) {
-    const cached = await cacheService.get(cacheKey);
-    if (cached.found) return successResponse({ data: cached.value, cached: true, cachedAt: cached.cachedAt });
+    const cached = await cacheService.getWithMetadata(cacheKey);
+    if (cached) return successResponse({ data: cached.data, cached: true, cachedAt: cached.lastUpdated });
   }
 
   const data = await queryService.getNewFirstTimers(days);
@@ -265,8 +264,8 @@ async function handleNewFirstTimers(params: QueryParams, forceRefresh: boolean):
 async function handleIncompleteEvangelism(forceRefresh: boolean): Promise<APIGatewayProxyResult> {
   const cacheKey = 'admin:incomplete-evangelism';
   if (!forceRefresh) {
-    const cached = await cacheService.get(cacheKey);
-    if (cached.found) return successResponse({ data: cached.value, cached: true, cachedAt: cached.cachedAt });
+    const cached = await cacheService.getWithMetadata(cacheKey);
+    if (cached) return successResponse({ data: cached.data, cached: true, cachedAt: cached.lastUpdated });
   }
 
   const data = await queryService.getIncompleteEvangelismRecords();
@@ -277,8 +276,8 @@ async function handleIncompleteEvangelism(forceRefresh: boolean): Promise<APIGat
 async function handleUnassignedMembers(forceRefresh: boolean): Promise<APIGatewayProxyResult> {
   const cacheKey = 'admin:unassigned-members';
   if (!forceRefresh) {
-    const cached = await cacheService.get(cacheKey);
-    if (cached.found) return successResponse({ data: cached.value, cached: true, cachedAt: cached.cachedAt });
+    const cached = await cacheService.getWithMetadata(cacheKey);
+    if (cached) return successResponse({ data: cached.data, cached: true, cachedAt: cached.lastUpdated });
   }
 
   const data = await queryService.getUnassignedMembers();
@@ -289,8 +288,8 @@ async function handleUnassignedMembers(forceRefresh: boolean): Promise<APIGatewa
 async function handleVisitedMembers(forceRefresh: boolean): Promise<APIGatewayProxyResult> {
   const cacheKey = 'admin:visited-members';
   if (!forceRefresh) {
-    const cached = await cacheService.get(cacheKey);
-    if (cached.found) return successResponse({ data: cached.value, cached: true, cachedAt: cached.cachedAt });
+    const cached = await cacheService.getWithMetadata(cacheKey);
+    if (cached) return successResponse({ data: cached.data, cached: true, cachedAt: cached.lastUpdated });
   }
 
   const data = await queryService.getVisitedMembers();
@@ -301,8 +300,8 @@ async function handleVisitedMembers(forceRefresh: boolean): Promise<APIGatewayPr
 async function handleDepartmentRosters(forceRefresh: boolean): Promise<APIGatewayProxyResult> {
   const cacheKey = 'admin:department-rosters';
   if (!forceRefresh) {
-    const cached = await cacheService.get(cacheKey);
-    if (cached.found) return successResponse({ data: cached.value, cached: true, cachedAt: cached.cachedAt });
+    const cached = await cacheService.getWithMetadata(cacheKey);
+    if (cached) return successResponse({ data: cached.data, cached: true, cachedAt: cached.lastUpdated });
   }
 
   const data = await queryService.getDepartmentRosters();
@@ -316,8 +315,8 @@ async function handleAttendanceByDepartment(params: QueryParams, forceRefresh: b
 
   const cacheKey = `admin:attendance-by-dept:${serviceId}`;
   if (!forceRefresh) {
-    const cached = await cacheService.get(cacheKey);
-    if (cached.found) return successResponse({ ...cached.value, cached: true, cachedAt: cached.cachedAt });
+    const cached = await cacheService.getWithMetadata<Record<string, unknown>>(cacheKey);
+    if (cached) return successResponse({ ...cached.data, cached: true, cachedAt: cached.lastUpdated });
   }
 
   const data = await queryService.getAttendanceByServiceGroupedByDepartment(serviceId);
