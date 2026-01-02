@@ -149,106 +149,106 @@ This implementation plan covers the AWS Lambda automation layer and React fronte
     - **Property 4: First Timer New Member Creation**
     - **Validates: Requirements 2.4, 2.5**
 
-- [ ] 9. Returner Handler Implementation
-  - [ ] 9.1 Implement handleReturnerCreated Lambda handler
+- [-] 9. Returner Handler Implementation
+  - [x] 9.1 Implement handleReturnerCreated Lambda handler
     - Parse webhook payload
     - Search for existing member by phone/email
     - If match: update status to "Returner" if applicable, link record
     - If no match: return error indicating First Timer form should be used
     - _Requirements: 3.1, 3.2, 3.3, 3.4_
 
-  - [ ] 9.2 Integrate attendance marking in returner flow
+  - [x] 9.2 Integrate attendance marking in returner flow
     - Call AttendanceService.markPresent with Source Form "Returner"
     - _Requirements: 7.1, 7.2_
 
-  - [ ] 9.3 Write property test for Returner Processing Rules
+  - [x] 9.3 Write property test for Returner Processing Rules
     - **Property 5: Returner Processing Rules**
     - **Validates: Requirements 3.2, 3.3, 3.4**
 
-- [ ] 10. Checkpoint - All Handlers Complete
+- [x] 10. Checkpoint - All Handlers Complete
   - Ensure all tests pass, ask the user if questions arise.
 
-- [ ] 11. Programs Handler Implementation
-  - [ ] 11.1 Implement handleProgramUpdated Lambda handler
+- [x] 11. Programs Handler Implementation
+  - [x] 11.1 Implement handleProgramUpdated Lambda handler
     - Check if all four sessions are completed
     - Update member's Membership Completed date if not already set
     - _Requirements: 10.3, 10.4_
 
-  - [ ] 11.2 Write property test for Program Completion Triggers Member Update
+  - [x] 11.2 Write property test for Program Completion Triggers Member Update
     - **Property 9: Program Completion Triggers Member Update**
     - **Validates: Requirements 10.3, 10.4**
 
-- [ ] 12. Error Handling and Logging
-  - [ ] 12.1 Implement centralized error handling
+- [-] 12. Error Handling and Logging
+  - [x] 12.1 Implement centralized error handling
     - Create AppError class with error codes
     - Implement retry logic with exponential backoff
     - _Requirements: 13.1, 13.3, 13.4_
 
-  - [ ] 12.2 Implement error notification system
+  - [x] 12.2 Implement error notification system
     - Send notifications for critical errors
     - Log all errors with full context
     - _Requirements: 13.1, 13.2_
 
-  - [ ] 12.3 Implement health check endpoint
+  - [x] 12.3 Implement health check endpoint
     - Create Lambda for health check
     - Verify Airtable connectivity
     - _Requirements: 13.5_
 
-- [ ] 13. Cache Service Implementation
-  - [ ] 13.1 Implement CacheService with DynamoDB
+- [x] 13. Cache Service Implementation
+  - [x] 13.1 Implement CacheService with DynamoDB
     - Implement get, set, invalidate operations
     - Configure TTL (15 minutes default)
     - _Requirements: 21.1, 21.2_
 
-  - [ ] 13.2 Implement cache refresh functionality
+  - [x] 13.2 Implement cache refresh functionality
     - Implement invalidatePattern for bulk invalidation
     - Support manual refresh trigger
     - _Requirements: 21.3, 21.4_
 
-  - [ ] 13.3 Write property test for Cache Invalidation on Refresh
+  - [x] 13.3 Write property test for Cache Invalidation on Refresh
     - **Property 15: Cache Invalidation on Refresh**
     - **Validates: Requirements 21.3, 21.4, 21.5**
 
-- [ ] 14. Query Service Implementation
-  - [ ] 14.1 Implement dashboard KPI queries
+- [x] 14. Query Service Implementation
+  - [x] 14.1 Implement dashboard KPI queries
     - getServiceKPIs: total attendance, first timers, returners
     - getEvangelismStats: week/month toggle with Sunday-Saturday week
     - getFollowUpSummary: assignments by volunteer
     - _Requirements: 15.1, 15.2, 15.3, 15.4, 15.5, 15.6_
 
-  - [ ] 14.2 Implement attendance explorer queries
+  - [x] 14.2 Implement attendance explorer queries
     - getServiceAttendanceBreakdown: attendees by group
     - getDepartmentAttendance: percentage calculation
     - _Requirements: 16.1, 16.2, 16.3, 16.4, 16.5_
 
-  - [ ] 14.3 Write property test for Attendance Percentage Calculation
+  - [x] 14.3 Write property test for Attendance Percentage Calculation
     - **Property 11: Attendance Percentage Calculation**
     - **Validates: Requirements 16.4, 16.5**
 
-  - [ ] 14.4 Implement service comparison query
+  - [x] 14.4 Implement service comparison query
     - compareTwoServices: bidirectional missing members
     - _Requirements: 17.1, 17.2, 17.3, 17.4, 17.5_
 
-  - [ ] 14.5 Write property test for Service Comparison Bidirectional Correctness
+  - [x] 14.5 Write property test for Service Comparison Bidirectional Correctness
     - **Property 12: Service Comparison Bidirectional Correctness**
     - **Validates: Requirements 17.2, 17.3**
 
-  - [ ] 14.6 Implement member journey query
+  - [x] 14.6 Implement member journey query
     - getMemberJourney: aggregate timeline from all sources
     - Sort events chronologically
     - Include all milestone types
     - _Requirements: 18.1, 18.2, 18.3, 18.4, 18.5_
 
-  - [ ] 14.7 Write property test for Timeline Chronological Ordering
+  - [x] 14.7 Write property test for Timeline Chronological Ordering
     - **Property 13: Timeline Chronological Ordering**
     - **Validates: Requirements 18.2, 18.3**
 
-  - [ ] 14.8 Implement admin quick view queries
+  - [x] 14.8 Implement admin quick view queries
     - getTodaysFollowUps, getNewFirstTimers, getIncompleteEvangelismRecords
     - getUnassignedMembers, getVisitedMembers, getDepartmentRosters
     - _Requirements: 19.1, 19.2, 19.3, 19.4, 19.5, 19.6, 19.7_
 
-- [ ] 15. Checkpoint - Backend Complete
+- [x] 15. Checkpoint - Backend Complete
   - Ensure all tests pass, ask the user if questions arise.
 
 - [ ] 16. Authentication Service Implementation
