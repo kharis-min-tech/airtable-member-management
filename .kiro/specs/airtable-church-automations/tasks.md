@@ -31,56 +31,56 @@ This implementation plan covers the AWS Lambda automation layer and React fronte
     - Set up app client for frontend
     - _Requirements: 20.1, 20.2, 20.3_
 
-- [ ] 2. Airtable Service Client
-  - [ ] 2.1 Implement AirtableClient class with rate limiting
+- [x] 2. Airtable Service Client
+  - [x] 2.1 Implement AirtableClient class with rate limiting
     - Create client with configurable base ID and API key
     - Implement request throttling (5 requests/second)
     - Implement exponential backoff retry logic
     - _Requirements: 14.1, 14.2, 14.3_
 
-  - [ ] 2.2 Implement record CRUD operations
+  - [x] 2.2 Implement record CRUD operations
     - Implement getRecord, createRecord, updateRecord methods
     - Implement findRecords with filterFormula support
     - Implement batch operations (batchCreate, batchUpdate)
     - _Requirements: 14.3, 14.4_
 
-  - [ ] 2.3 Implement findByUniqueKey method for deduplication
+  - [x] 2.3 Implement findByUniqueKey method for deduplication
     - Search by phone number with normalization
     - Search by email with case-insensitive matching
     - Return first match or null
     - _Requirements: 11.1, 2.1, 3.1_
 
-  - [ ] 2.4 Write property test for Member Search Correctness
+  - [x] 2.4 Write property test for Member Search Correctness
     - **Property 2: Member Search Correctness**
     - **Validates: Requirements 2.1, 3.1**
 
-- [ ] 3. Member Service Implementation
-  - [ ] 3.1 Implement MemberService with create and update operations
+- [x] 3. Member Service Implementation
+  - [x] 3.1 Implement MemberService with create and update operations
     - Implement createMember with all required fields
     - Implement updateMember with partial updates
     - Implement findMemberByPhoneOrEmail using AirtableClient
     - _Requirements: 1.1, 2.4, 3.4_
 
-  - [ ] 3.2 Implement member merge logic
+  - [x] 3.2 Implement member merge logic
     - Implement mergeMembers to combine two member records
     - Preserve oldest Date First Captured
     - Consolidate linked records (Attendance, Home Visits, Follow-up)
     - Fill empty fields without overwriting non-empty values
     - _Requirements: 2.3, 11.2, 11.3, 11.4_
 
-  - [ ] 3.3 Write property test for First Timer Merge Preserves Existing Data
+  - [x] 3.3 Write property test for First Timer Merge Preserves Existing Data
     - **Property 3: First Timer Merge Preserves Existing Data**
     - **Validates: Requirements 2.2, 2.3, 2.6**
 
-  - [ ] 3.4 Write property test for Duplicate Detection and Merge Correctness
+  - [x] 3.4 Write property test for Duplicate Detection and Merge Correctness
     - **Property 10: Duplicate Detection and Merge Correctness**
     - **Validates: Requirements 11.1, 11.2, 11.3, 11.4**
 
-- [ ] 4. Checkpoint - Core Services
+- [x] 4. Checkpoint - Core Services
   - Ensure all tests pass, ask the user if questions arise.
 
-- [ ] 5. Evangelism Handler Implementation
-  - [ ] 5.1 Implement handleEvangelismCreated Lambda handler
+- [-] 5. Evangelism Handler Implementation
+  - [x] 5.1 Implement handleEvangelismCreated Lambda handler
     - Parse webhook payload from Airtable
     - Check for existing member by phone/email
     - Create member record with Status "Evangelism Contact", Source "Evangelism"
@@ -89,50 +89,50 @@ This implementation plan covers the AWS Lambda automation layer and React fronte
     - Link evangelism record to member
     - _Requirements: 1.1, 1.2, 1.3, 1.4_
 
-  - [ ] 5.2 Write property test for Evangelism to Member Creation Completeness
+  - [x] 5.2 Write property test for Evangelism to Member Creation Completeness
     - **Property 1: Evangelism to Member Creation Completeness**
     - **Validates: Requirements 1.1, 1.2, 1.3, 1.4**
 
-- [ ] 6. Follow-up Service Implementation
-  - [ ] 6.1 Implement FollowUpService with assignment operations
+- [x] 6. Follow-up Service Implementation
+  - [x] 6.1 Implement FollowUpService with assignment operations
     - Implement createAssignment with due date calculation (assigned + 3 days)
     - Implement getVolunteerCapacity to check current assignments
     - Implement findAvailableVolunteer to find volunteer with capacity
     - _Requirements: 4.1, 4.2, 4.3, 5.2_
 
-  - [ ] 6.2 Implement follow-up assignment in evangelism flow
+  - [x] 6.2 Implement follow-up assignment in evangelism flow
     - Create follow-up assignment to Captured By volunteer
     - Update member's Follow-up Owner field
     - _Requirements: 4.1, 4.4_
 
-  - [ ] 6.3 Implement reassignment logic for capacity overflow
+  - [x] 6.3 Implement reassignment logic for capacity overflow
     - Check if current owner has >= 20 assignments
     - Find available volunteer if capacity exceeded
     - Create new assignment and mark old as "Reassigned"
     - Log warning if no volunteer available
     - _Requirements: 5.1, 5.2, 5.3, 5.4_
 
-  - [ ] 6.4 Write property test for Follow-up Assignment Creation
+  - [x] 6.4 Write property test for Follow-up Assignment Creation
     - **Property 6: Follow-up Assignment Creation**
     - **Validates: Requirements 4.1, 4.2, 4.3, 4.4**
 
-  - [ ] 6.5 Write property test for Follow-up Reassignment on Capacity
+  - [x] 6.5 Write property test for Follow-up Reassignment on Capacity
     - **Property 7: Follow-up Reassignment on Capacity**
     - **Validates: Requirements 5.1, 5.2, 5.3, 5.4**
 
-- [ ] 7. Attendance Service Implementation
-  - [ ] 7.1 Implement AttendanceService with marking operations
+- [x] 7. Attendance Service Implementation
+  - [x] 7.1 Implement AttendanceService with marking operations
     - Implement markPresent to create/update attendance record
     - Implement findAttendance to check for existing record
     - Handle idempotency (update if exists, create if not)
     - _Requirements: 6.1, 6.2, 6.3, 7.1, 7.2, 7.3_
 
-  - [ ] 7.2 Write property test for Attendance Marking Idempotency
+  - [x] 7.2 Write property test for Attendance Marking Idempotency
     - **Property 8: Attendance Marking Idempotency**
     - **Validates: Requirements 6.1, 6.2, 6.3, 7.1, 7.2, 7.3**
 
-- [ ] 8. First Timer Handler Implementation
-  - [ ] 8.1 Implement handleFirstTimerCreated Lambda handler
+- [-] 8. First Timer Handler Implementation
+  - [x] 8.1 Implement handleFirstTimerCreated Lambda handler
     - Parse webhook payload
     - Search for existing member by phone/email
     - If match with "Evangelism Contact": update status, merge fields, check reassignment
@@ -141,114 +141,114 @@ This implementation plan covers the AWS Lambda automation layer and React fronte
     - Update First Service Attended if empty
     - _Requirements: 2.1, 2.2, 2.3, 2.4, 2.5, 2.6_
 
-  - [ ] 8.2 Integrate attendance marking in first timer flow
+  - [x] 8.2 Integrate attendance marking in first timer flow
     - Call AttendanceService.markPresent with Source Form "First Timer"
     - _Requirements: 6.1, 6.2_
 
-  - [ ] 8.3 Write property test for First Timer New Member Creation
+  - [x] 8.3 Write property test for First Timer New Member Creation
     - **Property 4: First Timer New Member Creation**
     - **Validates: Requirements 2.4, 2.5**
 
-- [ ] 9. Returner Handler Implementation
-  - [ ] 9.1 Implement handleReturnerCreated Lambda handler
+- [-] 9. Returner Handler Implementation
+  - [x] 9.1 Implement handleReturnerCreated Lambda handler
     - Parse webhook payload
     - Search for existing member by phone/email
     - If match: update status to "Returner" if applicable, link record
     - If no match: return error indicating First Timer form should be used
     - _Requirements: 3.1, 3.2, 3.3, 3.4_
 
-  - [ ] 9.2 Integrate attendance marking in returner flow
+  - [x] 9.2 Integrate attendance marking in returner flow
     - Call AttendanceService.markPresent with Source Form "Returner"
     - _Requirements: 7.1, 7.2_
 
-  - [ ] 9.3 Write property test for Returner Processing Rules
+  - [x] 9.3 Write property test for Returner Processing Rules
     - **Property 5: Returner Processing Rules**
     - **Validates: Requirements 3.2, 3.3, 3.4**
 
-- [ ] 10. Checkpoint - All Handlers Complete
+- [x] 10. Checkpoint - All Handlers Complete
   - Ensure all tests pass, ask the user if questions arise.
 
-- [ ] 11. Programs Handler Implementation
-  - [ ] 11.1 Implement handleProgramUpdated Lambda handler
+- [x] 11. Programs Handler Implementation
+  - [x] 11.1 Implement handleProgramUpdated Lambda handler
     - Check if all four sessions are completed
     - Update member's Membership Completed date if not already set
     - _Requirements: 10.3, 10.4_
 
-  - [ ] 11.2 Write property test for Program Completion Triggers Member Update
+  - [x] 11.2 Write property test for Program Completion Triggers Member Update
     - **Property 9: Program Completion Triggers Member Update**
     - **Validates: Requirements 10.3, 10.4**
 
-- [ ] 12. Error Handling and Logging
-  - [ ] 12.1 Implement centralized error handling
+- [-] 12. Error Handling and Logging
+  - [x] 12.1 Implement centralized error handling
     - Create AppError class with error codes
     - Implement retry logic with exponential backoff
     - _Requirements: 13.1, 13.3, 13.4_
 
-  - [ ] 12.2 Implement error notification system
+  - [x] 12.2 Implement error notification system
     - Send notifications for critical errors
     - Log all errors with full context
     - _Requirements: 13.1, 13.2_
 
-  - [ ] 12.3 Implement health check endpoint
+  - [x] 12.3 Implement health check endpoint
     - Create Lambda for health check
     - Verify Airtable connectivity
     - _Requirements: 13.5_
 
-- [ ] 13. Cache Service Implementation
-  - [ ] 13.1 Implement CacheService with DynamoDB
+- [x] 13. Cache Service Implementation
+  - [x] 13.1 Implement CacheService with DynamoDB
     - Implement get, set, invalidate operations
     - Configure TTL (15 minutes default)
     - _Requirements: 21.1, 21.2_
 
-  - [ ] 13.2 Implement cache refresh functionality
+  - [x] 13.2 Implement cache refresh functionality
     - Implement invalidatePattern for bulk invalidation
     - Support manual refresh trigger
     - _Requirements: 21.3, 21.4_
 
-  - [ ] 13.3 Write property test for Cache Invalidation on Refresh
+  - [x] 13.3 Write property test for Cache Invalidation on Refresh
     - **Property 15: Cache Invalidation on Refresh**
     - **Validates: Requirements 21.3, 21.4, 21.5**
 
-- [ ] 14. Query Service Implementation
-  - [ ] 14.1 Implement dashboard KPI queries
+- [x] 14. Query Service Implementation
+  - [x] 14.1 Implement dashboard KPI queries
     - getServiceKPIs: total attendance, first timers, returners
     - getEvangelismStats: week/month toggle with Sunday-Saturday week
     - getFollowUpSummary: assignments by volunteer
     - _Requirements: 15.1, 15.2, 15.3, 15.4, 15.5, 15.6_
 
-  - [ ] 14.2 Implement attendance explorer queries
+  - [x] 14.2 Implement attendance explorer queries
     - getServiceAttendanceBreakdown: attendees by group
     - getDepartmentAttendance: percentage calculation
     - _Requirements: 16.1, 16.2, 16.3, 16.4, 16.5_
 
-  - [ ] 14.3 Write property test for Attendance Percentage Calculation
+  - [x] 14.3 Write property test for Attendance Percentage Calculation
     - **Property 11: Attendance Percentage Calculation**
     - **Validates: Requirements 16.4, 16.5**
 
-  - [ ] 14.4 Implement service comparison query
+  - [x] 14.4 Implement service comparison query
     - compareTwoServices: bidirectional missing members
     - _Requirements: 17.1, 17.2, 17.3, 17.4, 17.5_
 
-  - [ ] 14.5 Write property test for Service Comparison Bidirectional Correctness
+  - [x] 14.5 Write property test for Service Comparison Bidirectional Correctness
     - **Property 12: Service Comparison Bidirectional Correctness**
     - **Validates: Requirements 17.2, 17.3**
 
-  - [ ] 14.6 Implement member journey query
+  - [x] 14.6 Implement member journey query
     - getMemberJourney: aggregate timeline from all sources
     - Sort events chronologically
     - Include all milestone types
     - _Requirements: 18.1, 18.2, 18.3, 18.4, 18.5_
 
-  - [ ] 14.7 Write property test for Timeline Chronological Ordering
+  - [x] 14.7 Write property test for Timeline Chronological Ordering
     - **Property 13: Timeline Chronological Ordering**
     - **Validates: Requirements 18.2, 18.3**
 
-  - [ ] 14.8 Implement admin quick view queries
+  - [x] 14.8 Implement admin quick view queries
     - getTodaysFollowUps, getNewFirstTimers, getIncompleteEvangelismRecords
     - getUnassignedMembers, getVisitedMembers, getDepartmentRosters
     - _Requirements: 19.1, 19.2, 19.3, 19.4, 19.5, 19.6, 19.7_
 
-- [ ] 15. Checkpoint - Backend Complete
+- [x] 15. Checkpoint - Backend Complete
   - Ensure all tests pass, ask the user if questions arise.
 
 - [ ] 16. Authentication Service Implementation

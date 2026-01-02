@@ -42,6 +42,7 @@
   "dependencies": {
     "@aws-sdk/client-cognito-identity-provider": "^3.478.0",
     "@aws-sdk/client-dynamodb": "^3.478.0",
+    "@aws-sdk/client-ses": "^3.958.0",
     "@aws-sdk/client-sns": "^3.478.0",
     "@aws-sdk/lib-dynamodb": "^3.478.0",
     "airtable": "^0.12.2",
