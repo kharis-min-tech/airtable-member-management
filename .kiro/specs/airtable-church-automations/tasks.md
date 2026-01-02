@@ -54,33 +54,33 @@ This implementation plan covers the AWS Lambda automation layer and React fronte
     - **Property 2: Member Search Correctness**
     - **Validates: Requirements 2.1, 3.1**
 
-- [ ] 3. Member Service Implementation
-  - [ ] 3.1 Implement MemberService with create and update operations
+- [x] 3. Member Service Implementation
+  - [x] 3.1 Implement MemberService with create and update operations
     - Implement createMember with all required fields
     - Implement updateMember with partial updates
     - Implement findMemberByPhoneOrEmail using AirtableClient
     - _Requirements: 1.1, 2.4, 3.4_
 
-  - [ ] 3.2 Implement member merge logic
+  - [x] 3.2 Implement member merge logic
     - Implement mergeMembers to combine two member records
     - Preserve oldest Date First Captured
     - Consolidate linked records (Attendance, Home Visits, Follow-up)
     - Fill empty fields without overwriting non-empty values
     - _Requirements: 2.3, 11.2, 11.3, 11.4_
 
-  - [ ] 3.3 Write property test for First Timer Merge Preserves Existing Data
+  - [x] 3.3 Write property test for First Timer Merge Preserves Existing Data
     - **Property 3: First Timer Merge Preserves Existing Data**
     - **Validates: Requirements 2.2, 2.3, 2.6**
 
-  - [ ] 3.4 Write property test for Duplicate Detection and Merge Correctness
+  - [x] 3.4 Write property test for Duplicate Detection and Merge Correctness
     - **Property 10: Duplicate Detection and Merge Correctness**
     - **Validates: Requirements 11.1, 11.2, 11.3, 11.4**
 
-- [ ] 4. Checkpoint - Core Services
+- [x] 4. Checkpoint - Core Services
   - Ensure all tests pass, ask the user if questions arise.
 
-- [ ] 5. Evangelism Handler Implementation
-  - [ ] 5.1 Implement handleEvangelismCreated Lambda handler
+- [-] 5. Evangelism Handler Implementation
+  - [x] 5.1 Implement handleEvangelismCreated Lambda handler
     - Parse webhook payload from Airtable
     - Check for existing member by phone/email
     - Create member record with Status "Evangelism Contact", Source "Evangelism"
@@ -89,50 +89,50 @@ This implementation plan covers the AWS Lambda automation layer and React fronte
     - Link evangelism record to member
     - _Requirements: 1.1, 1.2, 1.3, 1.4_
 
-  - [ ] 5.2 Write property test for Evangelism to Member Creation Completeness
+  - [x] 5.2 Write property test for Evangelism to Member Creation Completeness
     - **Property 1: Evangelism to Member Creation Completeness**
     - **Validates: Requirements 1.1, 1.2, 1.3, 1.4**
 
-- [ ] 6. Follow-up Service Implementation
-  - [ ] 6.1 Implement FollowUpService with assignment operations
+- [x] 6. Follow-up Service Implementation
+  - [x] 6.1 Implement FollowUpService with assignment operations
     - Implement createAssignment with due date calculation (assigned + 3 days)
     - Implement getVolunteerCapacity to check current assignments
     - Implement findAvailableVolunteer to find volunteer with capacity
     - _Requirements: 4.1, 4.2, 4.3, 5.2_
 
-  - [ ] 6.2 Implement follow-up assignment in evangelism flow
+  - [x] 6.2 Implement follow-up assignment in evangelism flow
     - Create follow-up assignment to Captured By volunteer
     - Update member's Follow-up Owner field
     - _Requirements: 4.1, 4.4_
 
-  - [ ] 6.3 Implement reassignment logic for capacity overflow
+  - [x] 6.3 Implement reassignment logic for capacity overflow
     - Check if current owner has >= 20 assignments
     - Find available volunteer if capacity exceeded
     - Create new assignment and mark old as "Reassigned"
     - Log warning if no volunteer available
     - _Requirements: 5.1, 5.2, 5.3, 5.4_
 
-  - [ ] 6.4 Write property test for Follow-up Assignment Creation
+  - [x] 6.4 Write property test for Follow-up Assignment Creation
     - **Property 6: Follow-up Assignment Creation**
     - **Validates: Requirements 4.1, 4.2, 4.3, 4.4**
 
-  - [ ] 6.5 Write property test for Follow-up Reassignment on Capacity
+  - [x] 6.5 Write property test for Follow-up Reassignment on Capacity
     - **Property 7: Follow-up Reassignment on Capacity**
     - **Validates: Requirements 5.1, 5.2, 5.3, 5.4**
 
-- [ ] 7. Attendance Service Implementation
-  - [ ] 7.1 Implement AttendanceService with marking operations
+- [x] 7. Attendance Service Implementation
+  - [x] 7.1 Implement AttendanceService with marking operations
     - Implement markPresent to create/update attendance record
     - Implement findAttendance to check for existing record
     - Handle idempotency (update if exists, create if not)
     - _Requirements: 6.1, 6.2, 6.3, 7.1, 7.2, 7.3_
 
-  - [ ] 7.2 Write property test for Attendance Marking Idempotency
+  - [x] 7.2 Write property test for Attendance Marking Idempotency
     - **Property 8: Attendance Marking Idempotency**
     - **Validates: Requirements 6.1, 6.2, 6.3, 7.1, 7.2, 7.3**
 
-- [ ] 8. First Timer Handler Implementation
-  - [ ] 8.1 Implement handleFirstTimerCreated Lambda handler
+- [-] 8. First Timer Handler Implementation
+  - [x] 8.1 Implement handleFirstTimerCreated Lambda handler
     - Parse webhook payload
     - Search for existing member by phone/email
     - If match with "Evangelism Contact": update status, merge fields, check reassignment
@@ -141,11 +141,11 @@ This implementation plan covers the AWS Lambda automation layer and React fronte
     - Update First Service Attended if empty
     - _Requirements: 2.1, 2.2, 2.3, 2.4, 2.5, 2.6_
 
-  - [ ] 8.2 Integrate attendance marking in first timer flow
+  - [x] 8.2 Integrate attendance marking in first timer flow
     - Call AttendanceService.markPresent with Source Form "First Timer"
     - _Requirements: 6.1, 6.2_
 
-  - [ ] 8.3 Write property test for First Timer New Member Creation
+  - [x] 8.3 Write property test for First Timer New Member Creation
     - **Property 4: First Timer New Member Creation**
     - **Validates: Requirements 2.4, 2.5**
 

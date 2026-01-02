@@ -7,3 +7,7 @@ export { ConfigService } from './config-service';
 export { AuthService, PERMISSIONS, extractAccessToken } from './auth-service';
 export type { DataScope } from './auth-service';
 export { AirtableClient, AirtableError, AirtableErrorCode, AIRTABLE_TABLES } from './airtable-client';
+export { MemberService, MemberError, MemberErrorCode } from './member-service';
+export { FollowUpService, FollowUpError, FollowUpErrorCode } from './follow-up-service';
+export { AttendanceService, AttendanceError, AttendanceErrorCode } from './attendance-service';
+export type { MarkPresentResult } from './attendance-service';

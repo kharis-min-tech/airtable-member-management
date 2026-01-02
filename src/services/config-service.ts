@@ -194,4 +194,21 @@ export class ConfigService {
       throw error;
     }
   }
+
+  /**
+   * Get Airtable configuration from environment variables
+   * Used by Lambda handlers to initialize AirtableClient
+   */
+  async getAirtableConfig(): Promise<{ baseId: string; apiKey: string }> {
+    const baseId = process.env.AIRTABLE_BASE_ID;
+    const apiKey = process.env.AIRTABLE_API_KEY;
+
+    if (!baseId || !apiKey) {
+      throw new Error(
+        'Missing Airtable configuration. Ensure AIRTABLE_BASE_ID and AIRTABLE_API_KEY environment variables are set.'
+      );
+    }
+
+    return { baseId, apiKey };
+  }
 }

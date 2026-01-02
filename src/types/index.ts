@@ -187,3 +187,49 @@ export interface ChurchConfig {
   volunteerCapacityLimit: number;
   adminEmails: string[];
 }
+
+// Webhook Event Interfaces
+export interface EvangelismEvent {
+  recordId: string;
+  firstName: string;
+  lastName: string;
+  phone?: string;
+  email?: string;
+  ghanaPostCode?: string;
+  date: string; // ISO date string from Airtable
+  capturedBy?: string; // Volunteer record ID
+}
+
+export interface EvangelismWebhookPayload {
+  base: {
+    id: string;
+  };
+  webhook: {
+    id: string;
+  };
+  timestamp: string;
+  record: {
+    id: string;
+    fields: {
+      'First Name'?: string;
+      'Last Name'?: string;
+      'Phone'?: string;
+      'Email'?: string;
+      'GhanaPost Code'?: string;
+      'Date'?: string;
+      'Captured By'?: string[];
+      'Linked Member'?: string[];
+    };
+  };
+}
+
+export interface EvangelismHandlerResult {
+  success: boolean;
+  memberId?: string;
+  memberCreated: boolean;
+  evangelismRecordLinked: boolean;
+  followUpAssignmentId?: string;
+  followUpAssignmentCreated: boolean;
+  followUpOwnerUpdated: boolean;
+  error?: string;
+}
