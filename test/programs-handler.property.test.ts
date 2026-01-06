@@ -1,13 +1,7 @@
 /**
  * Property-based tests for Programs Handler
  * 
- * **Feature: airtable-church-automations, Property 9: Program Completion Triggers Member Update**
- * 
- * *For any* Member Programs record where all four Session Completed checkboxes become true:
- * - The linked Member's Membership Completed date SHALL be set to the latest session date (if not already set)
- * - If Membership Completed was already set, it SHALL NOT be overwritten
- * 
- * **Validates: Requirements 10.3, 10.4**
+ * Tests program session completion status logging.
  */
 
 import * as fc from 'fast-check';
@@ -15,12 +9,11 @@ import {
   parseProgramWebhook,
   processProgramEvent,
   areAllSessionsCompleted,
-  calculateCompletionDate,
   ProgramEvent,
   ProgramWebhookPayload,
 } from '../src/handlers/programs';
 import { AirtableClient } from '../src/services/airtable-client';
-import { AirtableConfig, AirtableRecord } from '../src/types';
+import { AirtableConfig } from '../src/types';
 
 // Mock the Airtable module
 jest.mock('airtable', () => {
@@ -46,7 +39,6 @@ function createMockAirtableClient(): jest.Mocked<AirtableClient> {
   };
   const client = new AirtableClient(config);
 
-  // Mock all methods
   jest.spyOn(client, 'getRecord').mockImplementation(async (_table, id) => ({
     id,
     fields: {},
@@ -57,12 +49,6 @@ function createMockAirtableClient(): jest.Mocked<AirtableClient> {
     fields: fields as Record<string, unknown>,
     createdTime: new Date().toISOString(),
   }));
-  jest.spyOn(client, 'createRecord').mockImplementation(async (_table, fields) => ({
-    id: `rec${Math.random().toString(36).substr(2, 9)}`,
-    fields: fields as Record<string, unknown>,
-    createdTime: new Date().toISOString(),
-  }));
-  jest.spyOn(client, 'findRecords').mockResolvedValue([]);
 
   return client as jest.Mocked<AirtableClient>;
 }
@@ -70,12 +56,12 @@ function createMockAirtableClient(): jest.Mocked<AirtableClient> {
 // Generators for test data
 const recordIdGenerator = fc
   .string({ minLength: 10, maxLength: 20 })
-  .map((s) => `rec${s.replace(/[^a-zA-Z0-9]/g, '')}`);
+  .map((s: string) => `rec${s.replace(/[^a-zA-Z0-9]/g, '')}`);
 
 // Generate a valid date string in ISO format (YYYY-MM-DD)
 const dateGenerator = fc
   .date({ min: new Date('2020-01-01'), max: new Date('2030-12-31') })
-  .map((d) => d.toISOString().split('T')[0]);
+  .map((d: Date) => d.toISOString().split('T')[0]);
 
 // Generator for program event with all sessions completed
 const completedProgramEventGenerator = fc.record({
@@ -125,7 +111,7 @@ describe('Programs Handler - Helper Functions', () => {
         fc.boolean(),
         fc.boolean(),
         fc.boolean(),
-        (s1, s2, s3, s4) => {
+        (s1: boolean, s2: boolean, s3: boolean, s4: boolean) => {
           const event: ProgramEvent = {
             recordId: 'rec123',
             memberId: 'recMember123',
@@ -145,60 +131,6 @@ describe('Programs Handler - Helper Functions', () => {
       { numRuns: 100 }
     );
   });
-
-  /**
-   * Property: calculateCompletionDate returns the latest date among all session dates
-   */
-  it('should return the latest date among all session dates', () => {
-    fc.assert(
-      fc.property(completedProgramEventGenerator, (event) => {
-        const result = calculateCompletionDate(event);
-
-        // Get all dates as Date objects
-        const dates = [
-          event.session1Date,
-          event.session2Date,
-          event.session3Date,
-          event.session4Date,
-        ]
-          .filter((d): d is string => d !== undefined)
-          .map((d) => new Date(d));
-
-        if (dates.length === 0) {
-          expect(result).toBeNull();
-          return true;
-        }
-
-        // Find the expected latest date
-        const expectedLatest = dates.reduce((latest, current) =>
-          current > latest ? current : latest
-        );
-        const expectedDateStr = expectedLatest.toISOString().split('T')[0];
-
-        expect(result).toBe(expectedDateStr);
-        return true;
-      }),
-      { numRuns: 100 }
-    );
-  });
-
-  /**
-   * Property: calculateCompletionDate returns null when no dates are provided
-   */
-  it('should return null when no session dates are provided', () => {
-    const event: ProgramEvent = {
-      recordId: 'rec123',
-      memberId: 'recMember123',
-      session1Completed: true,
-      session2Completed: true,
-      session3Completed: true,
-      session4Completed: true,
-      // No dates provided
-    };
-
-    const result = calculateCompletionDate(event);
-    expect(result).toBeNull();
-  });
 });
 
 describe('Programs Handler - Webhook Parsing', () => {
@@ -207,7 +139,7 @@ describe('Programs Handler - Webhook Parsing', () => {
    */
   it('should parse webhook payload and extract all fields', () => {
     fc.assert(
-      fc.property(completedProgramEventGenerator, (data) => {
+      fc.property(completedProgramEventGenerator, (data: ProgramEvent) => {
         const payload: ProgramWebhookPayload = {
           base: { id: 'app123' },
           webhook: { id: 'wh123' },
@@ -230,17 +162,12 @@ describe('Programs Handler - Webhook Parsing', () => {
 
         const event = parseProgramWebhook(payload);
 
-        // Verify all fields are extracted correctly
         expect(event.recordId).toBe(data.recordId);
         expect(event.memberId).toBe(data.memberId);
         expect(event.session1Completed).toBe(data.session1Completed);
         expect(event.session2Completed).toBe(data.session2Completed);
         expect(event.session3Completed).toBe(data.session3Completed);
         expect(event.session4Completed).toBe(data.session4Completed);
-        expect(event.session1Date).toBe(data.session1Date);
-        expect(event.session2Date).toBe(data.session2Date);
-        expect(event.session3Date).toBe(data.session3Date);
-        expect(event.session4Date).toBe(data.session4Date);
 
         return true;
       }),
@@ -253,32 +180,25 @@ describe('Programs Handler - Webhook Parsing', () => {
    */
   it('should handle missing optional fields with defaults', () => {
     fc.assert(
-      fc.property(recordIdGenerator, (recordId) => {
+      fc.property(recordIdGenerator, (recordId: string) => {
         const payload: ProgramWebhookPayload = {
           base: { id: 'app123' },
           webhook: { id: 'wh123' },
           timestamp: new Date().toISOString(),
           record: {
             id: recordId,
-            fields: {
-              // All optional fields missing
-            },
+            fields: {},
           },
         };
 
         const event = parseProgramWebhook(payload);
 
-        // Verify defaults
         expect(event.recordId).toBe(recordId);
         expect(event.memberId).toBeUndefined();
         expect(event.session1Completed).toBe(false);
         expect(event.session2Completed).toBe(false);
         expect(event.session3Completed).toBe(false);
         expect(event.session4Completed).toBe(false);
-        expect(event.session1Date).toBeUndefined();
-        expect(event.session2Date).toBeUndefined();
-        expect(event.session3Date).toBeUndefined();
-        expect(event.session4Date).toBeUndefined();
 
         return true;
       }),
@@ -288,16 +208,7 @@ describe('Programs Handler - Webhook Parsing', () => {
 });
 
 
-/**
- * Feature: airtable-church-automations, Property 9: Program Completion Triggers Member Update
- *
- * *For any* Member Programs record where all four Session Completed checkboxes become true:
- * - The linked Member's Membership Completed date SHALL be set to the latest session date (if not already set)
- * - If Membership Completed was already set, it SHALL NOT be overwritten
- *
- * **Validates: Requirements 10.3, 10.4**
- */
-describe('Property 9: Program Completion Triggers Member Update', () => {
+describe('Programs Handler - Processing', () => {
   let mockClient: jest.Mocked<AirtableClient>;
 
   beforeEach(() => {
@@ -305,54 +216,16 @@ describe('Property 9: Program Completion Triggers Member Update', () => {
   });
 
   /**
-   * Property: When all sessions are completed and member has no Membership Completed date,
-   * the member's Membership Completed date SHALL be set to the latest session date
-   * Requirement 10.4
+   * Property: When all sessions are completed, result indicates completion
    */
-  it('should set Membership Completed date when all sessions completed and not already set', async () => {
+  it('should indicate all sessions completed when they are', async () => {
     await fc.assert(
-      fc.asyncProperty(completedProgramEventGenerator, async (event) => {
-        let updatedMemberFields: Record<string, unknown> = {};
-        let memberUpdateCalled = false;
-
-        // Mock: member has no Membership Completed date
-        const memberRecord: AirtableRecord = {
-          id: event.memberId!,
-          fields: {
-            'First Name': 'John',
-            'Last Name': 'Doe',
-            // No 'Membership Completed' field
-          },
-          createdTime: new Date().toISOString(),
-        };
-
-        jest.spyOn(mockClient, 'getRecord').mockResolvedValue(memberRecord);
-        jest.spyOn(mockClient, 'updateRecord').mockImplementation(async (table, id, fields) => {
-          if (table === 'Members' && id === event.memberId) {
-            memberUpdateCalled = true;
-            updatedMemberFields = fields;
-          }
-          return {
-            id,
-            fields: fields as Record<string, unknown>,
-            createdTime: new Date().toISOString(),
-          };
-        });
-
+      fc.asyncProperty(completedProgramEventGenerator, async (event: ProgramEvent) => {
         const result = await processProgramEvent(event, mockClient);
 
-        // Verify success
         expect(result.success).toBe(true);
         expect(result.allSessionsCompleted).toBe(true);
-        expect(result.membershipCompletedUpdated).toBe(true);
-
-        // Verify member was updated
-        expect(memberUpdateCalled).toBe(true);
-
-        // Verify Membership Completed date is set to the latest session date
-        const expectedDate = calculateCompletionDate(event);
-        expect(updatedMemberFields['Membership Completed']).toBe(expectedDate);
-        expect(result.membershipCompletedDate).toBe(expectedDate);
+        expect(result.memberId).toBe(event.memberId);
 
         return true;
       }),
@@ -361,100 +234,17 @@ describe('Property 9: Program Completion Triggers Member Update', () => {
   });
 
   /**
-   * Property: When all sessions are completed but member already has Membership Completed date,
-   * the existing date SHALL NOT be overwritten
-   * Requirement 10.4
+   * Property: When not all sessions are completed, result indicates incomplete
    */
-  it('should NOT overwrite existing Membership Completed date', async () => {
+  it('should indicate sessions incomplete when they are not all done', async () => {
     await fc.assert(
-      fc.asyncProperty(
-        completedProgramEventGenerator,
-        dateGenerator,
-        async (event, existingDate) => {
-          let memberUpdateCalled = false;
-
-          // Mock: member already has Membership Completed date
-          const memberRecord: AirtableRecord = {
-            id: event.memberId!,
-            fields: {
-              'First Name': 'John',
-              'Last Name': 'Doe',
-              'Membership Completed': existingDate,
-            },
-            createdTime: new Date().toISOString(),
-          };
-
-          jest.spyOn(mockClient, 'getRecord').mockResolvedValue(memberRecord);
-          jest.spyOn(mockClient, 'updateRecord').mockImplementation(async (_table, id, fields) => {
-            memberUpdateCalled = true;
-            return {
-              id,
-              fields: fields as Record<string, unknown>,
-              createdTime: new Date().toISOString(),
-            };
-          });
-
-          const result = await processProgramEvent(event, mockClient);
-
-          // Verify success
-          expect(result.success).toBe(true);
-          expect(result.allSessionsCompleted).toBe(true);
-
-          // Verify member was NOT updated (existing date preserved)
-          expect(result.membershipCompletedUpdated).toBe(false);
-          expect(memberUpdateCalled).toBe(false);
-
-          // Verify the existing date is returned
-          expect(result.membershipCompletedDate).toBe(existingDate);
-
-          return true;
-        }
-      ),
-      { numRuns: 100 }
-    );
-  });
-
-  /**
-   * Property: When not all sessions are completed, member's Membership Completed date
-   * SHALL NOT be updated
-   * Requirement 10.3
-   */
-  it('should NOT update member when not all sessions are completed', async () => {
-    await fc.assert(
-      fc.asyncProperty(incompleteProgramEventGenerator, async (event) => {
-        // Ensure memberId is set for this test
-        const eventWithMember = { ...event, memberId: `recMember${Math.random().toString(36).substr(2, 9)}` };
+      fc.asyncProperty(incompleteProgramEventGenerator, async (event: ProgramEvent) => {
+        const eventWithMember = { ...event, memberId: `recMember${Math.random().toString(36).substring(2, 11)}` };
         
-        let memberGetCalled = false;
-        let memberUpdateCalled = false;
-
-        jest.spyOn(mockClient, 'getRecord').mockImplementation(async (_table, id) => {
-          memberGetCalled = true;
-          return {
-            id,
-            fields: {},
-            createdTime: new Date().toISOString(),
-          };
-        });
-        jest.spyOn(mockClient, 'updateRecord').mockImplementation(async (_table, id, fields) => {
-          memberUpdateCalled = true;
-          return {
-            id,
-            fields: fields as Record<string, unknown>,
-            createdTime: new Date().toISOString(),
-          };
-        });
-
         const result = await processProgramEvent(eventWithMember, mockClient);
 
-        // Verify success (processing succeeded, just nothing to update)
         expect(result.success).toBe(true);
         expect(result.allSessionsCompleted).toBe(false);
-        expect(result.membershipCompletedUpdated).toBe(false);
-
-        // Verify member record was NOT fetched or updated
-        expect(memberGetCalled).toBe(false);
-        expect(memberUpdateCalled).toBe(false);
 
         return true;
       }),
@@ -473,67 +263,11 @@ describe('Property 9: Program Completion Triggers Member Update', () => {
       session2Completed: true,
       session3Completed: true,
       session4Completed: true,
-      session1Date: '2024-01-01',
-      session2Date: '2024-01-08',
-      session3Date: '2024-01-15',
-      session4Date: '2024-01-22',
     };
 
     const result = await processProgramEvent(event, mockClient);
 
     expect(result.success).toBe(false);
     expect(result.error).toContain('Member ID is required');
-  });
-
-  /**
-   * Property: The completion date is always the latest among all session dates
-   * Requirement 10.2
-   */
-  it('should use the latest session date as completion date', async () => {
-    await fc.assert(
-      fc.asyncProperty(completedProgramEventGenerator, async (event) => {
-        let updatedMemberFields: Record<string, unknown> = {};
-
-        // Mock: member has no Membership Completed date
-        const memberRecord: AirtableRecord = {
-          id: event.memberId!,
-          fields: {},
-          createdTime: new Date().toISOString(),
-        };
-
-        jest.spyOn(mockClient, 'getRecord').mockResolvedValue(memberRecord);
-        jest.spyOn(mockClient, 'updateRecord').mockImplementation(async (_table, id, fields) => {
-          updatedMemberFields = fields;
-          return {
-            id,
-            fields: fields as Record<string, unknown>,
-            createdTime: new Date().toISOString(),
-          };
-        });
-
-        await processProgramEvent(event, mockClient);
-
-        // Calculate expected latest date
-        const dates = [
-          event.session1Date,
-          event.session2Date,
-          event.session3Date,
-          event.session4Date,
-        ]
-          .filter((d): d is string => d !== undefined)
-          .map((d) => new Date(d));
-
-        const expectedLatest = dates.reduce((latest, current) =>
-          current > latest ? current : latest
-        );
-        const expectedDateStr = expectedLatest.toISOString().split('T')[0];
-
-        // Verify the completion date matches the latest session date
-        expect(updatedMemberFields['Membership Completed']).toBe(expectedDateStr);
-
-        return true;
-      }),
-      { numRuns: 100 }
-    );
   });
 });

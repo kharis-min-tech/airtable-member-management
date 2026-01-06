@@ -30,19 +30,19 @@ export const churchApi = {
      * Get KPIs for a specific service
      */
     getServiceKPIs: (serviceId: string) =>
-      apiClient.get<ServiceKPIs>(`/dashboard/kpis/${serviceId}`),
+      apiClient.get<ServiceKPIs>(`/query/dashboard?type=kpis&serviceId=${serviceId}`),
 
     /**
      * Get evangelism statistics for a period
      */
     getEvangelismStats: (period: 'week' | 'month') =>
-      apiClient.get<EvangelismStats>(`/dashboard/evangelism?period=${period}`),
+      apiClient.get<EvangelismStats>(`/query/dashboard?type=evangelism&period=${period}`),
 
     /**
      * Get follow-up summary grouped by volunteer
      */
     getFollowUpSummary: () =>
-      apiClient.get<FollowUpSummary[]>('/dashboard/follow-up-summary'),
+      apiClient.get<FollowUpSummary[]>('/query/dashboard?type=follow-up-summary'),
   },
 
   // Attendance endpoints
@@ -51,26 +51,26 @@ export const churchApi = {
      * Get attendance breakdown for a service
      */
     getServiceAttendance: (serviceId: string) =>
-      apiClient.get<AttendanceBreakdown>(`/attendance/service/${serviceId}`),
+      apiClient.get<AttendanceBreakdown>(`/query/attendance?type=breakdown&serviceId=${serviceId}`),
 
     /**
      * Get attendees list for a service
      */
     getServiceAttendees: (serviceId: string) =>
-      apiClient.get<ServiceAttendee[]>(`/attendance/service/${serviceId}/attendees`),
+      apiClient.get<ServiceAttendee[]>(`/query/attendance?type=attendees&serviceId=${serviceId}`),
 
     /**
      * Get department attendance for a service
      */
     getDepartmentAttendance: (serviceId: string) =>
-      apiClient.get<DepartmentAttendance[]>(`/attendance/service/${serviceId}/departments`),
+      apiClient.get<DepartmentAttendance[]>(`/query/attendance?type=departments&serviceId=${serviceId}`),
 
     /**
      * Compare attendance between two services
      */
     compareServices: (serviceAId: string, serviceBId: string) =>
       apiClient.get<ServiceComparison>(
-        `/attendance/compare?serviceA=${serviceAId}&serviceB=${serviceBId}`
+        `/query/attendance?type=compare&serviceA=${serviceAId}&serviceB=${serviceBId}`
       ),
   },
 
@@ -80,19 +80,19 @@ export const churchApi = {
      * Search members by name, phone, or email
      */
     search: (query: string) =>
-      apiClient.get<Member[]>(`/members/search?q=${encodeURIComponent(query)}`),
+      apiClient.get<Member[]>(`/query/members?type=search&q=${encodeURIComponent(query)}`),
 
     /**
      * Get member journey timeline
      */
     getJourney: (memberId: string) =>
-      apiClient.get<MemberJourney>(`/members/${memberId}/journey`),
+      apiClient.get<MemberJourney>(`/query/journey?memberId=${memberId}`),
 
     /**
      * Get member by ID
      */
     getById: (memberId: string) =>
-      apiClient.get<Member>(`/members/${memberId}`),
+      apiClient.get<Member>(`/query/members?type=byId&memberId=${memberId}`),
   },
 
   // Service endpoints
@@ -100,19 +100,19 @@ export const churchApi = {
     /**
      * Get all services
      */
-    getAll: () => apiClient.get<Service[]>('/services'),
+    getAll: () => apiClient.get<Service[]>('/query/dashboard?type=services'),
 
     /**
      * Get recent services
      */
     getRecent: (limit: number = 10) =>
-      apiClient.get<Service[]>(`/services/recent?limit=${limit}`),
+      apiClient.get<Service[]>(`/query/dashboard?type=services&limit=${limit}`),
 
     /**
      * Get service by ID
      */
     getById: (serviceId: string) =>
-      apiClient.get<Service>(`/services/${serviceId}`),
+      apiClient.get<Service>(`/query/dashboard?type=service&serviceId=${serviceId}`),
   },
 
   // Follow-up endpoints
@@ -121,37 +121,34 @@ export const churchApi = {
      * Get today's due follow-ups
      */
     getTodaysDue: () =>
-      apiClient.get<FollowUpAssignment[]>('/follow-up/due-today'),
+      apiClient.get<FollowUpAssignment[]>('/query/follow-up?type=due-today'),
 
     /**
      * Get follow-ups by volunteer
      */
     getByVolunteer: (volunteerId: string) =>
-      apiClient.get<FollowUpAssignment[]>(`/follow-up/volunteer/${volunteerId}`),
+      apiClient.get<FollowUpAssignment[]>(`/query/follow-up?type=by-volunteer&volunteerId=${volunteerId}`),
 
     /**
      * Get unassigned members
      */
     getUnassigned: () =>
-      apiClient.get<Member[]>('/follow-up/unassigned'),
+      apiClient.get<Member[]>('/query/follow-up?type=unassigned'),
 
     /**
      * Get souls assigned grouped by volunteer
      */
     getSoulsAssignedByVolunteer: () =>
-      apiClient.get<SoulsAssignedByVolunteer[]>('/follow-up/souls-by-volunteer'),
+      apiClient.get<SoulsAssignedByVolunteer[]>('/query/follow-up?type=souls-by-volunteer'),
 
     /**
      * Get follow-up interactions with date filter
      */
     getInteractions: (startDate?: string, endDate?: string) => {
-      const params = new URLSearchParams();
+      const params = new URLSearchParams({ type: 'interactions' });
       if (startDate) params.append('startDate', startDate);
       if (endDate) params.append('endDate', endDate);
-      const queryString = params.toString();
-      return apiClient.get<FollowUpInteraction[]>(
-        `/follow-up/interactions${queryString ? `?${queryString}` : ''}`
-      );
+      return apiClient.get<FollowUpInteraction[]>(`/query/follow-up?${params.toString()}`);
     },
   },
 
@@ -162,56 +159,56 @@ export const churchApi = {
      * Requirements: 19.1
      */
     getTodaysFollowUps: () =>
-      apiClient.get<FollowUpAssignment[]>('/admin/todays-followups'),
+      apiClient.get<FollowUpAssignment[]>('/query/admin?type=todays-followups'),
 
     /**
      * Get new first timers (last N days)
      * Requirements: 19.2
      */
     getNewFirstTimers: (days: number = 30) =>
-      apiClient.get<Member[]>(`/admin/new-first-timers?days=${days}`),
+      apiClient.get<Member[]>(`/query/admin?type=new-first-timers&days=${days}`),
 
     /**
      * Get incomplete evangelism records
      * Requirements: 19.3
      */
     getIncompleteEvangelism: () =>
-      apiClient.get<EvangelismRecord[]>('/admin/incomplete-evangelism'),
+      apiClient.get<EvangelismRecord[]>('/query/admin?type=incomplete-evangelism'),
 
     /**
      * Get members without follow-up owner
      * Requirements: 19.4
      */
     getUnassignedMembers: () =>
-      apiClient.get<Member[]>('/admin/unassigned-members'),
+      apiClient.get<Member[]>('/query/admin?type=unassigned-members'),
 
     /**
      * Get visited members with last visited date
      * Requirements: 19.5
      */
     getVisitedMembers: () =>
-      apiClient.get<VisitedMember[]>('/admin/visited-members'),
+      apiClient.get<VisitedMember[]>('/query/admin?type=visited-members'),
 
     /**
      * Get all department rosters
      * Requirements: 19.6
      */
     getDepartmentRosters: () =>
-      apiClient.get<DepartmentRoster[]>('/admin/department-rosters'),
+      apiClient.get<DepartmentRoster[]>('/query/admin?type=department-rosters'),
 
     /**
      * Get department roster by ID
      * Requirements: 19.6
      */
     getDepartmentRoster: (departmentId: string) =>
-      apiClient.get<Member[]>(`/admin/departments/${departmentId}/roster`),
+      apiClient.get<Member[]>(`/query/admin?type=department-roster&departmentId=${departmentId}`),
 
     /**
      * Get attendance by service grouped by department
      * Requirements: 19.7
      */
     getAttendanceByDepartment: (serviceId: string) =>
-      apiClient.get<AttendanceByDepartment>(`/admin/attendance-by-department?serviceId=${serviceId}`),
+      apiClient.get<AttendanceByDepartment>(`/query/admin?type=attendance-by-department&serviceId=${serviceId}`),
   },
 
   // Cache control

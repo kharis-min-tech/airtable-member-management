@@ -99,24 +99,35 @@ describe('Property 11: Attendance Percentage Calculation', () => {
             createdTime: new Date().toISOString(),
           }));
 
+          // Mock service record with attendance IDs
+          const serviceRecord: AirtableRecord = {
+            id: serviceId,
+            fields: { 
+              'Service Name + Date': 'Test Service',
+              'Attendance': attendanceRecords.map(a => a.id),
+            },
+            createdTime: new Date().toISOString(),
+          };
+
           // Setup mocks
-          mockAirtableClient.findRecords.mockImplementation(async (table, filter) => {
+          mockAirtableClient.getRecord.mockImplementation(async (table, id) => {
+            if (table === 'Services' && id === serviceId) {
+              return serviceRecord;
+            }
+            // Return attendance records by ID
+            if (table === 'Attendance') {
+              const record = attendanceRecords.find(a => a.id === id);
+              if (record) return record;
+            }
+            throw new Error(`Record not found: ${table}/${id}`);
+          });
+
+          mockAirtableClient.findRecords.mockImplementation(async (table) => {
             if (table === 'Departments') {
               return [deptRecord];
             }
             if (table === 'Member Departments') {
               return memberDeptRecords;
-            }
-            if (table === 'Attendance') {
-              // Check which member is being queried
-              const memberMatch = filter.match(/FIND\('(recMember\d+)'/);
-              if (memberMatch) {
-                const memberId = memberMatch[1];
-                if (presentMemberIds.includes(memberId!)) {
-                  return [attendanceRecords.find(a => (a.fields['Member'] as string[])[0] === memberId)!];
-                }
-              }
-              return [];
             }
             return [];
           });
@@ -178,20 +189,30 @@ describe('Property 11: Attendance Percentage Calculation', () => {
             createdTime: new Date().toISOString(),
           }));
 
+          // Mock service record with no attendance
+          const serviceRecord: AirtableRecord = {
+            id: serviceId,
+            fields: { 
+              'Service Name + Date': 'Test Service',
+              'Attendance': [],
+            },
+            createdTime: new Date().toISOString(),
+          };
+
           // Setup mocks
-          mockAirtableClient.findRecords.mockImplementation(async (table, filter) => {
+          mockAirtableClient.getRecord.mockImplementation(async (table, id) => {
+            if (table === 'Services' && id === serviceId) {
+              return serviceRecord;
+            }
+            throw new Error(`Record not found: ${table}/${id}`);
+          });
+
+          mockAirtableClient.findRecords.mockImplementation(async (table) => {
             if (table === 'Departments') {
               return [deptRecord];
             }
             if (table === 'Member Departments') {
-              // The query filters by Active = TRUE, so only return active members
-              if (filter.includes('Active') && filter.includes('TRUE')) {
-                return activeMemberDeptRecords;
-              }
-              return [];
-            }
-            if (table === 'Attendance') {
-              return []; // No one attended for this test
+              return activeMemberDeptRecords;
             }
             return [];
           });
@@ -246,10 +267,26 @@ describe('Property 11: Attendance Percentage Calculation', () => {
             createdTime: new Date().toISOString(),
           }));
 
+          // Mock service record with no attendance
+          const serviceRecord: AirtableRecord = {
+            id: serviceId,
+            fields: { 
+              'Service Name + Date': 'Test Service',
+              'Attendance': [],
+            },
+            createdTime: new Date().toISOString(),
+          };
+
+          mockAirtableClient.getRecord.mockImplementation(async (table, id) => {
+            if (table === 'Services' && id === serviceId) {
+              return serviceRecord;
+            }
+            throw new Error(`Record not found: ${table}/${id}`);
+          });
+
           mockAirtableClient.findRecords.mockImplementation(async (table) => {
             if (table === 'Departments') return [deptRecord];
             if (table === 'Member Departments') return memberDeptRecords;
-            if (table === 'Attendance') return []; // No attendance
             return [];
           });
 
@@ -312,18 +349,30 @@ describe('Property 11: Attendance Percentage Calculation', () => {
             createdTime: new Date().toISOString(),
           }));
 
-          mockAirtableClient.findRecords.mockImplementation(async (table, filter) => {
+          // Mock service record with all attendance
+          const serviceRecord: AirtableRecord = {
+            id: serviceId,
+            fields: { 
+              'Service Name + Date': 'Test Service',
+              'Attendance': attendanceRecords.map(a => a.id),
+            },
+            createdTime: new Date().toISOString(),
+          };
+
+          mockAirtableClient.getRecord.mockImplementation(async (table, id) => {
+            if (table === 'Services' && id === serviceId) {
+              return serviceRecord;
+            }
+            if (table === 'Attendance') {
+              const record = attendanceRecords.find(a => a.id === id);
+              if (record) return record;
+            }
+            throw new Error(`Record not found: ${table}/${id}`);
+          });
+
+          mockAirtableClient.findRecords.mockImplementation(async (table) => {
             if (table === 'Departments') return [deptRecord];
             if (table === 'Member Departments') return memberDeptRecords;
-            if (table === 'Attendance') {
-              const memberMatch = filter.match(/FIND\('(recMember\d+)'/);
-              if (memberMatch) {
-                const memberId = memberMatch[1];
-                const record = attendanceRecords.find(a => (a.fields['Member'] as string[])[0] === memberId);
-                return record ? [record] : [];
-              }
-              return [];
-            }
             return [];
           });
 
@@ -362,10 +411,26 @@ describe('Property 11: Attendance Percentage Calculation', () => {
             createdTime: new Date().toISOString(),
           };
 
+          // Mock service record with no attendance
+          const serviceRecord: AirtableRecord = {
+            id: serviceId,
+            fields: { 
+              'Service Name + Date': 'Test Service',
+              'Attendance': [],
+            },
+            createdTime: new Date().toISOString(),
+          };
+
+          mockAirtableClient.getRecord.mockImplementation(async (table, id) => {
+            if (table === 'Services' && id === serviceId) {
+              return serviceRecord;
+            }
+            throw new Error(`Record not found: ${table}/${id}`);
+          });
+
           mockAirtableClient.findRecords.mockImplementation(async (table) => {
             if (table === 'Departments') return [deptRecord];
             if (table === 'Member Departments') return []; // No active members
-            if (table === 'Attendance') return [];
             return [];
           });
 
@@ -424,23 +489,41 @@ describe('Property 11: Attendance Percentage Calculation', () => {
             createdTime: new Date().toISOString(),
           }));
 
-          mockAirtableClient.findRecords.mockImplementation(async (table, filter) => {
+          // Create attendance records for present members
+          const attendanceRecords: AirtableRecord[] = presentMemberIds.map((memberId, i) => ({
+            id: `recAtt${i.toString().padStart(11, '0')}`,
+            fields: {
+              'Member': [memberId],
+              'Service': [serviceId],
+              'Present?': true,
+            },
+            createdTime: new Date().toISOString(),
+          }));
+
+          // Mock service record with attendance
+          const serviceRecord: AirtableRecord = {
+            id: serviceId,
+            fields: { 
+              'Service Name + Date': 'Test Service',
+              'Attendance': attendanceRecords.map(a => a.id),
+            },
+            createdTime: new Date().toISOString(),
+          };
+
+          mockAirtableClient.getRecord.mockImplementation(async (table, id) => {
+            if (table === 'Services' && id === serviceId) {
+              return serviceRecord;
+            }
+            if (table === 'Attendance') {
+              const record = attendanceRecords.find(a => a.id === id);
+              if (record) return record;
+            }
+            throw new Error(`Record not found: ${table}/${id}`);
+          });
+
+          mockAirtableClient.findRecords.mockImplementation(async (table) => {
             if (table === 'Departments') return [deptRecord];
             if (table === 'Member Departments') return memberDeptRecords;
-            if (table === 'Attendance') {
-              const memberMatch = filter.match(/FIND\('(recMember\d+)'/);
-              if (memberMatch) {
-                const memberId = memberMatch[1];
-                if (presentMemberIds.includes(memberId!)) {
-                  return [{
-                    id: `recAtt${memberId}`,
-                    fields: { 'Member': [memberId], 'Service': [serviceId], 'Present?': true },
-                    createdTime: new Date().toISOString(),
-                  }];
-                }
-              }
-              return [];
-            }
             return [];
           });
 
@@ -517,18 +600,6 @@ describe('Property 12: Service Comparison Bidirectional Correctness', () => {
           const membersInB = [...uniqueMembersInBoth, ...uniqueMembersOnlyInB];
           const allMembers = [...new Set([...membersInA, ...membersInB])];
 
-          // Mock service records
-          const serviceARecord: AirtableRecord = {
-            id: serviceAId,
-            fields: { 'Service Name + Date': 'Service A' },
-            createdTime: new Date().toISOString(),
-          };
-          const serviceBRecord: AirtableRecord = {
-            id: serviceBId,
-            fields: { 'Service Name + Date': 'Service B' },
-            createdTime: new Date().toISOString(),
-          };
-
           // Mock attendance records
           const attendanceA: AirtableRecord[] = membersInA.map((memberId, i) => ({
             id: `recAttA${i.toString().padStart(10, '0')}`,
@@ -541,6 +612,24 @@ describe('Property 12: Service Comparison Bidirectional Correctness', () => {
             fields: { 'Member': [memberId], 'Service': [serviceBId], 'Present?': true },
             createdTime: new Date().toISOString(),
           }));
+
+          // Mock service records with attendance IDs
+          const serviceARecord: AirtableRecord = {
+            id: serviceAId,
+            fields: { 
+              'Service Name + Date': 'Service A',
+              'Attendance': attendanceA.map(a => a.id),
+            },
+            createdTime: new Date().toISOString(),
+          };
+          const serviceBRecord: AirtableRecord = {
+            id: serviceBId,
+            fields: { 
+              'Service Name + Date': 'Service B',
+              'Attendance': attendanceB.map(a => a.id),
+            },
+            createdTime: new Date().toISOString(),
+          };
 
           // Mock member records
           const memberRecords: AirtableRecord[] = allMembers.map((memberId, i) => ({
@@ -563,17 +652,21 @@ describe('Property 12: Service Comparison Bidirectional Correctness', () => {
               if (id === serviceAId) return serviceARecord;
               if (id === serviceBId) return serviceBRecord;
             }
-            throw new Error(`Record not found: ${id}`);
+            if (table === 'Attendance') {
+              const recordA = attendanceA.find(a => a.id === id);
+              if (recordA) return recordA;
+              const recordB = attendanceB.find(a => a.id === id);
+              if (recordB) return recordB;
+            }
+            if (table === 'Members') {
+              const member = memberRecords.find(m => m.id === id);
+              if (member) return member;
+            }
+            throw new Error(`Record not found: ${table}/${id}`);
           });
 
           mockAirtableClient.findRecords.mockImplementation(async (table, filter) => {
-            if (table === 'Attendance') {
-              if (filter.includes(serviceAId)) return attendanceA;
-              if (filter.includes(serviceBId)) return attendanceB;
-            }
             if (table === 'Members') {
-              // Parse RECORD_ID() = 'id' patterns from the filter formula
-              // The filter looks like: OR(RECORD_ID() = 'recXXX', RECORD_ID() = 'recYYY')
               const idMatches = filter.match(/RECORD_ID\(\) = '([^']+)'/g) || [];
               const requestedIds = idMatches.map(match => {
                 const idMatch = match.match(/RECORD_ID\(\) = '([^']+)'/);
@@ -623,17 +716,6 @@ describe('Property 12: Service Comparison Bidirectional Correctness', () => {
           const membersInB = [...uniqueMembersInBoth, ...uniqueMembersOnlyInB];
           const allMembers = [...new Set([...membersInA, ...membersInB])];
 
-          const serviceARecord: AirtableRecord = {
-            id: serviceAId,
-            fields: { 'Service Name + Date': 'Service A' },
-            createdTime: new Date().toISOString(),
-          };
-          const serviceBRecord: AirtableRecord = {
-            id: serviceBId,
-            fields: { 'Service Name + Date': 'Service B' },
-            createdTime: new Date().toISOString(),
-          };
-
           const attendanceA: AirtableRecord[] = membersInA.map((memberId, i) => ({
             id: `recAttA${i.toString().padStart(10, '0')}`,
             fields: { 'Member': [memberId], 'Service': [serviceAId], 'Present?': true },
@@ -645,6 +727,23 @@ describe('Property 12: Service Comparison Bidirectional Correctness', () => {
             fields: { 'Member': [memberId], 'Service': [serviceBId], 'Present?': true },
             createdTime: new Date().toISOString(),
           }));
+
+          const serviceARecord: AirtableRecord = {
+            id: serviceAId,
+            fields: { 
+              'Service Name + Date': 'Service A',
+              'Attendance': attendanceA.map(a => a.id),
+            },
+            createdTime: new Date().toISOString(),
+          };
+          const serviceBRecord: AirtableRecord = {
+            id: serviceBId,
+            fields: { 
+              'Service Name + Date': 'Service B',
+              'Attendance': attendanceB.map(a => a.id),
+            },
+            createdTime: new Date().toISOString(),
+          };
 
           const memberRecords: AirtableRecord[] = allMembers.map((memberId, i) => ({
             id: memberId,
@@ -666,16 +765,21 @@ describe('Property 12: Service Comparison Bidirectional Correctness', () => {
               if (id === serviceAId) return serviceARecord;
               if (id === serviceBId) return serviceBRecord;
             }
-            throw new Error(`Record not found: ${id}`);
+            if (table === 'Attendance') {
+              const recordA = attendanceA.find(a => a.id === id);
+              if (recordA) return recordA;
+              const recordB = attendanceB.find(a => a.id === id);
+              if (recordB) return recordB;
+            }
+            if (table === 'Members') {
+              const member = memberRecords.find(m => m.id === id);
+              if (member) return member;
+            }
+            throw new Error(`Record not found: ${table}/${id}`);
           });
 
           mockAirtableClient.findRecords.mockImplementation(async (table, filter) => {
-            if (table === 'Attendance') {
-              if (filter.includes(serviceAId)) return attendanceA;
-              if (filter.includes(serviceBId)) return attendanceB;
-            }
             if (table === 'Members') {
-              // Parse RECORD_ID() = 'id' patterns from the filter formula
               const idMatches = filter.match(/RECORD_ID\(\) = '([^']+)'/g) || [];
               const requestedIds = idMatches.map(match => {
                 const idMatch = match.match(/RECORD_ID\(\) = '([^']+)'/);
@@ -852,22 +956,28 @@ describe('Property 12: Service Comparison Bidirectional Correctness', () => {
         async (serviceAId, serviceBId, membersInA) => {
           const uniqueMembersInA = [...new Set(membersInA)];
 
-          const serviceARecord: AirtableRecord = {
-            id: serviceAId,
-            fields: { 'Service Name + Date': 'Service A' },
-            createdTime: new Date().toISOString(),
-          };
-          const serviceBRecord: AirtableRecord = {
-            id: serviceBId,
-            fields: { 'Service Name + Date': 'Service B' },
-            createdTime: new Date().toISOString(),
-          };
-
           const attendanceA: AirtableRecord[] = uniqueMembersInA.map((memberId, i) => ({
             id: `recAttA${i.toString().padStart(10, '0')}`,
             fields: { 'Member': [memberId], 'Service': [serviceAId], 'Present?': true },
             createdTime: new Date().toISOString(),
           }));
+
+          const serviceARecord: AirtableRecord = {
+            id: serviceAId,
+            fields: { 
+              'Service Name + Date': 'Service A',
+              'Attendance': attendanceA.map(a => a.id),
+            },
+            createdTime: new Date().toISOString(),
+          };
+          const serviceBRecord: AirtableRecord = {
+            id: serviceBId,
+            fields: { 
+              'Service Name + Date': 'Service B',
+              'Attendance': [], // Service B is empty
+            },
+            createdTime: new Date().toISOString(),
+          };
 
           const memberRecords: AirtableRecord[] = uniqueMembersInA.map((memberId, i) => ({
             id: memberId,
@@ -889,16 +999,19 @@ describe('Property 12: Service Comparison Bidirectional Correctness', () => {
               if (id === serviceAId) return serviceARecord;
               if (id === serviceBId) return serviceBRecord;
             }
-            throw new Error(`Record not found: ${id}`);
+            if (table === 'Attendance') {
+              const record = attendanceA.find(a => a.id === id);
+              if (record) return record;
+            }
+            if (table === 'Members') {
+              const member = memberRecords.find(m => m.id === id);
+              if (member) return member;
+            }
+            throw new Error(`Record not found: ${table}/${id}`);
           });
 
           mockAirtableClient.findRecords.mockImplementation(async (table, filter) => {
-            if (table === 'Attendance') {
-              if (filter.includes(serviceAId)) return attendanceA;
-              if (filter.includes(serviceBId)) return []; // Service B is empty
-            }
             if (table === 'Members') {
-              // Parse RECORD_ID() = 'id' patterns from the filter formula
               const idMatches = filter.match(/RECORD_ID\(\) = '([^']+)'/g) || [];
               const requestedIds = idMatches.map(match => {
                 const idMatch = match.match(/RECORD_ID\(\) = '([^']+)'/);
@@ -1086,7 +1199,7 @@ describe('Property 13: Timeline Chronological Ordering', () => {
             id: 'recFollowUp0000001',
             fields: {
               'Member': [memberId],
-              'Date': dateStr,
+              'Interaction Date': dateStr,
               'Comment': 'Test follow-up',
             },
             createdTime: new Date().toISOString(),
@@ -1275,5 +1388,293 @@ describe('Property 13: Timeline Chronological Ordering', () => {
       ),
       { numRuns: 50 }
     );
+  });
+});
+
+
+/**
+ * Tests for new QueryService methods
+ * Tests: getServiceById, getRecentServices, getServiceAttendees, getMemberById,
+ *        getFollowUpsByVolunteer, getSoulsAssignedByVolunteer, getDepartmentRoster
+ */
+describe('Additional QueryService Methods', () => {
+  let mockAirtableClient: jest.Mocked<AirtableClient>;
+  let queryService: QueryService;
+
+  beforeEach(() => {
+    mockAirtableClient = {
+      createRecord: jest.fn(),
+      updateRecord: jest.fn(),
+      getRecord: jest.fn(),
+      findRecords: jest.fn(),
+      batchCreate: jest.fn(),
+      batchUpdate: jest.fn(),
+    } as unknown as jest.Mocked<AirtableClient>;
+
+    queryService = new QueryService(mockAirtableClient, { attendanceThreshold: 85 });
+  });
+
+  afterEach(() => {
+    jest.clearAllMocks();
+  });
+
+  describe('getServiceById', () => {
+    it('should return service details for valid ID', async () => {
+      const serviceId = 'recService001';
+      const serviceRecord: AirtableRecord = {
+        id: serviceId,
+        fields: {
+          'Service Name + Date': 'Sunday Service - 2024-01-07',
+          'Service Date': '2024-01-07',
+          'Service Type': 'Sunday Service',
+        },
+        createdTime: new Date().toISOString(),
+      };
+
+      mockAirtableClient.getRecord.mockResolvedValue(serviceRecord);
+
+      const result = await queryService.getServiceById(serviceId);
+
+      expect(result).toBeDefined();
+      expect(result!.id).toBe(serviceId);
+      expect(result!.serviceName).toBe('Sunday Service - 2024-01-07');
+      expect(result!.serviceCode).toBe('Sunday Service');
+    });
+
+    it('should return null for non-existent service', async () => {
+      mockAirtableClient.getRecord.mockRejectedValue(new Error('Not found'));
+
+      const result = await queryService.getServiceById('recNonExistent');
+
+      expect(result).toBeNull();
+    });
+
+    it('should throw error for empty service ID', async () => {
+      await expect(queryService.getServiceById('')).rejects.toThrow('Service ID is required');
+    });
+  });
+
+  describe('getRecentServices', () => {
+    it('should return recent services sorted by date', async () => {
+      const serviceRecords: AirtableRecord[] = [
+        {
+          id: 'recService001',
+          fields: { 'Service Name + Date': 'Service 1', 'Service Date': '2024-01-14', 'Service Type': 'Sunday' },
+          createdTime: new Date().toISOString(),
+        },
+        {
+          id: 'recService002',
+          fields: { 'Service Name + Date': 'Service 2', 'Service Date': '2024-01-07', 'Service Type': 'Sunday' },
+          createdTime: new Date().toISOString(),
+        },
+      ];
+
+      mockAirtableClient.findRecords.mockResolvedValue(serviceRecords);
+
+      const result = await queryService.getRecentServices(10);
+
+      expect(result).toHaveLength(2);
+      expect(result[0]!.id).toBe('recService001');
+      expect(mockAirtableClient.findRecords).toHaveBeenCalledWith(
+        'Services',
+        'TRUE()',
+        expect.objectContaining({ maxRecords: 10 })
+      );
+    });
+  });
+
+  describe('getServiceAttendees', () => {
+    it('should return members who attended a service', async () => {
+      const serviceId = 'recService001';
+      const attendanceRecords: AirtableRecord[] = [
+        { id: 'recAtt001', fields: { 'Member': ['recMember001'], 'Service': [serviceId], 'Present?': true }, createdTime: new Date().toISOString() },
+        { id: 'recAtt002', fields: { 'Member': ['recMember002'], 'Service': [serviceId], 'Present?': true }, createdTime: new Date().toISOString() },
+      ];
+
+      const memberRecords: AirtableRecord[] = [
+        { id: 'recMember001', fields: { 'First Name': 'John', 'Last Name': 'Doe', 'Full Name': 'John Doe', 'Phone': '123', 'Status': 'Member', 'Source': 'Other', 'Date First Captured': '2024-01-01', 'Follow-up Status': 'Not Started' }, createdTime: new Date().toISOString() },
+        { id: 'recMember002', fields: { 'First Name': 'Jane', 'Last Name': 'Doe', 'Full Name': 'Jane Doe', 'Phone': '456', 'Status': 'Member', 'Source': 'Other', 'Date First Captured': '2024-01-01', 'Follow-up Status': 'Not Started' }, createdTime: new Date().toISOString() },
+      ];
+
+      // Mock service record with attendance IDs
+      const serviceRecord: AirtableRecord = {
+        id: serviceId,
+        fields: { 
+          'Service Name + Date': 'Test Service',
+          'Attendance': attendanceRecords.map(a => a.id),
+        },
+        createdTime: new Date().toISOString(),
+      };
+
+      mockAirtableClient.getRecord.mockImplementation(async (table, id) => {
+        if (table === 'Services' && id === serviceId) return serviceRecord;
+        if (table === 'Attendance') {
+          const record = attendanceRecords.find(a => a.id === id);
+          if (record) return record;
+        }
+        if (table === 'Members') {
+          const member = memberRecords.find(m => m.id === id);
+          if (member) return member;
+        }
+        throw new Error(`Record not found: ${table}/${id}`);
+      });
+
+      mockAirtableClient.findRecords.mockImplementation(async (table) => {
+        if (table === 'Members') return memberRecords;
+        return [];
+      });
+
+      const result = await queryService.getServiceAttendees(serviceId);
+
+      expect(result).toHaveLength(2);
+      expect(result.map(m => m.id).sort()).toEqual(['recMember001', 'recMember002']);
+    });
+
+    it('should throw error for empty service ID', async () => {
+      await expect(queryService.getServiceAttendees('')).rejects.toThrow('Service ID is required');
+    });
+  });
+
+  describe('getMemberById', () => {
+    it('should return member details for valid ID', async () => {
+      const memberId = 'recMember001';
+      const memberRecord: AirtableRecord = {
+        id: memberId,
+        fields: {
+          'First Name': 'John',
+          'Last Name': 'Doe',
+          'Full Name': 'John Doe',
+          'Phone': '+1234567890',
+          'Email': 'john@example.com',
+          'Status': 'Member',
+          'Source': 'Evangelism',
+          'Date First Captured': '2024-01-01',
+          'Follow-up Status': 'Completed',
+        },
+        createdTime: new Date().toISOString(),
+      };
+
+      mockAirtableClient.getRecord.mockResolvedValue(memberRecord);
+
+      const result = await queryService.getMemberById(memberId);
+
+      expect(result).toBeDefined();
+      expect(result!.id).toBe(memberId);
+      expect(result!.fullName).toBe('John Doe');
+    });
+
+    it('should return null for non-existent member', async () => {
+      mockAirtableClient.getRecord.mockRejectedValue(new Error('Not found'));
+
+      const result = await queryService.getMemberById('recNonExistent');
+
+      expect(result).toBeNull();
+    });
+
+    it('should throw error for empty member ID', async () => {
+      await expect(queryService.getMemberById('')).rejects.toThrow('Member ID is required');
+    });
+  });
+
+  describe('getFollowUpsByVolunteer', () => {
+    it('should return follow-up assignments for a volunteer', async () => {
+      const volunteerId = 'recVolunteer001';
+      const assignmentRecords: AirtableRecord[] = [
+        {
+          id: 'recAssign001',
+          fields: {
+            'Member': ['recMember001'],
+            'Assigned To': [volunteerId],
+            'Assigned Date': '2024-01-01',
+            'Due Date': '2024-01-15',
+            'Status': 'Assigned',
+          },
+          createdTime: new Date().toISOString(),
+        },
+      ];
+
+      mockAirtableClient.findRecords.mockResolvedValue(assignmentRecords);
+
+      const result = await queryService.getFollowUpsByVolunteer(volunteerId);
+
+      expect(result).toHaveLength(1);
+      expect(result[0]!.assignedTo).toBe(volunteerId);
+    });
+
+    it('should throw error for empty volunteer ID', async () => {
+      await expect(queryService.getFollowUpsByVolunteer('')).rejects.toThrow('Volunteer ID is required');
+    });
+  });
+
+  describe('getSoulsAssignedByVolunteer', () => {
+    it('should return souls grouped by volunteer', async () => {
+      const volunteerId = 'recVolunteer001';
+      const evangelismRecords: AirtableRecord[] = [
+        {
+          id: 'recEvang001',
+          fields: { 'Soul Winner': [volunteerId], 'Linked Member': ['recMember001'] },
+          createdTime: new Date().toISOString(),
+        },
+      ];
+
+      const volunteerRecord: AirtableRecord = {
+        id: volunteerId,
+        fields: { 'Name': 'John Volunteer' },
+        createdTime: new Date().toISOString(),
+      };
+
+      const memberRecords: AirtableRecord[] = [
+        {
+          id: 'recMember001',
+          fields: { 'First Name': 'Soul', 'Last Name': 'Won', 'Full Name': 'Soul Won', 'Phone': '123', 'Status': 'Evangelism Contact', 'Source': 'Evangelism', 'Date First Captured': '2024-01-01', 'Follow-up Status': 'Not Started' },
+          createdTime: new Date().toISOString(),
+        },
+      ];
+
+      mockAirtableClient.findRecords.mockImplementation(async (table) => {
+        if (table === 'Evangelism') return evangelismRecords;
+        if (table === 'Members') return memberRecords;
+        return [];
+      });
+
+      mockAirtableClient.getRecord.mockResolvedValue(volunteerRecord);
+
+      const result = await queryService.getSoulsAssignedByVolunteer();
+
+      expect(result).toHaveLength(1);
+      expect(result[0]!.volunteerId).toBe(volunteerId);
+      expect(result[0]!.volunteerName).toBe('John Volunteer');
+      expect(result[0]!.souls).toHaveLength(1);
+    });
+  });
+
+  describe('getDepartmentRoster', () => {
+    it('should return members in a department', async () => {
+      const departmentId = 'recDept001';
+      const memberDeptRecords: AirtableRecord[] = [
+        { id: 'recMD001', fields: { 'Member': ['recMember001'], 'Department': [departmentId], 'Active': true }, createdTime: new Date().toISOString() },
+        { id: 'recMD002', fields: { 'Member': ['recMember002'], 'Department': [departmentId], 'Active': true }, createdTime: new Date().toISOString() },
+      ];
+
+      const memberRecords: AirtableRecord[] = [
+        { id: 'recMember001', fields: { 'First Name': 'John', 'Last Name': 'Doe', 'Full Name': 'John Doe', 'Phone': '123', 'Status': 'Member', 'Source': 'Other', 'Date First Captured': '2024-01-01', 'Follow-up Status': 'Not Started' }, createdTime: new Date().toISOString() },
+        { id: 'recMember002', fields: { 'First Name': 'Jane', 'Last Name': 'Doe', 'Full Name': 'Jane Doe', 'Phone': '456', 'Status': 'Member', 'Source': 'Other', 'Date First Captured': '2024-01-01', 'Follow-up Status': 'Not Started' }, createdTime: new Date().toISOString() },
+      ];
+
+      mockAirtableClient.findRecords.mockImplementation(async (table) => {
+        if (table === 'Member Departments') return memberDeptRecords;
+        if (table === 'Members') return memberRecords;
+        return [];
+      });
+
+      const result = await queryService.getDepartmentRoster(departmentId);
+
+      expect(result).toHaveLength(2);
+      expect(result.map(m => m.id).sort()).toEqual(['recMember001', 'recMember002']);
+    });
+
+    it('should throw error for empty department ID', async () => {
+      await expect(queryService.getDepartmentRoster('')).rejects.toThrow('Department ID is required');
+    });
   });
 });

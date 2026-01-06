@@ -5,6 +5,7 @@ import {
   signOut, 
   getCurrentUser, 
   fetchAuthSession,
+  confirmSignIn,
 } from 'aws-amplify/auth';
 import type { AuthUser } from 'aws-amplify/auth';
 import type { UserContext, UserRole, AuthState } from '../types';
@@ -15,6 +16,8 @@ interface AuthContextType extends AuthState {
   refreshSession: () => Promise<void>;
   hasRole: (roles: UserRole | UserRole[]) => boolean;
   canAccessAllData: () => boolean;
+  requiresNewPassword: boolean;
+  completeNewPassword: (newPassword: string) => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -39,6 +42,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
     user: null,
     error: null,
   });
+  const [requiresNewPassword, setRequiresNewPassword] = useState(false);
 
   const extractUserContext = useCallback(async (authUser: AuthUser): Promise<UserContext> => {
     try {
@@ -100,12 +104,20 @@ export function AuthProvider({ children }: AuthProviderProps) {
 
   const login = useCallback(async (email: string, password: string) => {
     setAuthState(prev => ({ ...prev, isLoading: true, error: null }));
+    setRequiresNewPassword(false);
     
     try {
-      const { isSignedIn } = await signIn({ username: email, password });
+      const result = await signIn({ username: email, password });
       
-      if (isSignedIn) {
+      if (result.isSignedIn) {
         await checkAuthState();
+      } else if (result.nextStep?.signInStep === 'CONFIRM_SIGN_IN_WITH_NEW_PASSWORD_REQUIRED') {
+        setRequiresNewPassword(true);
+        setAuthState(prev => ({
+          ...prev,
+          isLoading: false,
+          error: null,
+        }));
       } else {
         setAuthState(prev => ({
           ...prev,
@@ -115,6 +127,33 @@ export function AuthProvider({ children }: AuthProviderProps) {
       }
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Login failed';
+      setAuthState(prev => ({
+        ...prev,
+        isLoading: false,
+        error: message,
+      }));
+      throw error;
+    }
+  }, [checkAuthState]);
+
+  const completeNewPassword = useCallback(async (newPassword: string) => {
+    setAuthState(prev => ({ ...prev, isLoading: true, error: null }));
+    
+    try {
+      const result = await confirmSignIn({ challengeResponse: newPassword });
+      
+      if (result.isSignedIn) {
+        setRequiresNewPassword(false);
+        await checkAuthState();
+      } else {
+        setAuthState(prev => ({
+          ...prev,
+          isLoading: false,
+          error: 'Password change was not completed',
+        }));
+      }
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Password change failed';
       setAuthState(prev => ({
         ...prev,
         isLoading: false,
@@ -164,7 +203,9 @@ export function AuthProvider({ children }: AuthProviderProps) {
     refreshSession,
     hasRole,
     canAccessAllData,
-  }), [authState, login, logout, refreshSession, hasRole, canAccessAllData]);
+    requiresNewPassword,
+    completeNewPassword,
+  }), [authState, login, logout, refreshSession, hasRole, canAccessAllData, requiresNewPassword, completeNewPassword]);
 
   return (
     <AuthContext.Provider value={value}>

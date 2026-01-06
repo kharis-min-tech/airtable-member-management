@@ -52,7 +52,7 @@ describe('ChurchAutomationStack', () => {
   describe('Lambda Functions', () => {
     it('should create Lambda functions for handlers', () => {
       // Should have at least 6 Lambda functions
-      template.resourceCountIs('AWS::Lambda::Function', 6);
+      template.resourceCountIs('AWS::Lambda::Function', 8);
     });
 
     it('should configure Lambda with Node.js 18 runtime', () => {
@@ -74,6 +74,54 @@ describe('ChurchAutomationStack', () => {
         { HttpMethod: 'POST' },
         4 // 4 webhook endpoints
       );
+    });
+  });
+
+  describe('Frontend Hosting', () => {
+    it('should create S3 bucket for frontend assets', () => {
+      template.hasResourceProperties('AWS::S3::Bucket', {
+        PublicAccessBlockConfiguration: {
+          BlockPublicAcls: true,
+          BlockPublicPolicy: true,
+          IgnorePublicAcls: true,
+          RestrictPublicBuckets: true,
+        },
+      });
+    });
+
+    it('should create CloudFront distribution', () => {
+      template.resourceCountIs('AWS::CloudFront::Distribution', 1);
+    });
+
+    it('should configure CloudFront with HTTPS redirect', () => {
+      template.hasResourceProperties('AWS::CloudFront::Distribution', {
+        DistributionConfig: {
+          DefaultRootObject: 'index.html',
+        },
+      });
+    });
+
+    it('should create CloudFront Origin Access Identity', () => {
+      template.resourceCountIs('AWS::CloudFront::CloudFrontOriginAccessIdentity', 1);
+    });
+
+    it('should configure SPA error handling for client-side routing', () => {
+      template.hasResourceProperties('AWS::CloudFront::Distribution', {
+        DistributionConfig: {
+          CustomErrorResponses: [
+            {
+              ErrorCode: 403,
+              ResponseCode: 200,
+              ResponsePagePath: '/index.html',
+            },
+            {
+              ErrorCode: 404,
+              ResponseCode: 200,
+              ResponsePagePath: '/index.html',
+            },
+          ],
+        },
+      });
     });
   });
 });

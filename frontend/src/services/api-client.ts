@@ -190,8 +190,11 @@ async function apiRequest<T>(
         );
       }
 
-      const data = await response.json() as T;
+      const responseJson = await response.json() as { success?: boolean; data?: T; error?: string };
       const timestamp = new Date();
+
+      // Extract data from backend response wrapper if present
+      const data = responseJson.data !== undefined ? responseJson.data : responseJson as T;
 
       // Cache successful GET responses
       if (method === 'GET' && !skipCache) {

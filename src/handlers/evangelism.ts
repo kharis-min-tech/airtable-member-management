@@ -36,7 +36,10 @@ export function parseEvangelismWebhook(payload: EvangelismWebhookPayload): Evang
     email: fields['Email'],
     ghanaPostCode: fields['GhanaPost Code'],
     date: dateValue,
-    capturedBy: fields['Captured By']?.[0],
+    capturedBy: fields['Soul Winner']?.[0],
+    notes: fields['Notes / Prayer Points'],
+    soulType: fields['Soul Type'],
+    evangelismType: fields['Evangelism Type'],
   };
 }
 

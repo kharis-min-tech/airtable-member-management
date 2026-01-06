@@ -8,6 +8,8 @@ interface AuthContextType extends AuthState {
   refreshSession: () => Promise<void>;
   hasRole: (roles: UserRole | UserRole[]) => boolean;
   canAccessAllData: () => boolean;
+  requiresNewPassword: boolean;
+  completeNewPassword: (newPassword: string) => Promise<void>;
 }
 
 export function useAuth(): AuthContextType {
