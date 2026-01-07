@@ -253,6 +253,190 @@ describe('Property 6: Drill-Down Member Count Matches List Length', () => {
 });
 
 /**
+ * Property 1: Drill-Down Modal Array Safety
+ * 
+ * For any input passed as the `members` prop to the AttendanceDrillDownModal component,
+ * if the input is not a valid array (null, undefined, object, string, number),
+ * the component SHALL render without throwing errors and SHALL display an empty state
+ * or appropriate message.
+ * 
+ * **Feature: ui-bugfixes-v3, Property 1: Drill-Down Modal Array Safety**
+ * **Validates: Requirements 2.2, 2.3, 2.4, 2.5**
+ */
+describe('Property 1: Drill-Down Modal Array Safety', () => {
+  const mockOnClose = vi.fn();
+  const mockOnMemberClick = vi.fn();
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    cleanup();
+  });
+
+  /**
+   * Property 1.1: Component renders without errors for any non-array input
+   * 
+   * For any input that is not a valid array (null, undefined, object, string, number),
+   * the component should render without throwing errors.
+   * 
+   * **Feature: ui-bugfixes-v3, Property 1: Drill-Down Modal Array Safety**
+   * **Validates: Requirements 2.2, 2.3, 2.4, 2.5**
+   */
+  it('should render without errors for any non-array input', () => {
+    // Generate various non-array values
+    const nonArrayArb = fc.oneof(
+      fc.constant(null),
+      fc.constant(undefined),
+      fc.string(),
+      fc.integer(),
+      fc.double(),
+      fc.boolean(),
+      fc.record({ key: fc.string() }), // plain object
+      fc.constant({}),
+      fc.constant({ length: 5 }), // array-like object
+    );
+
+    fc.assert(
+      fc.property(
+        nonArrayArb,
+        categoryArb,
+        categoryLabelArb,
+        serviceNameArb,
+        memberIdArb,
+        (invalidMembers, category, categoryLabel, serviceName, serviceId) => {
+          cleanup();
+          
+          // This should not throw an error
+          expect(() => {
+            render(
+              <AttendanceDrillDownModal
+                isOpen={true}
+                onClose={mockOnClose}
+                category={category}
+                categoryLabel={categoryLabel}
+                serviceId={serviceId}
+                serviceName={serviceName}
+                members={invalidMembers as unknown as DrillDownMember[]}
+                isLoading={false}
+                onMemberClick={mockOnMemberClick}
+              />
+            );
+          }).not.toThrow();
+
+          // Modal should still be rendered
+          expect(screen.getByRole('dialog')).toBeInTheDocument();
+
+          cleanup();
+        }
+      ),
+      { numRuns: 100 }
+    );
+  });
+
+  /**
+   * Property 1.2: Component displays zero count for non-array inputs
+   * 
+   * For any non-array input, the component should display "0 members" count.
+   * 
+   * **Feature: ui-bugfixes-v3, Property 1: Drill-Down Modal Array Safety**
+   * **Validates: Requirements 2.2, 2.3, 2.4, 2.5**
+   */
+  it('should display zero count for non-array inputs', () => {
+    const nonArrayArb = fc.oneof(
+      fc.constant(null),
+      fc.constant(undefined),
+      fc.string(),
+      fc.integer(),
+      fc.record({ key: fc.string() }),
+    );
+
+    fc.assert(
+      fc.property(
+        nonArrayArb,
+        categoryArb,
+        categoryLabelArb,
+        serviceNameArb,
+        memberIdArb,
+        (invalidMembers, category, categoryLabel, serviceName, serviceId) => {
+          cleanup();
+          
+          render(
+            <AttendanceDrillDownModal
+              isOpen={true}
+              onClose={mockOnClose}
+              category={category}
+              categoryLabel={categoryLabel}
+              serviceId={serviceId}
+              serviceName={serviceName}
+              members={invalidMembers as unknown as DrillDownMember[]}
+              isLoading={false}
+              onMemberClick={mockOnMemberClick}
+            />
+          );
+
+          // Should show 0 members count
+          const countElement = screen.getByText('0 members');
+          expect(countElement).toBeInTheDocument();
+
+          cleanup();
+        }
+      ),
+      { numRuns: 100 }
+    );
+  });
+
+  /**
+   * Property 1.3: Component shows empty state for non-array inputs
+   * 
+   * For any non-array input, the component should show the empty state message.
+   * 
+   * **Feature: ui-bugfixes-v3, Property 1: Drill-Down Modal Array Safety**
+   * **Validates: Requirements 2.2, 2.3, 2.4, 2.5**
+   */
+  it('should show empty state for non-array inputs', () => {
+    const nonArrayArb = fc.oneof(
+      fc.constant(null),
+      fc.constant(undefined),
+      fc.string(),
+      fc.integer(),
+    );
+
+    fc.assert(
+      fc.property(
+        nonArrayArb,
+        categoryArb,
+        categoryLabelArb,
+        serviceNameArb,
+        memberIdArb,
+        (invalidMembers, category, categoryLabel, serviceName, serviceId) => {
+          cleanup();
+          
+          render(
+            <AttendanceDrillDownModal
+              isOpen={true}
+              onClose={mockOnClose}
+              category={category}
+              categoryLabel={categoryLabel}
+              serviceId={serviceId}
+              serviceName={serviceName}
+              members={invalidMembers as unknown as DrillDownMember[]}
+              isLoading={false}
+              onMemberClick={mockOnMemberClick}
+            />
+          );
+
+          // Should show empty state message (contains "no" and "found")
+          const emptyStateText = screen.getByText(/no .* found/i);
+          expect(emptyStateText).toBeInTheDocument();
+
+          cleanup();
+        }
+      ),
+      { numRuns: 100 }
+    );
+  });
+});
+
+/**
  * Unit Tests for AttendanceDrillDownModal
  * Requirements: 7.1
  */

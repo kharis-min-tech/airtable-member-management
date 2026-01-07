@@ -83,17 +83,17 @@ describe('MainLayout Navigation - Tab Rendering', () => {
     expect(within(mainNav).queryByText('Admin')).not.toBeInTheDocument();
   });
 
-  it('should render mobile navigation with shortened labels', () => {
+  it('should render navigation with full labels', () => {
     renderWithRouter('/dashboard', 'pastor');
 
-    const mobileNav = screen.getByRole('navigation', { name: 'Mobile navigation' });
+    const mainNav = screen.getByRole('navigation', { name: 'Main navigation' });
     
-    // Mobile uses shortened labels
-    expect(within(mobileNav).getByText('Dashboard')).toBeInTheDocument();
-    expect(within(mobileNav).getByText('Attendance')).toBeInTheDocument();
-    expect(within(mobileNav).getByText('Missing')).toBeInTheDocument();
-    expect(within(mobileNav).getByText('Journey')).toBeInTheDocument();
-    expect(within(mobileNav).getByText('Admin')).toBeInTheDocument();
+    // Navigation uses full labels
+    expect(within(mainNav).getByText('Dashboard')).toBeInTheDocument();
+    expect(within(mainNav).getByText('Attendance Explorer')).toBeInTheDocument();
+    expect(within(mainNav).getByText('Missing Members')).toBeInTheDocument();
+    expect(within(mainNav).getByText('Member Journey')).toBeInTheDocument();
+    expect(within(mainNav).getByText('Admin')).toBeInTheDocument();
   });
 
   it('should render the correct number of tabs based on role', () => {
@@ -265,7 +265,6 @@ describe('MainLayout Navigation - Accessibility', () => {
     renderWithRouter('/dashboard', 'pastor');
 
     expect(screen.getByRole('navigation', { name: 'Main navigation' })).toBeInTheDocument();
-    expect(screen.getByRole('navigation', { name: 'Mobile navigation' })).toBeInTheDocument();
   });
 
   it('should have accessible logout button', () => {

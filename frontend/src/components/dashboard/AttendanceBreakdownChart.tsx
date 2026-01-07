@@ -123,6 +123,16 @@ function AttendanceBreakdownChart({ kpis, isLoading = false, serviceId, onCatego
           <BarChart
             data={chartData}
             margin={{ top: 10, right: 30, left: 0, bottom: 5 }}
+            onClick={(state) => {
+              // eslint-disable-next-line @typescript-eslint/no-explicit-any
+              const chartState = state as any;
+              if (chartState?.activePayload && chartState.activePayload.length > 0) {
+                const payload = chartState.activePayload[0].payload as ChartDataItem;
+                if (onCategoryClick && serviceId) {
+                  onCategoryClick(payload.category, payload.name, payload.departmentId);
+                }
+              }
+            }}
           >
             <CartesianGrid strokeDasharray="3 3" stroke="#E5E7EB" />
             <XAxis
@@ -152,9 +162,11 @@ function AttendanceBreakdownChart({ kpis, isLoading = false, serviceId, onCatego
               name="Attendees" 
               radius={[4, 4, 0, 0]}
               cursor={onCategoryClick && serviceId ? 'pointer' : 'default'}
-              onClick={(data) => {
-                if (data && data.payload) {
-                  handleBarClick(data.payload as ChartDataItem);
+              onClick={(data: { payload?: ChartDataItem } | null) => {
+                console.log('Bar clicked:', data);
+                if (data?.payload) {
+                  console.log('Calling handleBarClick with:', data.payload);
+                  handleBarClick(data.payload);
                 }
               }}
             >

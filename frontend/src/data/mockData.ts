@@ -539,7 +539,7 @@ export const mockServiceAttendees: Record<string, {
 };
 
 // ============================================================================
-// SERVICE COMPARISON (for missing members)
+// SERVICE COMPARISON (for missing members - unidirectional)
 // ============================================================================
 
 export const mockServiceComparison: ServiceComparison = {
@@ -549,10 +549,6 @@ export const mockServiceComparison: ServiceComparison = {
     mockMembers[0], // Kwame Asante
     mockMembers[5], // Akua Frimpong
     mockMembers[9], // Adwoa Sarpong
-  ],
-  presentInBMissingInA: [
-    mockMembers[2], // Kofi Boateng
-    mockMembers[4], // Yaw Mensah
   ],
 };
 
@@ -872,7 +868,8 @@ export function getMockMemberJourney(memberId: string): MemberJourney | null {
 }
 
 /**
- * Compare two services and return missing members
+ * Compare two services and return missing members (unidirectional)
+ * Returns only members present in reference service but missing from comparison service
  */
 export function getMockServiceComparison(referenceServiceId: string, comparisonServiceId: string): ServiceComparison {
   const serviceA = mockServices.find((s) => s.id === referenceServiceId) || mockServices[0];
@@ -880,13 +877,11 @@ export function getMockServiceComparison(referenceServiceId: string, comparisonS
   
   // Simulate some members missing between services
   const missingInB = mockMembers.slice(0, 3);
-  const missingInA = mockMembers.slice(3, 5);
   
   return {
     serviceA,
     serviceB,
     presentInAMissingInB: missingInB,
-    presentInBMissingInA: missingInA,
   };
 }
 

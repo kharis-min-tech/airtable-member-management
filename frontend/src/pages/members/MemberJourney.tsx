@@ -7,6 +7,64 @@ import { useLiveMode } from '../../hooks/useLiveMode';
 import { churchApi } from '../../services/church-api';
 import type { Member, MemberJourney as MemberJourneyType } from '../../types';
 
+/**
+ * Get user-friendly error title based on error message
+ */
+function getErrorTitle(error: string): string {
+  const lowerError = error.toLowerCase();
+  
+  if (lowerError.includes('not found') || lowerError.includes('does not exist')) {
+    return 'Member Not Found';
+  }
+  if (lowerError.includes('permission') || lowerError.includes('access')) {
+    return 'Access Denied';
+  }
+  if (lowerError.includes('authentication') || lowerError.includes('api key')) {
+    return 'Authentication Error';
+  }
+  if (lowerError.includes('network') || lowerError.includes('connect') || lowerError.includes('timeout')) {
+    return 'Connection Error';
+  }
+  return 'Unable to Load Member Journey';
+}
+
+/**
+ * Get user-friendly error message based on error type
+ */
+function getErrorMessage(error: string, memberId: string | undefined): string {
+  const lowerError = error.toLowerCase();
+  
+  if (lowerError.includes('not found') || lowerError.includes('does not exist')) {
+    return `The member with ID "${memberId}" could not be found. They may have been removed or the link may be incorrect.`;
+  }
+  if (lowerError.includes('permission') || lowerError.includes('access')) {
+    return 'You do not have permission to view this member\'s journey. Please contact your administrator if you believe this is an error.';
+  }
+  if (lowerError.includes('authentication') || lowerError.includes('api key')) {
+    return 'There was an authentication problem with the data service. Please contact your administrator.';
+  }
+  if (lowerError.includes('network') || lowerError.includes('connect') || lowerError.includes('timeout')) {
+    return 'Unable to connect to the server. Please check your internet connection and try again.';
+  }
+  // For other errors, show the actual error message
+  return error;
+}
+
+/**
+ * Get optional hint text for certain error types
+ */
+function getErrorHint(error: string): string | null {
+  const lowerError = error.toLowerCase();
+  
+  if (lowerError.includes('permission') || lowerError.includes('access')) {
+    return 'Hint: This may be due to Airtable API key permissions or table access settings.';
+  }
+  if (lowerError.includes('authentication') || lowerError.includes('api key')) {
+    return 'Hint: The Airtable API key may be invalid or expired.';
+  }
+  return null;
+}
+
 function MemberJourney() {
   const { memberId } = useParams<{ memberId: string }>();
   const navigate = useNavigate();
@@ -100,16 +158,16 @@ function MemberJourney() {
             </div>
             <div className="flex-1">
               <h3 className="text-lg font-semibold text-red-800">
-                Unable to Load Member Journey
+                {getErrorTitle(error)}
               </h3>
               <p className="text-red-600 mt-1">
-                {error === 'Member not found' 
-                  ? `The member with ID "${memberId}" could not be found. They may have been removed or the link may be incorrect.`
-                  : error.includes('network') || error.includes('Network')
-                    ? 'Unable to connect to the server. Please check your internet connection and try again.'
-                    : `An error occurred while loading the member journey: ${error}`
-                }
+                {getErrorMessage(error, memberId)}
               </p>
+              {getErrorHint(error) && (
+                <p className="text-red-500 text-sm mt-2 italic">
+                  {getErrorHint(error)}
+                </p>
+              )}
               <div className="mt-4 flex gap-3">
                 <button 
                   onClick={() => execute()}

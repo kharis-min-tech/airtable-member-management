@@ -15,7 +15,6 @@ import {
   AssignmentStatus,
   ServiceKPIs,
   ServiceComparison,
-  SimplifiedServiceComparison,
   MemberJourney,
   TimelineEvent,
   JourneySummary,
@@ -650,95 +649,11 @@ export class QueryService {
   // ============================================
 
   /**
-   * Compare attendance between two services (bidirectional - legacy)
-   * Requirements: 17.1, 17.2, 17.3, 17.4, 17.5
-   * @deprecated Use compareTwoServicesSimplified for unidirectional comparison
-   */
-  async compareTwoServicesBidirectional(serviceAId: string, serviceBId: string): Promise<ServiceComparison> {
-    if (!serviceAId || !serviceBId) {
-      throw new Error('Both service IDs are required');
-    }
-
-    // Get service info and linked attendance records
-    const [serviceARecord, serviceBRecord] = await Promise.all([
-      this.airtableClient.getRecord(AIRTABLE_TABLES.SERVICES, serviceAId),
-      this.airtableClient.getRecord(AIRTABLE_TABLES.SERVICES, serviceBId),
-    ]);
-
-    const serviceA = {
-      id: serviceAId,
-      name: (serviceARecord.fields['Service Name + Date'] as string) || serviceAId,
-    };
-
-    const serviceB = {
-      id: serviceBId,
-      name: (serviceBRecord.fields['Service Name + Date'] as string) || serviceBId,
-    };
-
-    // Get attendance IDs from service records
-    const attendanceIdsA = (serviceARecord.fields['Attendance'] as string[]) || [];
-    const attendanceIdsB = (serviceBRecord.fields['Attendance'] as string[]) || [];
-
-    // Fetch attendance records for service A
-    const attendanceA: AirtableRecord[] = [];
-    for (const id of attendanceIdsA) {
-      try {
-        const record = await this.airtableClient.getRecord(AIRTABLE_TABLES.ATTENDANCE, id);
-        if (record.fields['Present?'] === true) {
-          attendanceA.push(record);
-        }
-      } catch { /* skip */ }
-    }
-
-    // Fetch attendance records for service B
-    const attendanceB: AirtableRecord[] = [];
-    for (const id of attendanceIdsB) {
-      try {
-        const record = await this.airtableClient.getRecord(AIRTABLE_TABLES.ATTENDANCE, id);
-        if (record.fields['Present?'] === true) {
-          attendanceB.push(record);
-        }
-      } catch { /* skip */ }
-    }
-
-    const memberIdsA = new Set(
-      attendanceA
-        .map(r => this.extractLinkedRecordId(r.fields['Member']))
-        .filter((id): id is string => !!id)
-    );
-
-    const memberIdsB = new Set(
-      attendanceB
-        .map(r => this.extractLinkedRecordId(r.fields['Member']))
-        .filter((id): id is string => !!id)
-    );
-
-    // Find members in A but not in B
-    const inANotB = [...memberIdsA].filter(id => !memberIdsB.has(id));
-    
-    // Find members in B but not in A
-    const inBNotA = [...memberIdsB].filter(id => !memberIdsA.has(id));
-
-    // Get member details
-    const [membersInANotB, membersInBNotA] = await Promise.all([
-      this.getMembersByIds(inANotB),
-      this.getMembersByIds(inBNotA),
-    ]);
-
-    return {
-      serviceA,
-      serviceB,
-      presentInAMissingInB: membersInANotB.map(r => this.mapRecordToMember(r)),
-      presentInBMissingInA: membersInBNotA.map(r => this.mapRecordToMember(r)),
-    };
-  }
-
-  /**
-   * Compare attendance between two services (unidirectional - simplified)
+   * Compare attendance between two services (unidirectional)
    * Returns only members present in reference service (A) but missing from comparison service (B)
    * Requirements: 5.2, 5.3
    */
-  async compareTwoServices(referenceServiceId: string, comparisonServiceId: string): Promise<SimplifiedServiceComparison> {
+  async compareTwoServices(referenceServiceId: string, comparisonServiceId: string): Promise<ServiceComparison> {
     if (!referenceServiceId || !comparisonServiceId) {
       throw new Error('Both service IDs are required');
     }
@@ -749,12 +664,12 @@ export class QueryService {
       this.airtableClient.getRecord(AIRTABLE_TABLES.SERVICES, comparisonServiceId),
     ]);
 
-    const referenceService = {
+    const serviceA = {
       id: referenceServiceId,
       name: (referenceServiceRecord.fields['Service Name + Date'] as string) || referenceServiceId,
     };
 
-    const comparisonService = {
+    const serviceB = {
       id: comparisonServiceId,
       name: (comparisonServiceRecord.fields['Service Name + Date'] as string) || comparisonServiceId,
     };
@@ -804,9 +719,9 @@ export class QueryService {
     const missingMemberRecords = await this.getMembersByIds(missingMemberIds);
 
     return {
-      referenceService,
-      comparisonService,
-      missingMembers: missingMemberRecords.map(r => this.mapRecordToMember(r)),
+      serviceA,
+      serviceB,
+      presentInAMissingInB: missingMemberRecords.map(r => this.mapRecordToMember(r)),
     };
   }
 
@@ -818,205 +733,265 @@ export class QueryService {
   /**
    * Get complete member journey with timeline
    * Requirements: 18.1, 18.2, 18.3, 18.4, 18.5
+   * 
+   * Includes comprehensive error handling for Airtable API errors:
+   * - Permission errors are caught and re-thrown with user-friendly messages
+   * - Linked record errors are handled gracefully (timeline continues building)
+   * - All errors are logged for debugging
    */
   async getMemberJourney(memberId: string): Promise<MemberJourney> {
     if (!memberId) {
       throw new Error('Member ID is required');
     }
 
-    // Get member record
-    const memberRecord = await this.airtableClient.getRecord(AIRTABLE_TABLES.MEMBERS, memberId);
+    // Get member record - this is critical, so we throw a user-friendly error if it fails
+    let memberRecord: AirtableRecord;
+    try {
+      memberRecord = await this.airtableClient.getRecord(AIRTABLE_TABLES.MEMBERS, memberId);
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      console.error(`[getMemberJourney] Failed to fetch member record for ${memberId}:`, errorMessage);
+      
+      // Check for permission/not found errors and provide user-friendly messages
+      if (errorMessage.includes('NOT_FOUND') || errorMessage.includes('not found')) {
+        throw new Error(`Member not found: The member with ID "${memberId}" does not exist or has been removed.`);
+      }
+      if (errorMessage.includes('permission') || errorMessage.includes('INVALID_PERMISSIONS') || errorMessage.includes('Invalid permissions')) {
+        throw new Error('Unable to access member data. Please check that the Airtable API key has the correct permissions.');
+      }
+      if (errorMessage.includes('AUTHENTICATION') || errorMessage.includes('authentication')) {
+        throw new Error('Authentication failed. Please verify your Airtable API key is valid.');
+      }
+      // Generic error with original message for debugging
+      throw new Error(`Unable to load member journey: ${errorMessage}`);
+    }
+
     const member = this.mapRecordToMember(memberRecord);
 
     // Build timeline from multiple sources
+    // Each source is wrapped in try-catch to allow partial data retrieval
     const timeline: TimelineEvent[] = [];
 
-    // 1. Evangelism events
-    const evangelismRecords = await this.airtableClient.findRecords(
-      AIRTABLE_TABLES.EVANGELISM,
-      `FIND('${memberId}', ARRAYJOIN({Linked Member}))`
-    );
-
-    for (const record of evangelismRecords) {
-      const date = this.parseDate(record.fields['Date'] as string);
-      if (date) {
-        timeline.push({
-          date,
-          type: 'evangelism',
-          title: 'Evangelism Contact',
-          description: `First contacted through evangelism`,
-          metadata: {
-            recordId: record.id,
-            capturedBy: this.extractLinkedRecordId(record.fields['Captured By']),
-          },
-        });
-      }
-    }
-
-    // 2. First Timer registration
-    const firstTimerRecords = await this.airtableClient.findRecords(
-      AIRTABLE_TABLES.FIRST_TIMERS_REGISTER,
-      `FIND('${memberId}', ARRAYJOIN({Linked Member}))`
-    );
-
-    for (const record of firstTimerRecords) {
-      const date = this.parseDate(record.fields['Date'] as string) || 
-                   this.parseDate(record.createdTime);
-      if (date) {
-        timeline.push({
-          date,
-          type: 'first_timer',
-          title: 'First Timer Registration',
-          description: 'Registered as a first-time visitor',
-          metadata: { recordId: record.id },
-        });
-      }
-    }
-
-    // 3. Attendance records
-    const attendanceRecords = await this.airtableClient.findRecords(
-      AIRTABLE_TABLES.ATTENDANCE,
-      `AND(FIND('${memberId}', ARRAYJOIN({Member})), {Present?} = TRUE())`
-    );
-
-    for (const record of attendanceRecords) {
-      const serviceId = this.extractLinkedRecordId(record.fields['Service']);
-      if (serviceId) {
+    // 1. Evangelism events - use linked records from member instead of formula query
+    try {
+      const evangelismIds = (memberRecord.fields['Evangelism'] as string[]) || [];
+      
+      for (const evangelismId of evangelismIds) {
         try {
-          const serviceRecord = await this.airtableClient.getRecord(AIRTABLE_TABLES.SERVICES, serviceId);
-          const serviceDate = this.parseDate(serviceRecord.fields['Service Date'] as string);
-          const serviceName = (serviceRecord.fields['Service Name + Date'] as string) || 'Service';
-
-          if (serviceDate) {
+          const record = await this.airtableClient.getRecord(AIRTABLE_TABLES.EVANGELISM, evangelismId);
+          const date = this.parseDate(record.fields['Date'] as string);
+          if (date) {
             timeline.push({
-              date: serviceDate,
-              type: 'attendance',
-              title: 'Service Attendance',
-              description: `Attended ${serviceName}`,
-              metadata: { serviceId, recordId: record.id },
+              date,
+              type: 'evangelism',
+              title: 'Evangelism Contact',
+              description: `First contacted through evangelism`,
+              metadata: {
+                recordId: record.id,
+                capturedBy: this.extractLinkedRecordId(record.fields['Captured By']),
+              },
             });
           }
-        } catch { /* skip if service not found */ }
+        } catch { /* skip if record not found */ }
       }
+    } catch (error) {
+      console.error(`[getMemberJourney] Failed to fetch evangelism records for ${memberId}:`, error instanceof Error ? error.message : error);
+      // Continue building timeline with other sources
     }
 
-    // 4. Home visits
-    const homeVisitRecords = await this.airtableClient.findRecords(
-      AIRTABLE_TABLES.HOME_VISITS,
-      `FIND('${memberId}', ARRAYJOIN({Member}))`
-    );
-
-    for (const record of homeVisitRecords) {
-      const date = this.parseDate(record.fields['Date'] as string);
-      const visitorId = this.extractLinkedRecordId(record.fields['Visitor']);
-      let visitorName = 'Unknown';
-
-      if (visitorId) {
+    // 2. First Timer registration - use linked records from member instead of formula query
+    try {
+      const firstTimerIds = (memberRecord.fields['First Timers Register'] as string[]) || [];
+      
+      for (const firstTimerId of firstTimerIds) {
         try {
-          const visitorRecord = await this.airtableClient.getRecord(AIRTABLE_TABLES.VOLUNTEERS, visitorId);
-          visitorName = (visitorRecord.fields['Name'] as string) || visitorId;
-        } catch { /* use default */ }
+          const record = await this.airtableClient.getRecord(AIRTABLE_TABLES.FIRST_TIMERS_REGISTER, firstTimerId);
+          const date = this.parseDate(record.fields['Date'] as string) || 
+                       this.parseDate(record.createdTime);
+          if (date) {
+            timeline.push({
+              date,
+              type: 'first_timer',
+              title: 'First Timer Registration',
+              description: 'Registered as a first-time visitor',
+              metadata: { recordId: record.id },
+            });
+          }
+        } catch { /* skip if record not found */ }
       }
-
-      if (date) {
-        timeline.push({
-          date,
-          type: 'home_visit',
-          title: 'Home Visit',
-          description: `Visited by ${visitorName}`,
-          metadata: { recordId: record.id, visitorId, visitorName },
-        });
-      }
+    } catch (error) {
+      console.error(`[getMemberJourney] Failed to fetch first timer records for ${memberId}:`, error instanceof Error ? error.message : error);
+      // Continue building timeline with other sources
     }
 
-    // 5. Follow-up interactions
-    const followUpRecords = await this.airtableClient.findRecords(
-      AIRTABLE_TABLES.FOLLOW_UP_INTERACTIONS,
-      `FIND('${memberId}', ARRAYJOIN({Member}))`
-    );
-
-    for (const record of followUpRecords) {
-      const date = this.parseDate(record.fields['Interaction Date'] as string);
-      const volunteerId = this.extractLinkedRecordId(record.fields['Volunteer']);
-      let volunteerName = 'Unknown';
-
-      if (volunteerId) {
+    // 3. Attendance records - use linked records from member instead of formula query
+    // The FIND/ARRAYJOIN formula doesn't work with linked record IDs
+    try {
+      const attendanceIds = (memberRecord.fields['Attendance'] as string[]) || [];
+      
+      for (const attendanceId of attendanceIds) {
         try {
-          const volunteerRecord = await this.airtableClient.getRecord(AIRTABLE_TABLES.VOLUNTEERS, volunteerId);
-          volunteerName = (volunteerRecord.fields['Name'] as string) || volunteerId;
-        } catch { /* use default */ }
-      }
+          const record = await this.airtableClient.getRecord(AIRTABLE_TABLES.ATTENDANCE, attendanceId);
+          
+          // Only include records where member was present
+          if (record.fields['Present?'] !== true) {
+            continue;
+          }
+          
+          const serviceId = this.extractLinkedRecordId(record.fields['Service']);
+          if (serviceId) {
+            try {
+              const serviceRecord = await this.airtableClient.getRecord(AIRTABLE_TABLES.SERVICES, serviceId);
+              const serviceDate = this.parseDate(serviceRecord.fields['Service Date'] as string);
+              const serviceName = (serviceRecord.fields['Service Name + Date'] as string) || 'Service';
 
-      if (date) {
-        timeline.push({
-          date,
-          type: 'follow_up',
-          title: 'Follow-up Interaction',
-          description: `Follow-up by ${volunteerName}`,
-          metadata: {
-            recordId: record.id,
-            volunteerId,
-            volunteerName,
-            comment: record.fields['Comment'] as string,
-          },
-        });
+              if (serviceDate) {
+                timeline.push({
+                  date: serviceDate,
+                  type: 'attendance',
+                  title: 'Service Attendance',
+                  description: `Attended ${serviceName}`,
+                  metadata: { serviceId, recordId: record.id },
+                });
+              }
+            } catch { /* skip if service not found */ }
+          }
+        } catch { /* skip if attendance record not found */ }
       }
+    } catch (error) {
+      console.error(`[getMemberJourney] Failed to fetch attendance records for ${memberId}:`, error instanceof Error ? error.message : error);
+      // Continue building timeline with other sources
     }
 
-    // 6. Department joins
-    const memberDeptRecords = await this.airtableClient.findRecords(
-      AIRTABLE_TABLES.MEMBER_DEPARTMENTS,
-      `FIND('${memberId}', ARRAYJOIN({Member}))`
-    );
-
-    for (const record of memberDeptRecords) {
-      const date = this.parseDate(record.fields['Join Date'] as string) ||
-                   this.parseDate(record.createdTime);
-      const deptId = this.extractLinkedRecordId(record.fields['Department']);
-      let deptName = 'Unknown Department';
-
-      if (deptId) {
+    // 4. Home visits - use linked records from member instead of formula query
+    try {
+      const homeVisitIds = (memberRecord.fields['Visits Received'] as string[]) || [];
+      
+      for (const homeVisitId of homeVisitIds) {
         try {
-          const deptRecord = await this.airtableClient.getRecord(AIRTABLE_TABLES.DEPARTMENTS, deptId);
-          deptName = (deptRecord.fields['Name'] as string) || deptId;
-        } catch { /* use default */ }
-      }
+          const record = await this.airtableClient.getRecord(AIRTABLE_TABLES.HOME_VISITS, homeVisitId);
+          const date = this.parseDate(record.fields['Visit Date'] as string);
+          const visitorId = this.extractLinkedRecordId(record.fields['Conducted By?']);
+          let visitorName = 'Unknown';
 
-      if (date) {
-        timeline.push({
-          date,
-          type: 'department_join',
-          title: 'Department Join',
-          description: `Joined ${deptName}`,
-          metadata: { recordId: record.id, departmentId: deptId, departmentName: deptName },
-        });
+          if (visitorId) {
+            try {
+              const visitorRecord = await this.airtableClient.getRecord(AIRTABLE_TABLES.VOLUNTEERS, visitorId);
+              visitorName = (visitorRecord.fields['Name'] as string) || visitorId;
+            } catch { /* use default */ }
+          }
+
+          if (date) {
+            timeline.push({
+              date,
+              type: 'home_visit',
+              title: 'Home Visit',
+              description: `Visited by ${visitorName}`,
+              metadata: { recordId: record.id, visitorId, visitorName },
+            });
+          }
+        } catch { /* skip if record not found */ }
       }
+    } catch (error) {
+      console.error(`[getMemberJourney] Failed to fetch home visit records for ${memberId}:`, error instanceof Error ? error.message : error);
+      // Continue building timeline with other sources
+    }
+
+    // 5. Follow-up interactions - use linked records from member instead of formula query
+    try {
+      const followUpIds = (memberRecord.fields['Follow-up Interactions'] as string[]) || [];
+      
+      for (const followUpId of followUpIds) {
+        try {
+          const record = await this.airtableClient.getRecord(AIRTABLE_TABLES.FOLLOW_UP_INTERACTIONS, followUpId);
+          const date = this.parseDate(record.fields['Interaction Date'] as string);
+          // Note: Follow-up Interactions table doesn't have a Volunteer field based on schema
+          // It has: Member, Interaction Date, Type, Comments, Related Source
+
+          if (date) {
+            timeline.push({
+              date,
+              type: 'follow_up',
+              title: 'Follow-up Interaction',
+              description: `Follow-up interaction`,
+              metadata: {
+                recordId: record.id,
+                comment: record.fields['Comments'] as string,
+                type: record.fields['Type'] as string,
+              },
+            });
+          }
+        } catch { /* skip if record not found */ }
+      }
+    } catch (error) {
+      console.error(`[getMemberJourney] Failed to fetch follow-up records for ${memberId}:`, error instanceof Error ? error.message : error);
+      // Continue building timeline with other sources
+    }
+
+    // 6. Department joins - use linked records from member instead of formula query
+    try {
+      const memberDeptIds = (memberRecord.fields['Member Departments'] as string[]) || [];
+      
+      for (const memberDeptId of memberDeptIds) {
+        try {
+          const record = await this.airtableClient.getRecord(AIRTABLE_TABLES.MEMBER_DEPARTMENTS, memberDeptId);
+          const date = this.parseDate(record.fields['Sign Up Date'] as string) ||
+                       this.parseDate(record.createdTime);
+          const deptId = this.extractLinkedRecordId(record.fields['Department']);
+          let deptName = 'Unknown Department';
+
+          if (deptId) {
+            try {
+              const deptRecord = await this.airtableClient.getRecord(AIRTABLE_TABLES.DEPARTMENTS, deptId);
+              deptName = (deptRecord.fields['Department Name'] as string) || deptId;
+            } catch { /* use default */ }
+          }
+
+          if (date) {
+            timeline.push({
+              date,
+              type: 'department_join',
+              title: 'Department Join',
+              description: `Joined ${deptName}`,
+              metadata: { recordId: record.id, departmentId: deptId, departmentName: deptName },
+            });
+          }
+        } catch { /* skip if record not found */ }
+      }
+    } catch (error) {
+      console.error(`[getMemberJourney] Failed to fetch department records for ${memberId}:`, error instanceof Error ? error.message : error);
+      // Continue building timeline with other sources
     }
 
     // 7. Program sessions
-    const programRecords = await this.airtableClient.findRecords(
-      AIRTABLE_TABLES.MEMBER_PROGRAMS,
-      `FIND('${memberId}', ARRAYJOIN({Member}))`
-    );
+    try {
+      const programRecords = await this.airtableClient.findRecords(
+        AIRTABLE_TABLES.MEMBER_PROGRAMS,
+        `FIND('${memberId}', ARRAYJOIN({Member}))`
+      );
 
-    for (const record of programRecords) {
-      const programName = (record.fields['Program Name'] as string) || 'Program';
+      for (const record of programRecords) {
+        const programName = (record.fields['Program Name'] as string) || 'Program';
 
-      // Check each session
-      for (let i = 1; i <= 4; i++) {
-        const sessionCompleted = record.fields[`Session ${i} Completed`] as boolean;
-        const sessionDate = this.parseDate(record.fields[`Session ${i} Date`] as string);
+        // Check each session
+        for (let i = 1; i <= 4; i++) {
+          const sessionCompleted = record.fields[`Session ${i} Completed`] as boolean;
+          const sessionDate = this.parseDate(record.fields[`Session ${i} Date`] as string);
 
-        if (sessionCompleted && sessionDate) {
-          timeline.push({
-            date: sessionDate,
-            type: 'program_session',
-            title: `${programName} - Session ${i}`,
-            description: `Completed session ${i} of ${programName}`,
-            metadata: { recordId: record.id, session: i, programName },
-          });
+          if (sessionCompleted && sessionDate) {
+            timeline.push({
+              date: sessionDate,
+              type: 'program_session',
+              title: `${programName} - Session ${i}`,
+              description: `Completed session ${i} of ${programName}`,
+              metadata: { recordId: record.id, session: i, programName },
+            });
+          }
         }
       }
+    } catch (error) {
+      console.error(`[getMemberJourney] Failed to fetch program records for ${memberId}:`, error instanceof Error ? error.message : error);
+      // Continue building timeline with other sources
     }
 
     // 8. Water baptism

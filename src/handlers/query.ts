@@ -95,6 +95,9 @@ export const handler = async (event: APIGatewayProxyEvent): Promise<APIGatewayPr
       if (type === 'attendees') {
         return await handleServiceAttendees(queryParams, forceRefresh);
       }
+      if (type === 'attendees-by-category') {
+        return await handleAttendeesByCategory(queryParams, forceRefresh);
+      }
       // Default - return breakdown
       return await handleAttendanceBreakdown(queryParams, forceRefresh);
     }
@@ -277,9 +280,23 @@ async function handleMemberJourney(params: QueryParams, forceRefresh: boolean): 
     if (cached) return successResponse(cached.data);
   }
 
-  const data = await queryService.getMemberJourney(memberId);
-  await cacheService.set(cacheKey, data, DEFAULT_TTL);
-  return successResponse(data);
+  try {
+    const data = await queryService.getMemberJourney(memberId);
+    await cacheService.set(cacheKey, data, DEFAULT_TTL);
+    return successResponse(data);
+  } catch (error) {
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+    console.error(`[handleMemberJourney] Error fetching journey for ${memberId}:`, errorMessage);
+    
+    // Return appropriate status codes based on error type
+    if (errorMessage.includes('not found') || errorMessage.includes('NOT_FOUND')) {
+      return errorResponse(404, 'Member not found', errorMessage);
+    }
+    if (errorMessage.includes('permission') || errorMessage.includes('INVALID_PERMISSIONS') || errorMessage.includes('Authentication')) {
+      return errorResponse(403, 'Access denied', errorMessage);
+    }
+    return errorResponse(500, 'Failed to load member journey', errorMessage);
+  }
 }
 
 async function handleMemberSearch(params: QueryParams): Promise<APIGatewayProxyResult> {
@@ -416,6 +433,30 @@ async function handleServiceAttendees(params: QueryParams, forceRefresh: boolean
   const data = await queryService.getServiceAttendees(serviceId);
   await cacheService.set(cacheKey, data, DEFAULT_TTL);
   return successResponse(data);
+}
+
+async function handleAttendeesByCategory(params: QueryParams, forceRefresh: boolean): Promise<APIGatewayProxyResult> {
+  const serviceId = params.serviceId;
+  const category = params.category as 'firstTimers' | 'returners' | 'evangelismContacts' | 'department';
+  const departmentId = params.departmentId;
+
+  if (!serviceId) return errorResponse(400, 'serviceId is required');
+  if (!category) return errorResponse(400, 'category is required');
+
+  const cacheKey = `attendance:by-category:${serviceId}:${category}:${departmentId || 'all'}`;
+  if (!forceRefresh) {
+    const cached = await cacheService.getWithMetadata(cacheKey);
+    if (cached) return successResponse(cached.data);
+  }
+
+  try {
+    const data = await queryService.getAttendeesByCategory(serviceId, category, departmentId);
+    await cacheService.set(cacheKey, data, DEFAULT_TTL);
+    return successResponse(data);
+  } catch (error) {
+    console.error('Error fetching attendees by category:', error);
+    return errorResponse(500, 'Failed to fetch attendees', error instanceof Error ? error.message : 'Unknown error');
+  }
 }
 
 async function handleMemberById(params: QueryParams, forceRefresh: boolean): Promise<APIGatewayProxyResult> {

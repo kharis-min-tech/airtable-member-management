@@ -166,9 +166,13 @@ function PastorDashboard() {
           category,
           departmentId
         );
-        setDrillDownMembers(response.data || []);
+        // Null-safe handling: ensure response.data is an array before setting state
+        // Requirements: 2.2, 2.3, 2.4
+        const safeMembers = Array.isArray(response?.data) ? response.data : [];
+        setDrillDownMembers(safeMembers);
       } catch (error) {
         console.error('Failed to fetch attendees by category:', error);
+        // Default to empty array on error - Requirements: 2.3
         setDrillDownMembers([]);
       } finally {
         setIsDrillDownLoading(false);

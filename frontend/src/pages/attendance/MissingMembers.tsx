@@ -80,13 +80,13 @@ function MissingMembers() {
 
   // Filtered member list - only unidirectional (present in reference, missing in comparison)
   const filteredMissingMembers = useMemo(
-    () => filterMembers(comparison?.presentInAMissingInB || []),
+    () => filterMembers(Array.isArray(comparison?.presentInAMissingInB) ? comparison.presentInAMissingInB : []),
     [comparison, filterMembers]
   );
 
   // Export functionality - only exports unidirectional comparison
   const handleExport = useCallback(() => {
-    if (!comparison || !referenceService || !comparisonService) return;
+    if (!comparison || !referenceService || !comparisonService || !Array.isArray(comparison.presentInAMissingInB)) return;
 
     const formatDate = (date: Date | string) => {
       const d = new Date(date);
@@ -129,7 +129,7 @@ function MissingMembers() {
   }, [comparison, referenceService, comparisonService, filteredMissingMembers]);
 
   const canCompare = referenceServiceId && comparisonServiceId;
-  const hasResults = comparison && comparison.presentInAMissingInB.length > 0;
+  const hasResults = comparison && Array.isArray(comparison.presentInAMissingInB) && comparison.presentInAMissingInB.length > 0;
 
   return (
     <div className="space-y-6">

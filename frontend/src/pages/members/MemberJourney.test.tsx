@@ -219,8 +219,9 @@ describe('MemberJourney Page', () => {
 
       renderWithMemberId(memberId);
 
+      // Network errors show "Connection Error" title per getErrorTitle function
       await waitFor(() => {
-        expect(screen.getByText('Unable to Load Member Journey')).toBeInTheDocument();
+        expect(screen.getByText('Connection Error')).toBeInTheDocument();
       });
     });
 
@@ -261,9 +262,9 @@ describe('MemberJourney Page', () => {
 
       renderWithMemberId(memberId);
 
-      // Wait for error state
+      // Wait for error state - Network errors show "Connection Error" title
       await waitFor(() => {
-        expect(screen.getByText('Unable to Load Member Journey')).toBeInTheDocument();
+        expect(screen.getByText('Connection Error')).toBeInTheDocument();
       });
 
       // Click retry button

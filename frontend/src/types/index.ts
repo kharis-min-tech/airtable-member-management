@@ -203,12 +203,11 @@ export interface MemberJourney {
   summary: JourneySummary;
 }
 
-// Service Comparison Types
+// Service Comparison Types (Unidirectional - only shows members present in A but missing in B)
 export interface ServiceComparison {
   serviceA: Service;
   serviceB: Service;
   presentInAMissingInB: Member[];
-  presentInBMissingInA: Member[];
 }
 
 // API Response Types

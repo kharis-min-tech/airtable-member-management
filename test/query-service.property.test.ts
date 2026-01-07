@@ -546,17 +546,15 @@ describe('Property 11: Attendance Percentage Calculation', () => {
 
 
 /**
- * Property 12: Service Comparison Bidirectional Correctness
- * Validates: Requirements 17.2, 17.3
+ * Property 12: Service Comparison Unidirectional Correctness
+ * Validates: Requirements 5.2, 5.3
  * 
- * For any two Services A and B:
+ * For any two Services A (reference) and B (comparison):
  * - "Present in A, Missing in B" SHALL contain exactly those Members who have Attendance with Present? = true for Service A 
  *   AND (no Attendance record for Service B OR Present? = false for Service B)
- * - "Present in B, Missing in A" SHALL contain exactly those Members who have Attendance with Present? = true for Service B 
- *   AND (no Attendance record for Service A OR Present? = false for Service A)
- * - The union of both lists plus members present in both SHALL equal all members who attended either service
+ * - The comparison is unidirectional - only shows members present in reference service but missing from comparison service
  */
-describe('Property 12: Service Comparison Bidirectional Correctness', () => {
+describe('Property 12: Service Comparison Unidirectional Correctness', () => {
   let mockAirtableClient: jest.Mocked<AirtableClient>;
   let queryService: QueryService;
 
@@ -580,7 +578,7 @@ describe('Property 12: Service Comparison Bidirectional Correctness', () => {
   /**
    * Property 12.1: Members present in A but missing in B are correctly identified
    * 
-   * Validates: Requirements 17.2
+   * Validates: Requirements 5.2, 5.3
    */
   it('should correctly identify members present in A but missing in B', async () => {
     await fc.assert(
@@ -591,6 +589,8 @@ describe('Property 12: Service Comparison Bidirectional Correctness', () => {
         fc.uniqueArray(airtableIdArb, { minLength: 0, maxLength: 10 }), // membersOnlyInA (unique)
         fc.uniqueArray(airtableIdArb, { minLength: 0, maxLength: 10 }), // membersOnlyInB (unique)
         async (serviceAId, serviceBId, membersInBoth, membersOnlyInA, membersOnlyInB) => {
+          // Skip when comparing the same service to itself - that's a degenerate case
+          if (serviceAId === serviceBId) return;
           // Ensure non-overlapping sets by filtering
           const uniqueMembersInBoth = [...new Set(membersInBoth)];
           const uniqueMembersOnlyInA = [...new Set(membersOnlyInA)].filter(m => !uniqueMembersInBoth.includes(m));
@@ -678,7 +678,7 @@ describe('Property 12: Service Comparison Bidirectional Correctness', () => {
             return [];
           });
 
-          const result = await queryService.compareTwoServicesBidirectional(serviceAId, serviceBId);
+          const result = await queryService.compareTwoServices(serviceAId, serviceBId);
 
           // Verify members in A but not in B
           const expectedInANotB = uniqueMembersOnlyInA;
@@ -694,260 +694,11 @@ describe('Property 12: Service Comparison Bidirectional Correctness', () => {
   });
 
   /**
-   * Property 12.2: Members present in B but missing in A are correctly identified
+   * Property 12.2: Empty comparison service returns all reference service members
    * 
-   * Validates: Requirements 17.3
+   * Validates: Requirements 5.2, 5.3
    */
-  it('should correctly identify members present in B but missing in A', async () => {
-    await fc.assert(
-      fc.asyncProperty(
-        airtableIdArb, // serviceAId
-        airtableIdArb, // serviceBId
-        fc.uniqueArray(airtableIdArb, { minLength: 0, maxLength: 10 }), // membersInBothServices (unique)
-        fc.uniqueArray(airtableIdArb, { minLength: 0, maxLength: 10 }), // membersOnlyInA (unique)
-        fc.uniqueArray(airtableIdArb, { minLength: 0, maxLength: 10 }), // membersOnlyInB (unique)
-        async (serviceAId, serviceBId, membersInBoth, membersOnlyInA, membersOnlyInB) => {
-          // Ensure non-overlapping sets by filtering
-          const uniqueMembersInBoth = [...new Set(membersInBoth)];
-          const uniqueMembersOnlyInA = [...new Set(membersOnlyInA)].filter(m => !uniqueMembersInBoth.includes(m));
-          const uniqueMembersOnlyInB = [...new Set(membersOnlyInB)].filter(m => !uniqueMembersInBoth.includes(m) && !uniqueMembersOnlyInA.includes(m));
-
-          const membersInA = [...uniqueMembersInBoth, ...uniqueMembersOnlyInA];
-          const membersInB = [...uniqueMembersInBoth, ...uniqueMembersOnlyInB];
-          const allMembers = [...new Set([...membersInA, ...membersInB])];
-
-          const attendanceA: AirtableRecord[] = membersInA.map((memberId, i) => ({
-            id: `recAttA${i.toString().padStart(10, '0')}`,
-            fields: { 'Member': [memberId], 'Service': [serviceAId], 'Present?': true },
-            createdTime: new Date().toISOString(),
-          }));
-
-          const attendanceB: AirtableRecord[] = membersInB.map((memberId, i) => ({
-            id: `recAttB${i.toString().padStart(10, '0')}`,
-            fields: { 'Member': [memberId], 'Service': [serviceBId], 'Present?': true },
-            createdTime: new Date().toISOString(),
-          }));
-
-          const serviceARecord: AirtableRecord = {
-            id: serviceAId,
-            fields: { 
-              'Service Name + Date': 'Service A',
-              'Attendance': attendanceA.map(a => a.id),
-            },
-            createdTime: new Date().toISOString(),
-          };
-          const serviceBRecord: AirtableRecord = {
-            id: serviceBId,
-            fields: { 
-              'Service Name + Date': 'Service B',
-              'Attendance': attendanceB.map(a => a.id),
-            },
-            createdTime: new Date().toISOString(),
-          };
-
-          const memberRecords: AirtableRecord[] = allMembers.map((memberId, i) => ({
-            id: memberId,
-            fields: {
-              'First Name': `First${i}`,
-              'Last Name': `Last${i}`,
-              'Full Name': `First${i} Last${i}`,
-              'Phone': `+1234567890${i}`,
-              'Status': 'Member',
-              'Source': 'Other',
-              'Date First Captured': '2024-01-01',
-              'Follow-up Status': 'Not Started',
-            },
-            createdTime: new Date().toISOString(),
-          }));
-
-          mockAirtableClient.getRecord.mockImplementation(async (table, id) => {
-            if (table === 'Services') {
-              if (id === serviceAId) return serviceARecord;
-              if (id === serviceBId) return serviceBRecord;
-            }
-            if (table === 'Attendance') {
-              const recordA = attendanceA.find(a => a.id === id);
-              if (recordA) return recordA;
-              const recordB = attendanceB.find(a => a.id === id);
-              if (recordB) return recordB;
-            }
-            if (table === 'Members') {
-              const member = memberRecords.find(m => m.id === id);
-              if (member) return member;
-            }
-            throw new Error(`Record not found: ${table}/${id}`);
-          });
-
-          mockAirtableClient.findRecords.mockImplementation(async (table, filter) => {
-            if (table === 'Members') {
-              const idMatches = filter.match(/RECORD_ID\(\) = '([^']+)'/g) || [];
-              const requestedIds = idMatches.map(match => {
-                const idMatch = match.match(/RECORD_ID\(\) = '([^']+)'/);
-                return idMatch ? idMatch[1] : null;
-              }).filter((id): id is string => id !== null);
-              
-              return memberRecords.filter(m => requestedIds.includes(m.id));
-            }
-            return [];
-          });
-
-          const result = await queryService.compareTwoServicesBidirectional(serviceAId, serviceBId);
-
-          // Verify members in B but not in A
-          const expectedInBNotA = uniqueMembersOnlyInB;
-          const actualInBNotA = result.presentInBMissingInA.map(m => m.id);
-
-          expect(actualInBNotA.sort()).toEqual(expectedInBNotA.sort());
-
-          jest.clearAllMocks();
-        }
-      ),
-      { numRuns: 100 }
-    );
-  });
-
-  /**
-   * Property 12.3: The comparison is symmetric - swapping services swaps the results
-   * 
-   * Validates: Requirements 17.2, 17.3
-   */
-  it('should produce symmetric results when services are swapped', async () => {
-    await fc.assert(
-      fc.asyncProperty(
-        airtableIdArb, // serviceAId
-        airtableIdArb, // serviceBId
-        fc.uniqueArray(airtableIdArb, { minLength: 1, maxLength: 5 }), // membersOnlyInA (unique)
-        fc.uniqueArray(airtableIdArb, { minLength: 1, maxLength: 5 }), // membersOnlyInB (unique)
-        async (serviceAId, serviceBId, membersOnlyInA, membersOnlyInB) => {
-          // Ensure unique and non-overlapping
-          const uniqueA = [...new Set(membersOnlyInA)];
-          const uniqueB = [...new Set(membersOnlyInB)].filter(m => !uniqueA.includes(m));
-
-          if (uniqueB.length === 0) return; // Skip if no unique members in B
-
-          const serviceARecord: AirtableRecord = {
-            id: serviceAId,
-            fields: { 'Service Name + Date': 'Service A' },
-            createdTime: new Date().toISOString(),
-          };
-          const serviceBRecord: AirtableRecord = {
-            id: serviceBId,
-            fields: { 'Service Name + Date': 'Service B' },
-            createdTime: new Date().toISOString(),
-          };
-
-          const attendanceA: AirtableRecord[] = uniqueA.map((memberId, i) => ({
-            id: `recAttA${i.toString().padStart(10, '0')}`,
-            fields: { 'Member': [memberId], 'Service': [serviceAId], 'Present?': true },
-            createdTime: new Date().toISOString(),
-          }));
-
-          const attendanceB: AirtableRecord[] = uniqueB.map((memberId, i) => ({
-            id: `recAttB${i.toString().padStart(10, '0')}`,
-            fields: { 'Member': [memberId], 'Service': [serviceBId], 'Present?': true },
-            createdTime: new Date().toISOString(),
-          }));
-
-          const allMembers = [...uniqueA, ...uniqueB];
-          const memberRecords: AirtableRecord[] = allMembers.map((memberId, i) => ({
-            id: memberId,
-            fields: {
-              'First Name': `First${i}`,
-              'Last Name': `Last${i}`,
-              'Full Name': `First${i} Last${i}`,
-              'Phone': `+1234567890${i}`,
-              'Status': 'Member',
-              'Source': 'Other',
-              'Date First Captured': '2024-01-01',
-              'Follow-up Status': 'Not Started',
-            },
-            createdTime: new Date().toISOString(),
-          }));
-
-          mockAirtableClient.getRecord.mockImplementation(async (table, id) => {
-            if (table === 'Services') {
-              if (id === serviceAId) return serviceARecord;
-              if (id === serviceBId) return serviceBRecord;
-            }
-            throw new Error(`Record not found: ${id}`);
-          });
-
-          mockAirtableClient.findRecords.mockImplementation(async (table, filter) => {
-            if (table === 'Attendance') {
-              if (filter.includes(serviceAId)) return attendanceA;
-              if (filter.includes(serviceBId)) return attendanceB;
-            }
-            if (table === 'Members') {
-              // Parse RECORD_ID() = 'id' patterns from the filter formula
-              const idMatches = filter.match(/RECORD_ID\(\) = '([^']+)'/g) || [];
-              const requestedIds = idMatches.map(match => {
-                const idMatch = match.match(/RECORD_ID\(\) = '([^']+)'/);
-                return idMatch ? idMatch[1] : null;
-              }).filter((id): id is string => id !== null);
-              
-              return memberRecords.filter(m => requestedIds.includes(m.id));
-            }
-            return [];
-          });
-
-          // Compare A to B
-          const resultAB = await queryService.compareTwoServicesBidirectional(serviceAId, serviceBId);
-          
-          jest.clearAllMocks();
-
-          // Reset mocks for second comparison
-          mockAirtableClient.getRecord.mockImplementation(async (table, id) => {
-            if (table === 'Services') {
-              if (id === serviceAId) return serviceARecord;
-              if (id === serviceBId) return serviceBRecord;
-            }
-            throw new Error(`Record not found: ${id}`);
-          });
-
-          mockAirtableClient.findRecords.mockImplementation(async (table, filter) => {
-            if (table === 'Attendance') {
-              if (filter.includes(serviceAId)) return attendanceA;
-              if (filter.includes(serviceBId)) return attendanceB;
-            }
-            if (table === 'Members') {
-              // Parse RECORD_ID() = 'id' patterns from the filter formula
-              const idMatches = filter.match(/RECORD_ID\(\) = '([^']+)'/g) || [];
-              const requestedIds = idMatches.map(match => {
-                const idMatch = match.match(/RECORD_ID\(\) = '([^']+)'/);
-                return idMatch ? idMatch[1] : null;
-              }).filter((id): id is string => id !== null);
-              
-              return memberRecords.filter(m => requestedIds.includes(m.id));
-            }
-            return [];
-          });
-
-          // Compare B to A
-          const resultBA = await queryService.compareTwoServicesBidirectional(serviceBId, serviceAId);
-
-          // Swapping services should swap the results
-          const inANotB_AB = resultAB.presentInAMissingInB.map(m => m.id).sort();
-          const inBNotA_AB = resultAB.presentInBMissingInA.map(m => m.id).sort();
-          const inANotB_BA = resultBA.presentInAMissingInB.map(m => m.id).sort();
-          const inBNotA_BA = resultBA.presentInBMissingInA.map(m => m.id).sort();
-
-          // presentInAMissingInB when comparing A,B should equal presentInBMissingInA when comparing B,A
-          expect(inANotB_AB).toEqual(inBNotA_BA);
-          expect(inBNotA_AB).toEqual(inANotB_BA);
-
-          jest.clearAllMocks();
-        }
-      ),
-      { numRuns: 50 }
-    );
-  });
-
-  /**
-   * Property 12.4: Empty services produce correct results
-   * 
-   * Validates: Requirements 17.2, 17.3
-   */
-  it('should handle empty services correctly', async () => {
+  it('should handle empty comparison service correctly', async () => {
     await fc.assert(
       fc.asyncProperty(
         airtableIdArb, // serviceAId
@@ -1023,12 +774,73 @@ describe('Property 12: Service Comparison Bidirectional Correctness', () => {
             return [];
           });
 
-          const result = await queryService.compareTwoServicesBidirectional(serviceAId, serviceBId);
+          const result = await queryService.compareTwoServices(serviceAId, serviceBId);
 
           // All members in A should be in "present in A, missing in B"
           expect(result.presentInAMissingInB.map(m => m.id).sort()).toEqual(uniqueMembersInA.sort());
-          // No members should be in "present in B, missing in A"
-          expect(result.presentInBMissingInA).toHaveLength(0);
+
+          jest.clearAllMocks();
+        }
+      ),
+      { numRuns: 50 }
+    );
+  });
+
+  /**
+   * Property 12.3: Empty reference service returns no missing members
+   * 
+   * Validates: Requirements 5.2, 5.3
+   */
+  it('should return empty result when reference service is empty', async () => {
+    await fc.assert(
+      fc.asyncProperty(
+        airtableIdArb, // serviceAId
+        airtableIdArb, // serviceBId
+        fc.uniqueArray(airtableIdArb, { minLength: 0, maxLength: 10 }), // membersInB (unique)
+        async (serviceAId, serviceBId, membersInB) => {
+          const uniqueMembersInB = [...new Set(membersInB)];
+
+          const attendanceB: AirtableRecord[] = uniqueMembersInB.map((memberId, i) => ({
+            id: `recAttB${i.toString().padStart(10, '0')}`,
+            fields: { 'Member': [memberId], 'Service': [serviceBId], 'Present?': true },
+            createdTime: new Date().toISOString(),
+          }));
+
+          const serviceARecord: AirtableRecord = {
+            id: serviceAId,
+            fields: { 
+              'Service Name + Date': 'Service A',
+              'Attendance': [], // Service A is empty
+            },
+            createdTime: new Date().toISOString(),
+          };
+          const serviceBRecord: AirtableRecord = {
+            id: serviceBId,
+            fields: { 
+              'Service Name + Date': 'Service B',
+              'Attendance': attendanceB.map(a => a.id),
+            },
+            createdTime: new Date().toISOString(),
+          };
+
+          mockAirtableClient.getRecord.mockImplementation(async (table, id) => {
+            if (table === 'Services') {
+              if (id === serviceAId) return serviceARecord;
+              if (id === serviceBId) return serviceBRecord;
+            }
+            if (table === 'Attendance') {
+              const record = attendanceB.find(a => a.id === id);
+              if (record) return record;
+            }
+            throw new Error(`Record not found: ${table}/${id}`);
+          });
+
+          mockAirtableClient.findRecords.mockImplementation(async () => []);
+
+          const result = await queryService.compareTwoServices(serviceAId, serviceBId);
+
+          // No members should be in "present in A, missing in B" since A is empty
+          expect(result.presentInAMissingInB).toHaveLength(0);
 
           jest.clearAllMocks();
         }
@@ -1154,26 +966,6 @@ describe('Property 13: Timeline Chronological Ordering', () => {
         async (memberId, baseDate) => {
           const dateStr = baseDate.toISOString().split('T')[0];
 
-          // Create member record with milestone dates
-          const memberRecord: AirtableRecord = {
-            id: memberId,
-            fields: {
-              'First Name': 'Test',
-              'Last Name': 'Member',
-              'Full Name': 'Test Member',
-              'Phone': '+1234567890',
-              'Status': 'Member',
-              'Source': 'Other',
-              'Date First Captured': dateStr,
-              'Follow-up Status': 'Not Started',
-              'Water Baptized': true,
-              'Water Baptism Date': dateStr,
-              'Membership Completed': dateStr,
-              'Spiritual Maturity Completed': dateStr,
-            },
-            createdTime: new Date().toISOString(),
-          };
-
           // Create evangelism record
           const evangelismRecord: AirtableRecord = {
             id: 'recEvang00000000001',
@@ -1189,7 +981,8 @@ describe('Property 13: Timeline Chronological Ordering', () => {
             id: 'recVisit00000000001',
             fields: {
               'Member': [memberId],
-              'Date': dateStr,
+              'Visit Date': dateStr,
+              'Conducted By?': ['recVolunteer001'],
             },
             createdTime: new Date().toISOString(),
           };
@@ -1216,7 +1009,7 @@ describe('Property 13: Timeline Chronological Ordering', () => {
             createdTime: new Date().toISOString(),
           };
 
-          // Create member program record with completed sessions
+          // Create member program record with completed sessions (fetched via findRecords)
           const memberProgramRecord: AirtableRecord = {
             id: 'recProgram0000001',
             fields: {
@@ -1230,20 +1023,45 @@ describe('Property 13: Timeline Chronological Ordering', () => {
             createdTime: new Date().toISOString(),
           };
 
+          // Create member record with linked record IDs for timeline events
+          // Note: Uses 'Visits Received' for home visits, not 'Home Visits'
+          const memberRecord: AirtableRecord = {
+            id: memberId,
+            fields: {
+              'First Name': 'Test',
+              'Last Name': 'Member',
+              'Full Name': 'Test Member',
+              'Phone': '+1234567890',
+              'Status': 'Member',
+              'Source': 'Other',
+              'Date First Captured': dateStr,
+              'Follow-up Status': 'Not Started',
+              'Water Baptized': true,
+              'Water Baptism Date': dateStr,
+              'Membership Completed': dateStr,
+              'Spiritual Maturity Completed': dateStr,
+              // Linked records for timeline events
+              'Evangelism': [evangelismRecord.id],
+              'Visits Received': [homeVisitRecord.id], // Correct field name for home visits
+              'Follow-up Interactions': [followUpRecord.id],
+              'Member Departments': [memberDeptRecord.id],
+            },
+            createdTime: new Date().toISOString(),
+          };
+
           mockAirtableClient.getRecord.mockImplementation(async (table, id) => {
             if (table === 'Members' && id === memberId) return memberRecord;
+            if (table === 'Evangelism' && id === evangelismRecord.id) return evangelismRecord;
+            if (table === 'Home Visits' && id === homeVisitRecord.id) return homeVisitRecord;
+            if (table === 'Follow-up Interactions' && id === followUpRecord.id) return followUpRecord;
+            if (table === 'Member Departments' && id === memberDeptRecord.id) return memberDeptRecord;
             if (table === 'Departments') return { id, fields: { 'Name': 'Test Dept' }, createdTime: new Date().toISOString() };
             if (table === 'Volunteers') return { id, fields: { 'Name': 'Test Volunteer' }, createdTime: new Date().toISOString() };
             throw new Error(`Record not found: ${id}`);
           });
 
+          // Program sessions are fetched via findRecords, not linked records
           mockAirtableClient.findRecords.mockImplementation(async (table) => {
-            if (table === 'Evangelism') return [evangelismRecord];
-            if (table === 'First Timers Register') return [];
-            if (table === 'Attendance') return [];
-            if (table === 'Home Visits') return [homeVisitRecord];
-            if (table === 'Follow-up Interactions') return [followUpRecord];
-            if (table === 'Member Departments') return [memberDeptRecord];
             if (table === 'Member Programs') return [memberProgramRecord];
             return [];
           });
@@ -2645,6 +2463,9 @@ describe('Property 9: Unidirectional Missing Members Comparison', () => {
         fc.uniqueArray(airtableIdArb, { minLength: 0, maxLength: 10 }), // membersOnlyInReference
         fc.uniqueArray(airtableIdArb, { minLength: 0, maxLength: 10 }), // membersOnlyInComparison
         async (referenceServiceId, comparisonServiceId, membersInBoth, membersOnlyInRef, membersOnlyInComp) => {
+          // Skip when comparing the same service to itself - that's a degenerate case
+          if (referenceServiceId === comparisonServiceId) return;
+
           // Ensure non-overlapping sets
           const uniqueMembersInBoth = [...new Set(membersInBoth)];
           const uniqueMembersOnlyInRef = [...new Set(membersOnlyInRef)].filter(m => !uniqueMembersInBoth.includes(m));
@@ -2736,7 +2557,7 @@ describe('Property 9: Unidirectional Missing Members Comparison', () => {
 
           // Verify only members in reference but not in comparison are returned
           const expectedMissing = uniqueMembersOnlyInRef;
-          const actualMissing = result.missingMembers.map(m => m.id);
+          const actualMissing = result.presentInAMissingInB.map(m => m.id);
 
           expect(actualMissing.sort()).toEqual(expectedMissing.sort());
 
@@ -2836,10 +2657,10 @@ describe('Property 9: Unidirectional Missing Members Comparison', () => {
           const result = await queryService.compareTwoServices(referenceServiceId, comparisonServiceId);
 
           // Result should be empty - no one attended reference service
-          expect(result.missingMembers).toHaveLength(0);
+          expect(result.presentInAMissingInB).toHaveLength(0);
 
           // Verify none of the comparison-only members are in the result
-          const resultIds = result.missingMembers.map(m => m.id);
+          const resultIds = result.presentInAMissingInB.map(m => m.id);
           for (const memberId of uniqueMembersOnlyInComp) {
             expect(resultIds).not.toContain(memberId);
           }
@@ -2852,13 +2673,13 @@ describe('Property 9: Unidirectional Missing Members Comparison', () => {
   });
 
   /**
-   * Property 9.3: Response structure uses simplified format
+   * Property 9.3: Response structure uses correct format
    * 
-   * The response should use referenceService/comparisonService naming and missingMembers array.
+   * The response should use serviceA/serviceB naming and presentInAMissingInB array.
    * 
    * Validates: Requirements 5.2, 5.3
    */
-  it('should return simplified response structure with referenceService, comparisonService, and missingMembers', async () => {
+  it('should return correct response structure with serviceA, serviceB, and presentInAMissingInB', async () => {
     await fc.assert(
       fc.asyncProperty(
         airtableIdArb, // referenceServiceId
@@ -2897,18 +2718,18 @@ describe('Property 9: Unidirectional Missing Members Comparison', () => {
           const result = await queryService.compareTwoServices(referenceServiceId, comparisonServiceId);
 
           // Verify response structure
-          expect(result).toHaveProperty('referenceService');
-          expect(result).toHaveProperty('comparisonService');
-          expect(result).toHaveProperty('missingMembers');
+          expect(result).toHaveProperty('serviceA');
+          expect(result).toHaveProperty('serviceB');
+          expect(result).toHaveProperty('presentInAMissingInB');
           
           // Verify service info
-          expect(result.referenceService.id).toBe(referenceServiceId);
-          expect(result.referenceService.name).toBe(refServiceName);
-          expect(result.comparisonService.id).toBe(comparisonServiceId);
-          expect(result.comparisonService.name).toBe(compServiceName);
+          expect(result.serviceA.id).toBe(referenceServiceId);
+          expect(result.serviceA.name).toBe(refServiceName);
+          expect(result.serviceB.id).toBe(comparisonServiceId);
+          expect(result.serviceB.name).toBe(compServiceName);
           
-          // Verify missingMembers is an array
-          expect(Array.isArray(result.missingMembers)).toBe(true);
+          // Verify presentInAMissingInB is an array
+          expect(Array.isArray(result.presentInAMissingInB)).toBe(true);
 
           jest.clearAllMocks();
         }
@@ -3014,7 +2835,7 @@ describe('Property 9: Unidirectional Missing Members Comparison', () => {
           const result = await queryService.compareTwoServices(referenceServiceId, comparisonServiceId);
 
           // Result should be empty - all members attended both services
-          expect(result.missingMembers).toHaveLength(0);
+          expect(result.presentInAMissingInB).toHaveLength(0);
 
           jest.clearAllMocks();
         }

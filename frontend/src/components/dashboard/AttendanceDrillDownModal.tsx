@@ -78,6 +78,10 @@ function AttendanceDrillDownModal({
 }: AttendanceDrillDownModalProps) {
   const displayLabel = getCategoryDisplayLabel(category, categoryLabel);
   
+  // Defensive array check - Requirements: 2.5
+  // Ensure members is always an array to prevent .length and .map errors
+  const safeMembers = Array.isArray(members) ? members : [];
+  
   const handleMemberClick = useCallback((memberId: string) => {
     onMemberClick(memberId);
     onClose();
@@ -128,7 +132,7 @@ function AttendanceDrillDownModal({
             <div className="flex items-center gap-4">
               {/* Member count - Requirements: 3.5 */}
               <span className="text-sm font-medium text-gray-600 bg-gray-100 px-3 py-1 rounded-full">
-                {members.length} {members.length === 1 ? 'member' : 'members'}
+                {safeMembers.length} {safeMembers.length === 1 ? 'member' : 'members'}
               </span>
               {/* Close button - Requirements: 3.6 */}
               <button
@@ -145,11 +149,11 @@ function AttendanceDrillDownModal({
           <div className="flex-1 overflow-y-auto p-4">
             {isLoading ? (
               <LoadingState />
-            ) : members.length === 0 ? (
+            ) : safeMembers.length === 0 ? (
               <EmptyState category={displayLabel} />
             ) : (
               <MemberList 
-                members={members} 
+                members={safeMembers} 
                 onMemberClick={handleMemberClick} 
               />
             )}
@@ -197,7 +201,7 @@ function EmptyState({ category }: { category: string }) {
 
 /**
  * Member list component
- * Requirements: 3.3, 3.4
+ * Requirements: 3.3, 3.4, 2.5
  */
 function MemberList({ 
   members, 
@@ -206,9 +210,13 @@ function MemberList({
   members: DrillDownMember[]; 
   onMemberClick: (memberId: string) => void;
 }) {
+  // Defensive array check - Requirements: 2.5
+  // Default to empty array if members prop is invalid
+  const safeMembers = Array.isArray(members) ? members : [];
+  
   return (
     <div className="space-y-2">
-      {members.map((member) => (
+      {safeMembers.map((member) => (
         <MemberRow 
           key={member.id} 
           member={member} 

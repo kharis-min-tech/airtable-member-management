@@ -66,23 +66,6 @@ function MainLayout() {
               </h1>
             </div>
 
-            {/* Desktop Navigation - Requirements: 1.4 - Responsive on desktop */}
-            <nav 
-              className="hidden md:flex items-center space-x-1 flex-1 justify-center mx-4"
-              role="navigation"
-              aria-label="Main navigation"
-            >
-              {visibleTabs.map((tab) => (
-                <NavLink
-                  key={tab.to}
-                  to={tab.to}
-                  className={navLinkClass}
-                >
-                  {tab.label}
-                </NavLink>
-              ))}
-            </nav>
-
             {/* User menu */}
             <div className="flex items-center space-x-4 flex-shrink-0">
               <div className="text-sm text-gray-600 hidden sm:block">
@@ -102,22 +85,24 @@ function MainLayout() {
           </div>
         </div>
 
-        {/* Mobile Navigation - Requirements: 1.5 - Horizontal scrollable tabs on mobile */}
+        {/* Navigation - Always visible below header */}
         <nav 
-          className="md:hidden border-t border-gray-200 overflow-x-auto"
+          className="border-t border-gray-200 overflow-x-auto bg-white"
           role="navigation"
-          aria-label="Mobile navigation"
+          aria-label="Main navigation"
         >
-          <div className="flex px-4 py-2 space-x-2 min-w-max">
-            {visibleTabs.map((tab) => (
-              <NavLink
-                key={tab.to}
-                to={tab.to}
-                className={navLinkClass}
-              >
-                {tab.mobileLabel}
-              </NavLink>
-            ))}
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div className="flex py-2 space-x-2">
+              {visibleTabs.map((tab) => (
+                <NavLink
+                  key={tab.to}
+                  to={tab.to}
+                  className={navLinkClass}
+                >
+                  {tab.label}
+                </NavLink>
+              ))}
+            </div>
           </div>
         </nav>
       </header>
