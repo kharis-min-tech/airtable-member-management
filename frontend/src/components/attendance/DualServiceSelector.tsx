@@ -8,6 +8,12 @@ interface DualServiceSelectorProps {
   onServiceAChange: (serviceId: string | null) => void;
   onServiceBChange: (serviceId: string | null) => void;
   isLoading?: boolean;
+  /** Custom label for Service A selector (default: "Service A") */
+  labelA?: string;
+  /** Custom label for Service B selector (default: "Service B") */
+  labelB?: string;
+  /** Helper text explaining the comparison direction */
+  helperText?: string;
 }
 
 function DualServiceSelector({
@@ -17,6 +23,9 @@ function DualServiceSelector({
   onServiceAChange,
   onServiceBChange,
   isLoading = false,
+  labelA = 'Service A',
+  labelB = 'Service B',
+  helperText,
 }: DualServiceSelectorProps) {
   const handleServiceAChange = useCallback(
     (e: React.ChangeEvent<HTMLSelectElement>) => {
@@ -55,6 +64,15 @@ function DualServiceSelector({
   return (
     <div className="bg-white rounded-lg shadow p-6">
       <h2 className="text-lg font-semibold text-gray-800 mb-4">Select Services to Compare</h2>
+      
+      {/* Helper text explaining comparison direction */}
+      {helperText && (
+        <p className="text-sm text-gray-600 mb-4 bg-blue-50 p-3 rounded-md border border-blue-100">
+          <span className="text-blue-600 font-medium">ℹ️ </span>
+          {helperText}
+        </p>
+      )}
+      
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         {/* Service A Selector */}
         <div>
@@ -62,7 +80,7 @@ function DualServiceSelector({
             htmlFor="service-a-selector"
             className="block text-sm font-medium text-gray-700 mb-2"
           >
-            Service A
+            {labelA}
           </label>
           <select
             id="service-a-selector"
@@ -77,7 +95,7 @@ function DualServiceSelector({
               <option value="">No services available</option>
             ) : (
               <>
-                <option value="">Select Service A...</option>
+                <option value="">Select {labelA}...</option>
                 {renderServiceOptions(serviceBId)}
               </>
             )}
@@ -90,7 +108,7 @@ function DualServiceSelector({
             htmlFor="service-b-selector"
             className="block text-sm font-medium text-gray-700 mb-2"
           >
-            Service B
+            {labelB}
           </label>
           <select
             id="service-b-selector"
@@ -105,7 +123,7 @@ function DualServiceSelector({
               <option value="">No services available</option>
             ) : (
               <>
-                <option value="">Select Service B...</option>
+                <option value="">Select {labelB}...</option>
                 {renderServiceOptions(serviceAId)}
               </>
             )}
@@ -113,20 +131,20 @@ function DualServiceSelector({
         </div>
       </div>
 
-      {/* Helper text */}
-      {!serviceAId && !serviceBId && !isLoading && services.length > 0 && (
+      {/* Default helper text when no custom helper text is provided */}
+      {!helperText && !serviceAId && !serviceBId && !isLoading && services.length > 0 && (
         <p className="mt-4 text-sm text-gray-500">
           Select two services to compare attendance and identify missing members.
         </p>
       )}
-      {serviceAId && !serviceBId && (
+      {!helperText && serviceAId && !serviceBId && (
         <p className="mt-4 text-sm text-gray-500">
-          Now select Service B to see the comparison.
+          Now select {labelB} to see the comparison.
         </p>
       )}
-      {!serviceAId && serviceBId && (
+      {!helperText && !serviceAId && serviceBId && (
         <p className="mt-4 text-sm text-gray-500">
-          Now select Service A to see the comparison.
+          Now select {labelA} to see the comparison.
         </p>
       )}
     </div>

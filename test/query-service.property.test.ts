@@ -678,7 +678,7 @@ describe('Property 12: Service Comparison Bidirectional Correctness', () => {
             return [];
           });
 
-          const result = await queryService.compareTwoServices(serviceAId, serviceBId);
+          const result = await queryService.compareTwoServicesBidirectional(serviceAId, serviceBId);
 
           // Verify members in A but not in B
           const expectedInANotB = uniqueMembersOnlyInA;
@@ -791,7 +791,7 @@ describe('Property 12: Service Comparison Bidirectional Correctness', () => {
             return [];
           });
 
-          const result = await queryService.compareTwoServices(serviceAId, serviceBId);
+          const result = await queryService.compareTwoServicesBidirectional(serviceAId, serviceBId);
 
           // Verify members in B but not in A
           const expectedInBNotA = uniqueMembersOnlyInB;
@@ -891,7 +891,7 @@ describe('Property 12: Service Comparison Bidirectional Correctness', () => {
           });
 
           // Compare A to B
-          const resultAB = await queryService.compareTwoServices(serviceAId, serviceBId);
+          const resultAB = await queryService.compareTwoServicesBidirectional(serviceAId, serviceBId);
           
           jest.clearAllMocks();
 
@@ -923,7 +923,7 @@ describe('Property 12: Service Comparison Bidirectional Correctness', () => {
           });
 
           // Compare B to A
-          const resultBA = await queryService.compareTwoServices(serviceBId, serviceAId);
+          const resultBA = await queryService.compareTwoServicesBidirectional(serviceBId, serviceAId);
 
           // Swapping services should swap the results
           const inANotB_AB = resultAB.presentInAMissingInB.map(m => m.id).sort();
@@ -1023,7 +1023,7 @@ describe('Property 12: Service Comparison Bidirectional Correctness', () => {
             return [];
           });
 
-          const result = await queryService.compareTwoServices(serviceAId, serviceBId);
+          const result = await queryService.compareTwoServicesBidirectional(serviceAId, serviceBId);
 
           // All members in A should be in "present in A, missing in B"
           expect(result.presentInAMissingInB.map(m => m.id).sort()).toEqual(uniqueMembersInA.sort());
@@ -1676,5 +1676,1350 @@ describe('Additional QueryService Methods', () => {
     it('should throw error for empty department ID', async () => {
       await expect(queryService.getDepartmentRoster('')).rejects.toThrow('Department ID is required');
     });
+  });
+});
+
+
+/**
+ * Property 5: Services Sorted by Date Descending
+ * Validates: Requirements 2.5
+ * 
+ * For any list of services returned by the API, the services SHALL be sorted by serviceDate 
+ * in descending order (most recent first), such that for any adjacent pair (service[i], service[i+1]), 
+ * service[i].serviceDate >= service[i+1].serviceDate.
+ */
+describe('Property 5: Services Sorted by Date Descending', () => {
+  let mockAirtableClient: jest.Mocked<AirtableClient>;
+  let queryService: QueryService;
+
+  beforeEach(() => {
+    mockAirtableClient = {
+      createRecord: jest.fn(),
+      updateRecord: jest.fn(),
+      getRecord: jest.fn(),
+      findRecords: jest.fn(),
+      batchCreate: jest.fn(),
+      batchUpdate: jest.fn(),
+    } as unknown as jest.Mocked<AirtableClient>;
+
+    queryService = new QueryService(mockAirtableClient);
+  });
+
+  afterEach(() => {
+    jest.clearAllMocks();
+  });
+
+  /**
+   * Property 5.1: Services returned by getRecentServices are sorted by date descending
+   * 
+   * For any set of services with various dates, when fetched via getRecentServices,
+   * the result should be sorted with most recent first.
+   * 
+   * Validates: Requirements 2.5
+   */
+  it('should return services sorted by date descending from getRecentServices', async () => {
+    await fc.assert(
+      fc.asyncProperty(
+        fc.array(
+          fc.record({
+            id: airtableIdArb,
+            serviceName: fc.string({ minLength: 1, maxLength: 50 }),
+            serviceDate: fc.date({ min: new Date('2020-01-01'), max: new Date('2030-12-31') }),
+            serviceCode: fc.string({ minLength: 1, maxLength: 10 }),
+          }),
+          { minLength: 0, maxLength: 20 }
+        ),
+        async (services) => {
+          // Create mock records from generated services
+          const mockRecords: AirtableRecord[] = services.map(s => ({
+            id: s.id,
+            fields: {
+              'Service Name + Date': s.serviceName,
+              'Service Date': s.serviceDate.toISOString().split('T')[0],
+              'Service Type': s.serviceCode,
+            },
+            createdTime: new Date().toISOString(),
+          }));
+
+          // Sort the mock records by date descending (simulating Airtable's sort)
+          const sortedRecords = [...mockRecords].sort((a, b) => {
+            const dateA = new Date(a.fields['Service Date'] as string);
+            const dateB = new Date(b.fields['Service Date'] as string);
+            return dateB.getTime() - dateA.getTime();
+          });
+
+          mockAirtableClient.findRecords.mockResolvedValue(sortedRecords);
+
+          const result = await queryService.getRecentServices();
+
+          // Verify the result is sorted by date descending
+          for (let i = 0; i < result.length - 1; i++) {
+            const currentDate = result[i]!.serviceDate;
+            const nextDate = result[i + 1]!.serviceDate;
+            
+            if (currentDate && nextDate) {
+              expect(currentDate.getTime()).toBeGreaterThanOrEqual(nextDate.getTime());
+            }
+          }
+
+          jest.clearAllMocks();
+        }
+      ),
+      { numRuns: 100 }
+    );
+  });
+
+  /**
+   * Property 5.2: Services returned by getAllServices are sorted by date descending
+   * 
+   * Validates: Requirements 2.5
+   */
+  it('should return services sorted by date descending from getAllServices', async () => {
+    await fc.assert(
+      fc.asyncProperty(
+        fc.array(
+          fc.record({
+            id: airtableIdArb,
+            serviceName: fc.string({ minLength: 1, maxLength: 50 }),
+            serviceDate: fc.date({ min: new Date('2020-01-01'), max: new Date('2030-12-31') }),
+            serviceCode: fc.string({ minLength: 1, maxLength: 10 }),
+          }),
+          { minLength: 0, maxLength: 20 }
+        ),
+        async (services) => {
+          const mockRecords: AirtableRecord[] = services.map(s => ({
+            id: s.id,
+            fields: {
+              'Service Name + Date': s.serviceName,
+              'Service Date': s.serviceDate.toISOString().split('T')[0],
+              'Service Type': s.serviceCode,
+            },
+            createdTime: new Date().toISOString(),
+          }));
+
+          // Sort the mock records by date descending
+          const sortedRecords = [...mockRecords].sort((a, b) => {
+            const dateA = new Date(a.fields['Service Date'] as string);
+            const dateB = new Date(b.fields['Service Date'] as string);
+            return dateB.getTime() - dateA.getTime();
+          });
+
+          mockAirtableClient.findRecords.mockResolvedValue(sortedRecords);
+
+          const result = await queryService.getAllServices();
+
+          // Verify the result is sorted by date descending
+          for (let i = 0; i < result.length - 1; i++) {
+            const currentDate = result[i]!.serviceDate;
+            const nextDate = result[i + 1]!.serviceDate;
+            
+            if (currentDate && nextDate) {
+              expect(currentDate.getTime()).toBeGreaterThanOrEqual(nextDate.getTime());
+            }
+          }
+
+          jest.clearAllMocks();
+        }
+      ),
+      { numRuns: 100 }
+    );
+  });
+
+  /**
+   * Property 5.3: Services returned by getServicesByDateRange are sorted by date descending
+   * 
+   * Validates: Requirements 2.5
+   */
+  it('should return services sorted by date descending from getServicesByDateRange', async () => {
+    await fc.assert(
+      fc.asyncProperty(
+        fc.date({ min: new Date('2020-01-01'), max: new Date('2025-12-31') }), // startDate
+        fc.date({ min: new Date('2020-01-01'), max: new Date('2030-12-31') }), // endDate
+        fc.array(
+          fc.record({
+            id: airtableIdArb,
+            serviceName: fc.string({ minLength: 1, maxLength: 50 }),
+            serviceDate: fc.date({ min: new Date('2020-01-01'), max: new Date('2030-12-31') }),
+            serviceCode: fc.string({ minLength: 1, maxLength: 10 }),
+          }),
+          { minLength: 0, maxLength: 20 }
+        ),
+        async (startDate, endDate, services) => {
+          // Ensure startDate <= endDate
+          const actualStartDate = startDate <= endDate ? startDate : endDate;
+          const actualEndDate = startDate <= endDate ? endDate : startDate;
+
+          // Filter services within the date range
+          const servicesInRange = services.filter(s => 
+            s.serviceDate >= actualStartDate && s.serviceDate <= actualEndDate
+          );
+
+          const mockRecords: AirtableRecord[] = servicesInRange.map(s => ({
+            id: s.id,
+            fields: {
+              'Service Name + Date': s.serviceName,
+              'Service Date': s.serviceDate.toISOString().split('T')[0],
+              'Service Type': s.serviceCode,
+            },
+            createdTime: new Date().toISOString(),
+          }));
+
+          // Sort the mock records by date descending
+          const sortedRecords = [...mockRecords].sort((a, b) => {
+            const dateA = new Date(a.fields['Service Date'] as string);
+            const dateB = new Date(b.fields['Service Date'] as string);
+            return dateB.getTime() - dateA.getTime();
+          });
+
+          mockAirtableClient.findRecords.mockResolvedValue(sortedRecords);
+
+          const result = await queryService.getServicesByDateRange(actualStartDate, actualEndDate);
+
+          // Verify the result is sorted by date descending
+          for (let i = 0; i < result.length - 1; i++) {
+            const currentDate = result[i]!.serviceDate;
+            const nextDate = result[i + 1]!.serviceDate;
+            
+            if (currentDate && nextDate) {
+              expect(currentDate.getTime()).toBeGreaterThanOrEqual(nextDate.getTime());
+            }
+          }
+
+          jest.clearAllMocks();
+        }
+      ),
+      { numRuns: 100 }
+    );
+  });
+
+  /**
+   * Property 5.4: Services returned by searchServices are sorted by date descending
+   * 
+   * Validates: Requirements 2.5
+   */
+  it('should return services sorted by date descending from searchServices', async () => {
+    await fc.assert(
+      fc.asyncProperty(
+        fc.string({ minLength: 1, maxLength: 20 }), // searchQuery
+        fc.array(
+          fc.record({
+            id: airtableIdArb,
+            serviceName: fc.string({ minLength: 1, maxLength: 50 }),
+            serviceDate: fc.date({ min: new Date('2020-01-01'), max: new Date('2030-12-31') }),
+            serviceCode: fc.string({ minLength: 1, maxLength: 10 }),
+          }),
+          { minLength: 0, maxLength: 20 }
+        ),
+        async (searchQuery, services) => {
+          const mockRecords: AirtableRecord[] = services.map(s => ({
+            id: s.id,
+            fields: {
+              'Service Name + Date': s.serviceName,
+              'Service Date': s.serviceDate.toISOString().split('T')[0],
+              'Service Type': s.serviceCode,
+            },
+            createdTime: new Date().toISOString(),
+          }));
+
+          // Sort the mock records by date descending
+          const sortedRecords = [...mockRecords].sort((a, b) => {
+            const dateA = new Date(a.fields['Service Date'] as string);
+            const dateB = new Date(b.fields['Service Date'] as string);
+            return dateB.getTime() - dateA.getTime();
+          });
+
+          mockAirtableClient.findRecords.mockResolvedValue(sortedRecords);
+
+          const result = await queryService.searchServices(searchQuery);
+
+          // Verify the result is sorted by date descending
+          for (let i = 0; i < result.length - 1; i++) {
+            const currentDate = result[i]!.serviceDate;
+            const nextDate = result[i + 1]!.serviceDate;
+            
+            if (currentDate && nextDate) {
+              expect(currentDate.getTime()).toBeGreaterThanOrEqual(nextDate.getTime());
+            }
+          }
+
+          jest.clearAllMocks();
+        }
+      ),
+      { numRuns: 100 }
+    );
+  });
+});
+
+/**
+ * Property 3: Service Date Range Filter Correctness
+ * Validates: Requirements 2.3
+ * 
+ * For any date range (startDate, endDate) and any set of services, the filtered result 
+ * SHALL contain only services where serviceDate >= startDate AND serviceDate <= endDate.
+ */
+describe('Property 3: Service Date Range Filter Correctness', () => {
+  let mockAirtableClient: jest.Mocked<AirtableClient>;
+  let queryService: QueryService;
+
+  beforeEach(() => {
+    mockAirtableClient = {
+      createRecord: jest.fn(),
+      updateRecord: jest.fn(),
+      getRecord: jest.fn(),
+      findRecords: jest.fn(),
+      batchCreate: jest.fn(),
+      batchUpdate: jest.fn(),
+    } as unknown as jest.Mocked<AirtableClient>;
+
+    queryService = new QueryService(mockAirtableClient);
+  });
+
+  afterEach(() => {
+    jest.clearAllMocks();
+  });
+
+  /**
+   * Property 3.1: All returned services are within the specified date range
+   * 
+   * For any date range and set of services, getServicesByDateRange should only
+   * return services where serviceDate >= startDate AND serviceDate <= endDate.
+   * 
+   * Validates: Requirements 2.3
+   */
+  it('should only return services within the specified date range', async () => {
+    await fc.assert(
+      fc.asyncProperty(
+        fc.date({ min: new Date('2020-01-01'), max: new Date('2025-12-31') }), // startDate
+        fc.date({ min: new Date('2020-01-01'), max: new Date('2030-12-31') }), // endDate
+        fc.array(
+          fc.record({
+            id: airtableIdArb,
+            serviceName: fc.string({ minLength: 1, maxLength: 50 }),
+            serviceDate: fc.date({ min: new Date('2019-01-01'), max: new Date('2031-12-31') }),
+            serviceCode: fc.string({ minLength: 1, maxLength: 10 }),
+          }),
+          { minLength: 0, maxLength: 30 }
+        ),
+        async (startDate, endDate, services) => {
+          // Ensure startDate <= endDate
+          const actualStartDate = startDate <= endDate ? startDate : endDate;
+          const actualEndDate = startDate <= endDate ? endDate : startDate;
+
+          // Simulate Airtable filtering - only return services within the date range
+          const servicesInRange = services.filter(s => {
+            const serviceDate = new Date(s.serviceDate.toISOString().split('T')[0]!);
+            const start = new Date(actualStartDate.toISOString().split('T')[0]!);
+            const end = new Date(actualEndDate.toISOString().split('T')[0]!);
+            return serviceDate >= start && serviceDate <= end;
+          });
+
+          const mockRecords: AirtableRecord[] = servicesInRange.map(s => ({
+            id: s.id,
+            fields: {
+              'Service Name + Date': s.serviceName,
+              'Service Date': s.serviceDate.toISOString().split('T')[0],
+              'Service Type': s.serviceCode,
+            },
+            createdTime: new Date().toISOString(),
+          }));
+
+          // Sort by date descending
+          const sortedRecords = [...mockRecords].sort((a, b) => {
+            const dateA = new Date(a.fields['Service Date'] as string);
+            const dateB = new Date(b.fields['Service Date'] as string);
+            return dateB.getTime() - dateA.getTime();
+          });
+
+          mockAirtableClient.findRecords.mockResolvedValue(sortedRecords);
+
+          const result = await queryService.getServicesByDateRange(actualStartDate, actualEndDate);
+
+          // Verify all returned services are within the date range
+          const startDateStr = actualStartDate.toISOString().split('T')[0]!;
+          const endDateStr = actualEndDate.toISOString().split('T')[0]!;
+          const startDateNormalized = new Date(startDateStr);
+          const endDateNormalized = new Date(endDateStr);
+
+          for (const service of result) {
+            if (service.serviceDate) {
+              expect(service.serviceDate.getTime()).toBeGreaterThanOrEqual(startDateNormalized.getTime());
+              expect(service.serviceDate.getTime()).toBeLessThanOrEqual(endDateNormalized.getTime());
+            }
+          }
+
+          // Verify the count matches expected
+          expect(result.length).toBe(servicesInRange.length);
+
+          jest.clearAllMocks();
+        }
+      ),
+      { numRuns: 100 }
+    );
+  });
+
+  /**
+   * Property 3.2: Services outside the date range are excluded
+   * 
+   * For any date range, services with dates before startDate or after endDate
+   * should not be included in the result.
+   * 
+   * Validates: Requirements 2.3
+   */
+  it('should exclude services outside the date range', async () => {
+    await fc.assert(
+      fc.asyncProperty(
+        fc.date({ min: new Date('2022-01-01'), max: new Date('2024-12-31') }), // startDate
+        fc.date({ min: new Date('2022-01-01'), max: new Date('2024-12-31') }), // endDate
+        fc.array(
+          fc.record({
+            id: airtableIdArb,
+            serviceName: fc.string({ minLength: 1, maxLength: 50 }),
+            serviceDate: fc.date({ min: new Date('2020-01-01'), max: new Date('2026-12-31') }),
+            serviceCode: fc.string({ minLength: 1, maxLength: 10 }),
+          }),
+          { minLength: 1, maxLength: 30 }
+        ),
+        async (startDate, endDate, services) => {
+          // Ensure startDate <= endDate
+          const actualStartDate = startDate <= endDate ? startDate : endDate;
+          const actualEndDate = startDate <= endDate ? endDate : startDate;
+
+          // Simulate Airtable filtering - only return services within the date range
+          const servicesInRange = services.filter(s => {
+            const serviceDate = new Date(s.serviceDate.toISOString().split('T')[0]!);
+            const start = new Date(actualStartDate.toISOString().split('T')[0]!);
+            const end = new Date(actualEndDate.toISOString().split('T')[0]!);
+            return serviceDate >= start && serviceDate <= end;
+          });
+
+          const mockRecords: AirtableRecord[] = servicesInRange.map(s => ({
+            id: s.id,
+            fields: {
+              'Service Name + Date': s.serviceName,
+              'Service Date': s.serviceDate.toISOString().split('T')[0],
+              'Service Type': s.serviceCode,
+            },
+            createdTime: new Date().toISOString(),
+          }));
+
+          mockAirtableClient.findRecords.mockResolvedValue(mockRecords);
+
+          const result = await queryService.getServicesByDateRange(actualStartDate, actualEndDate);
+
+          // Verify no services outside the range are included
+          const servicesOutsideRange = services.filter(s => {
+            const serviceDate = new Date(s.serviceDate.toISOString().split('T')[0]!);
+            const start = new Date(actualStartDate.toISOString().split('T')[0]!);
+            const end = new Date(actualEndDate.toISOString().split('T')[0]!);
+            return serviceDate < start || serviceDate > end;
+          });
+
+          const resultIds = new Set(result.map(r => r.id));
+          for (const outsideService of servicesOutsideRange) {
+            expect(resultIds.has(outsideService.id)).toBe(false);
+          }
+
+          jest.clearAllMocks();
+        }
+      ),
+      { numRuns: 100 }
+    );
+  });
+
+  /**
+   * Property 3.3: Empty result when no services in range
+   * 
+   * When no services fall within the specified date range,
+   * the result should be an empty array.
+   * 
+   * Validates: Requirements 2.3
+   */
+  it('should return empty array when no services in range', async () => {
+    await fc.assert(
+      fc.asyncProperty(
+        fc.date({ min: new Date('2025-01-01'), max: new Date('2025-12-31') }), // startDate
+        fc.date({ min: new Date('2025-01-01'), max: new Date('2025-12-31') }), // endDate
+        async (startDate, endDate) => {
+          // Ensure startDate <= endDate
+          const actualStartDate = startDate <= endDate ? startDate : endDate;
+          const actualEndDate = startDate <= endDate ? endDate : startDate;
+
+          // Return empty array (no services in range)
+          mockAirtableClient.findRecords.mockResolvedValue([]);
+
+          const result = await queryService.getServicesByDateRange(actualStartDate, actualEndDate);
+
+          expect(result).toEqual([]);
+
+          jest.clearAllMocks();
+        }
+      ),
+      { numRuns: 50 }
+    );
+  });
+});
+
+
+/**
+ * Property 7: Drill-Down Member Details Complete
+ * Validates: Requirements 3.3
+ * 
+ * For any member displayed in the drill-down view:
+ * - The display SHALL include the member's Full Name
+ * - The display SHALL include Phone if present on the member record
+ * - The display SHALL include Email if present on the member record
+ * - The display SHALL include Status if present on the member record
+ */
+describe('Property 7: Drill-Down Member Details Complete', () => {
+  let mockAirtableClient: jest.Mocked<AirtableClient>;
+  let queryService: QueryService;
+
+  beforeEach(() => {
+    mockAirtableClient = {
+      createRecord: jest.fn(),
+      updateRecord: jest.fn(),
+      getRecord: jest.fn(),
+      findRecords: jest.fn(),
+      batchCreate: jest.fn(),
+      batchUpdate: jest.fn(),
+    } as unknown as jest.Mocked<AirtableClient>;
+
+    queryService = new QueryService(mockAirtableClient);
+  });
+
+  afterEach(() => {
+    jest.clearAllMocks();
+  });
+
+  /**
+   * Property 7.1: Full Name is always included in drill-down member
+   * 
+   * For any member in the drill-down view, the fullName field SHALL be present
+   * 
+   * Validates: Requirements 3.3
+   */
+  it('should always include fullName in drill-down member', async () => {
+    await fc.assert(
+      fc.asyncProperty(
+        airtableIdArb, // serviceId
+        airtableIdArb, // memberId
+        fc.string({ minLength: 1, maxLength: 30 }), // firstName
+        fc.string({ minLength: 1, maxLength: 30 }), // lastName
+        fc.constantFrom('First Timer', 'Returner', 'Evangelism Contact', 'Member'), // status
+        async (serviceId, memberId, firstName, lastName, status) => {
+          const fullName = `${firstName} ${lastName}`;
+
+          // Mock member record
+          const memberRecord: AirtableRecord = {
+            id: memberId,
+            fields: {
+              'First Name': firstName,
+              'Last Name': lastName,
+              'Full Name': fullName,
+              'Status': status,
+              'Source': 'Other',
+              'Date First Captured': '2024-01-01',
+              'Follow-up Status': 'Not Started',
+            },
+            createdTime: new Date().toISOString(),
+          };
+
+          // Mock attendance record
+          const attendanceRecord: AirtableRecord = {
+            id: `recAtt${memberId.slice(3)}`,
+            fields: {
+              'Member': [memberId],
+              'Service': [serviceId],
+              'Present?': true,
+            },
+            createdTime: new Date().toISOString(),
+          };
+
+          // Mock service record
+          const serviceRecord: AirtableRecord = {
+            id: serviceId,
+            fields: {
+              'Service Name + Date': 'Test Service',
+              'Attendance': [attendanceRecord.id],
+            },
+            createdTime: new Date().toISOString(),
+          };
+
+          mockAirtableClient.getRecord.mockImplementation(async (table, id) => {
+            if (table === 'Services' && id === serviceId) return serviceRecord;
+            if (table === 'Attendance' && id === attendanceRecord.id) return attendanceRecord;
+            throw new Error(`Record not found: ${table}/${id}`);
+          });
+
+          mockAirtableClient.findRecords.mockImplementation(async (table) => {
+            if (table === 'Members') return [memberRecord];
+            return [];
+          });
+
+          const result = await queryService.getAttendeesByCategory(serviceId, status === 'First Timer' ? 'firstTimers' : status === 'Returner' ? 'returners' : status === 'Evangelism Contact' ? 'evangelismContacts' : 'firstTimers');
+
+          // If the member matches the category, verify fullName is present
+          if (result.length > 0) {
+            const drillDownMember = result[0];
+            expect(drillDownMember).toBeDefined();
+            expect(drillDownMember!.fullName).toBeDefined();
+            expect(drillDownMember!.fullName.length).toBeGreaterThan(0);
+          }
+
+          jest.clearAllMocks();
+        }
+      ),
+      { numRuns: 100 }
+    );
+  });
+
+  /**
+   * Property 7.2: Phone is included when present on member record
+   * 
+   * For any member with a phone number, the drill-down view SHALL include it
+   * 
+   * Validates: Requirements 3.3
+   */
+  it('should include phone when present on member record', async () => {
+    await fc.assert(
+      fc.asyncProperty(
+        airtableIdArb, // serviceId
+        airtableIdArb, // memberId
+        fc.string({ minLength: 1, maxLength: 30 }), // firstName
+        fc.string({ minLength: 1, maxLength: 30 }), // lastName
+        fc.string({ minLength: 10, maxLength: 15 }), // phone
+        async (serviceId, memberId, firstName, lastName, phone) => {
+          const fullName = `${firstName} ${lastName}`;
+
+          // Mock member record with phone
+          const memberRecord: AirtableRecord = {
+            id: memberId,
+            fields: {
+              'First Name': firstName,
+              'Last Name': lastName,
+              'Full Name': fullName,
+              'Phone': phone,
+              'Status': 'First Timer',
+              'Source': 'Other',
+              'Date First Captured': '2024-01-01',
+              'Follow-up Status': 'Not Started',
+            },
+            createdTime: new Date().toISOString(),
+          };
+
+          // Mock attendance record
+          const attendanceRecord: AirtableRecord = {
+            id: `recAtt${memberId.slice(3)}`,
+            fields: {
+              'Member': [memberId],
+              'Service': [serviceId],
+              'Present?': true,
+            },
+            createdTime: new Date().toISOString(),
+          };
+
+          // Mock service record
+          const serviceRecord: AirtableRecord = {
+            id: serviceId,
+            fields: {
+              'Service Name + Date': 'Test Service',
+              'Attendance': [attendanceRecord.id],
+            },
+            createdTime: new Date().toISOString(),
+          };
+
+          mockAirtableClient.getRecord.mockImplementation(async (table, id) => {
+            if (table === 'Services' && id === serviceId) return serviceRecord;
+            if (table === 'Attendance' && id === attendanceRecord.id) return attendanceRecord;
+            throw new Error(`Record not found: ${table}/${id}`);
+          });
+
+          mockAirtableClient.findRecords.mockImplementation(async (table) => {
+            if (table === 'Members') return [memberRecord];
+            return [];
+          });
+
+          const result = await queryService.getAttendeesByCategory(serviceId, 'firstTimers');
+
+          expect(result.length).toBe(1);
+          expect(result[0]!.phone).toBe(phone);
+
+          jest.clearAllMocks();
+        }
+      ),
+      { numRuns: 100 }
+    );
+  });
+
+  /**
+   * Property 7.3: Email is included when present on member record
+   * 
+   * For any member with an email, the drill-down view SHALL include it
+   * 
+   * Validates: Requirements 3.3
+   */
+  it('should include email when present on member record', async () => {
+    await fc.assert(
+      fc.asyncProperty(
+        airtableIdArb, // serviceId
+        airtableIdArb, // memberId
+        fc.string({ minLength: 1, maxLength: 30 }), // firstName
+        fc.string({ minLength: 1, maxLength: 30 }), // lastName
+        fc.emailAddress(), // email
+        async (serviceId, memberId, firstName, lastName, email) => {
+          const fullName = `${firstName} ${lastName}`;
+
+          // Mock member record with email
+          const memberRecord: AirtableRecord = {
+            id: memberId,
+            fields: {
+              'First Name': firstName,
+              'Last Name': lastName,
+              'Full Name': fullName,
+              'Email': email,
+              'Status': 'First Timer',
+              'Source': 'Other',
+              'Date First Captured': '2024-01-01',
+              'Follow-up Status': 'Not Started',
+            },
+            createdTime: new Date().toISOString(),
+          };
+
+          // Mock attendance record
+          const attendanceRecord: AirtableRecord = {
+            id: `recAtt${memberId.slice(3)}`,
+            fields: {
+              'Member': [memberId],
+              'Service': [serviceId],
+              'Present?': true,
+            },
+            createdTime: new Date().toISOString(),
+          };
+
+          // Mock service record
+          const serviceRecord: AirtableRecord = {
+            id: serviceId,
+            fields: {
+              'Service Name + Date': 'Test Service',
+              'Attendance': [attendanceRecord.id],
+            },
+            createdTime: new Date().toISOString(),
+          };
+
+          mockAirtableClient.getRecord.mockImplementation(async (table, id) => {
+            if (table === 'Services' && id === serviceId) return serviceRecord;
+            if (table === 'Attendance' && id === attendanceRecord.id) return attendanceRecord;
+            throw new Error(`Record not found: ${table}/${id}`);
+          });
+
+          mockAirtableClient.findRecords.mockImplementation(async (table) => {
+            if (table === 'Members') return [memberRecord];
+            return [];
+          });
+
+          const result = await queryService.getAttendeesByCategory(serviceId, 'firstTimers');
+
+          expect(result.length).toBe(1);
+          expect(result[0]!.email).toBe(email);
+
+          jest.clearAllMocks();
+        }
+      ),
+      { numRuns: 100 }
+    );
+  });
+
+  /**
+   * Property 7.4: Status is always included in drill-down member
+   * 
+   * For any member in the drill-down view, the status field SHALL be present
+   * 
+   * Validates: Requirements 3.3
+   */
+  it('should always include status in drill-down member', async () => {
+    await fc.assert(
+      fc.asyncProperty(
+        airtableIdArb, // serviceId
+        airtableIdArb, // memberId
+        fc.string({ minLength: 1, maxLength: 30 }), // firstName
+        fc.string({ minLength: 1, maxLength: 30 }), // lastName
+        fc.constantFrom('First Timer', 'Returner', 'Evangelism Contact', 'Member'), // status
+        async (serviceId, memberId, firstName, lastName, status) => {
+          const fullName = `${firstName} ${lastName}`;
+
+          // Mock member record
+          const memberRecord: AirtableRecord = {
+            id: memberId,
+            fields: {
+              'First Name': firstName,
+              'Last Name': lastName,
+              'Full Name': fullName,
+              'Status': status,
+              'Source': 'Other',
+              'Date First Captured': '2024-01-01',
+              'Follow-up Status': 'Not Started',
+            },
+            createdTime: new Date().toISOString(),
+          };
+
+          // Mock attendance record
+          const attendanceRecord: AirtableRecord = {
+            id: `recAtt${memberId.slice(3)}`,
+            fields: {
+              'Member': [memberId],
+              'Service': [serviceId],
+              'Present?': true,
+            },
+            createdTime: new Date().toISOString(),
+          };
+
+          // Mock service record
+          const serviceRecord: AirtableRecord = {
+            id: serviceId,
+            fields: {
+              'Service Name + Date': 'Test Service',
+              'Attendance': [attendanceRecord.id],
+            },
+            createdTime: new Date().toISOString(),
+          };
+
+          mockAirtableClient.getRecord.mockImplementation(async (table, id) => {
+            if (table === 'Services' && id === serviceId) return serviceRecord;
+            if (table === 'Attendance' && id === attendanceRecord.id) return attendanceRecord;
+            throw new Error(`Record not found: ${table}/${id}`);
+          });
+
+          mockAirtableClient.findRecords.mockImplementation(async (table) => {
+            if (table === 'Members') return [memberRecord];
+            return [];
+          });
+
+          // Use the appropriate category based on status
+          const category = status === 'First Timer' ? 'firstTimers' : 
+                          status === 'Returner' ? 'returners' : 
+                          status === 'Evangelism Contact' ? 'evangelismContacts' : 'firstTimers';
+
+          const result = await queryService.getAttendeesByCategory(serviceId, category);
+
+          // If the member matches the category, verify status is present
+          if (result.length > 0) {
+            const drillDownMember = result[0];
+            expect(drillDownMember).toBeDefined();
+            expect(drillDownMember!.status).toBeDefined();
+            expect(drillDownMember!.status).toBe(status);
+          }
+
+          jest.clearAllMocks();
+        }
+      ),
+      { numRuns: 100 }
+    );
+  });
+
+  /**
+   * Property 7.5: Optional fields are undefined when not present
+   * 
+   * For any member without phone or email, those fields should be undefined
+   * 
+   * Validates: Requirements 3.3
+   */
+  it('should have undefined for optional fields when not present', async () => {
+    await fc.assert(
+      fc.asyncProperty(
+        airtableIdArb, // serviceId
+        airtableIdArb, // memberId
+        fc.string({ minLength: 1, maxLength: 30 }), // firstName
+        fc.string({ minLength: 1, maxLength: 30 }), // lastName
+        async (serviceId, memberId, firstName, lastName) => {
+          const fullName = `${firstName} ${lastName}`;
+
+          // Mock member record without phone or email
+          const memberRecord: AirtableRecord = {
+            id: memberId,
+            fields: {
+              'First Name': firstName,
+              'Last Name': lastName,
+              'Full Name': fullName,
+              'Status': 'First Timer',
+              'Source': 'Other',
+              'Date First Captured': '2024-01-01',
+              'Follow-up Status': 'Not Started',
+              // No Phone or Email fields
+            },
+            createdTime: new Date().toISOString(),
+          };
+
+          // Mock attendance record
+          const attendanceRecord: AirtableRecord = {
+            id: `recAtt${memberId.slice(3)}`,
+            fields: {
+              'Member': [memberId],
+              'Service': [serviceId],
+              'Present?': true,
+            },
+            createdTime: new Date().toISOString(),
+          };
+
+          // Mock service record
+          const serviceRecord: AirtableRecord = {
+            id: serviceId,
+            fields: {
+              'Service Name + Date': 'Test Service',
+              'Attendance': [attendanceRecord.id],
+            },
+            createdTime: new Date().toISOString(),
+          };
+
+          mockAirtableClient.getRecord.mockImplementation(async (table, id) => {
+            if (table === 'Services' && id === serviceId) return serviceRecord;
+            if (table === 'Attendance' && id === attendanceRecord.id) return attendanceRecord;
+            throw new Error(`Record not found: ${table}/${id}`);
+          });
+
+          mockAirtableClient.findRecords.mockImplementation(async (table) => {
+            if (table === 'Members') return [memberRecord];
+            return [];
+          });
+
+          const result = await queryService.getAttendeesByCategory(serviceId, 'firstTimers');
+
+          expect(result.length).toBe(1);
+          expect(result[0]!.phone).toBeUndefined();
+          expect(result[0]!.email).toBeUndefined();
+
+          jest.clearAllMocks();
+        }
+      ),
+      { numRuns: 100 }
+    );
+  });
+});
+
+
+/**
+ * Property 9: Unidirectional Missing Members Comparison
+ * Validates: Requirements 5.2, 5.3
+ * 
+ * For any two services A (reference) and B (comparison), the missing members result SHALL contain 
+ * exactly those members who have attendance Present=true for Service A AND (no attendance record 
+ * for Service B OR Present=false for Service B). The result SHALL NOT contain members who are 
+ * only present in Service B.
+ * 
+ * Feature: ui-improvements-v2, Property 9: Unidirectional Missing Members Comparison
+ */
+describe('Property 9: Unidirectional Missing Members Comparison', () => {
+  let mockAirtableClient: jest.Mocked<AirtableClient>;
+  let queryService: QueryService;
+
+  beforeEach(() => {
+    mockAirtableClient = {
+      createRecord: jest.fn(),
+      updateRecord: jest.fn(),
+      getRecord: jest.fn(),
+      findRecords: jest.fn(),
+      batchCreate: jest.fn(),
+      batchUpdate: jest.fn(),
+    } as unknown as jest.Mocked<AirtableClient>;
+
+    queryService = new QueryService(mockAirtableClient);
+  });
+
+  afterEach(() => {
+    jest.clearAllMocks();
+  });
+
+  /**
+   * Property 9.1: Missing members contains only members present in reference but not in comparison
+   * 
+   * For any two services, the result should contain exactly those members who attended
+   * the reference service but not the comparison service.
+   * 
+   * Validates: Requirements 5.2
+   */
+  it('should return only members present in reference service but missing from comparison service', async () => {
+    await fc.assert(
+      fc.asyncProperty(
+        airtableIdArb, // referenceServiceId
+        airtableIdArb, // comparisonServiceId
+        fc.uniqueArray(airtableIdArb, { minLength: 0, maxLength: 10 }), // membersInBothServices
+        fc.uniqueArray(airtableIdArb, { minLength: 0, maxLength: 10 }), // membersOnlyInReference
+        fc.uniqueArray(airtableIdArb, { minLength: 0, maxLength: 10 }), // membersOnlyInComparison
+        async (referenceServiceId, comparisonServiceId, membersInBoth, membersOnlyInRef, membersOnlyInComp) => {
+          // Ensure non-overlapping sets
+          const uniqueMembersInBoth = [...new Set(membersInBoth)];
+          const uniqueMembersOnlyInRef = [...new Set(membersOnlyInRef)].filter(m => !uniqueMembersInBoth.includes(m));
+          const uniqueMembersOnlyInComp = [...new Set(membersOnlyInComp)].filter(m => !uniqueMembersInBoth.includes(m) && !uniqueMembersOnlyInRef.includes(m));
+
+          const membersInRef = [...uniqueMembersInBoth, ...uniqueMembersOnlyInRef];
+          const membersInComp = [...uniqueMembersInBoth, ...uniqueMembersOnlyInComp];
+          const allMembers = [...new Set([...membersInRef, ...membersInComp])];
+
+          // Mock attendance records
+          const attendanceRef: AirtableRecord[] = membersInRef.map((memberId, i) => ({
+            id: `recAttRef${i.toString().padStart(9, '0')}`,
+            fields: { 'Member': [memberId], 'Service': [referenceServiceId], 'Present?': true },
+            createdTime: new Date().toISOString(),
+          }));
+
+          const attendanceComp: AirtableRecord[] = membersInComp.map((memberId, i) => ({
+            id: `recAttComp${i.toString().padStart(8, '0')}`,
+            fields: { 'Member': [memberId], 'Service': [comparisonServiceId], 'Present?': true },
+            createdTime: new Date().toISOString(),
+          }));
+
+          // Mock service records
+          const refServiceRecord: AirtableRecord = {
+            id: referenceServiceId,
+            fields: { 
+              'Service Name + Date': 'Reference Service',
+              'Attendance': attendanceRef.map(a => a.id),
+            },
+            createdTime: new Date().toISOString(),
+          };
+          const compServiceRecord: AirtableRecord = {
+            id: comparisonServiceId,
+            fields: { 
+              'Service Name + Date': 'Comparison Service',
+              'Attendance': attendanceComp.map(a => a.id),
+            },
+            createdTime: new Date().toISOString(),
+          };
+
+          // Mock member records
+          const memberRecords: AirtableRecord[] = allMembers.map((memberId, i) => ({
+            id: memberId,
+            fields: {
+              'First Name': `First${i}`,
+              'Last Name': `Last${i}`,
+              'Full Name': `First${i} Last${i}`,
+              'Phone': `+1234567890${i}`,
+              'Status': 'Member',
+              'Source': 'Other',
+              'Date First Captured': '2024-01-01',
+              'Follow-up Status': 'Not Started',
+            },
+            createdTime: new Date().toISOString(),
+          }));
+
+          mockAirtableClient.getRecord.mockImplementation(async (table, id) => {
+            if (table === 'Services') {
+              if (id === referenceServiceId) return refServiceRecord;
+              if (id === comparisonServiceId) return compServiceRecord;
+            }
+            if (table === 'Attendance') {
+              const recordRef = attendanceRef.find(a => a.id === id);
+              if (recordRef) return recordRef;
+              const recordComp = attendanceComp.find(a => a.id === id);
+              if (recordComp) return recordComp;
+            }
+            if (table === 'Members') {
+              const member = memberRecords.find(m => m.id === id);
+              if (member) return member;
+            }
+            throw new Error(`Record not found: ${table}/${id}`);
+          });
+
+          mockAirtableClient.findRecords.mockImplementation(async (table, filter) => {
+            if (table === 'Members') {
+              const idMatches = filter.match(/RECORD_ID\(\) = '([^']+)'/g) || [];
+              const requestedIds = idMatches.map(match => {
+                const idMatch = match.match(/RECORD_ID\(\) = '([^']+)'/);
+                return idMatch ? idMatch[1] : null;
+              }).filter((id): id is string => id !== null);
+              
+              return memberRecords.filter(m => requestedIds.includes(m.id));
+            }
+            return [];
+          });
+
+          const result = await queryService.compareTwoServices(referenceServiceId, comparisonServiceId);
+
+          // Verify only members in reference but not in comparison are returned
+          const expectedMissing = uniqueMembersOnlyInRef;
+          const actualMissing = result.missingMembers.map(m => m.id);
+
+          expect(actualMissing.sort()).toEqual(expectedMissing.sort());
+
+          jest.clearAllMocks();
+        }
+      ),
+      { numRuns: 100 }
+    );
+  });
+
+  /**
+   * Property 9.2: Result does NOT contain members only present in comparison service
+   * 
+   * Members who attended only the comparison service should NOT appear in the result.
+   * 
+   * Validates: Requirements 5.3
+   */
+  it('should NOT include members who are only present in comparison service', async () => {
+    await fc.assert(
+      fc.asyncProperty(
+        airtableIdArb, // referenceServiceId
+        airtableIdArb, // comparisonServiceId
+        fc.uniqueArray(airtableIdArb, { minLength: 1, maxLength: 10 }), // membersOnlyInComparison
+        async (referenceServiceId, comparisonServiceId, membersOnlyInComp) => {
+          const uniqueMembersOnlyInComp = [...new Set(membersOnlyInComp)];
+
+          // Mock attendance records - only comparison service has attendees
+          const attendanceComp: AirtableRecord[] = uniqueMembersOnlyInComp.map((memberId, i) => ({
+            id: `recAttComp${i.toString().padStart(8, '0')}`,
+            fields: { 'Member': [memberId], 'Service': [comparisonServiceId], 'Present?': true },
+            createdTime: new Date().toISOString(),
+          }));
+
+          // Mock service records
+          const refServiceRecord: AirtableRecord = {
+            id: referenceServiceId,
+            fields: { 
+              'Service Name + Date': 'Reference Service',
+              'Attendance': [], // Empty - no one attended reference service
+            },
+            createdTime: new Date().toISOString(),
+          };
+          const compServiceRecord: AirtableRecord = {
+            id: comparisonServiceId,
+            fields: { 
+              'Service Name + Date': 'Comparison Service',
+              'Attendance': attendanceComp.map(a => a.id),
+            },
+            createdTime: new Date().toISOString(),
+          };
+
+          // Mock member records
+          const memberRecords: AirtableRecord[] = uniqueMembersOnlyInComp.map((memberId, i) => ({
+            id: memberId,
+            fields: {
+              'First Name': `First${i}`,
+              'Last Name': `Last${i}`,
+              'Full Name': `First${i} Last${i}`,
+              'Phone': `+1234567890${i}`,
+              'Status': 'Member',
+              'Source': 'Other',
+              'Date First Captured': '2024-01-01',
+              'Follow-up Status': 'Not Started',
+            },
+            createdTime: new Date().toISOString(),
+          }));
+
+          mockAirtableClient.getRecord.mockImplementation(async (table, id) => {
+            if (table === 'Services') {
+              if (id === referenceServiceId) return refServiceRecord;
+              if (id === comparisonServiceId) return compServiceRecord;
+            }
+            if (table === 'Attendance') {
+              const recordComp = attendanceComp.find(a => a.id === id);
+              if (recordComp) return recordComp;
+            }
+            if (table === 'Members') {
+              const member = memberRecords.find(m => m.id === id);
+              if (member) return member;
+            }
+            throw new Error(`Record not found: ${table}/${id}`);
+          });
+
+          mockAirtableClient.findRecords.mockImplementation(async (table, filter) => {
+            if (table === 'Members') {
+              const idMatches = filter.match(/RECORD_ID\(\) = '([^']+)'/g) || [];
+              const requestedIds = idMatches.map(match => {
+                const idMatch = match.match(/RECORD_ID\(\) = '([^']+)'/);
+                return idMatch ? idMatch[1] : null;
+              }).filter((id): id is string => id !== null);
+              
+              return memberRecords.filter(m => requestedIds.includes(m.id));
+            }
+            return [];
+          });
+
+          const result = await queryService.compareTwoServices(referenceServiceId, comparisonServiceId);
+
+          // Result should be empty - no one attended reference service
+          expect(result.missingMembers).toHaveLength(0);
+
+          // Verify none of the comparison-only members are in the result
+          const resultIds = result.missingMembers.map(m => m.id);
+          for (const memberId of uniqueMembersOnlyInComp) {
+            expect(resultIds).not.toContain(memberId);
+          }
+
+          jest.clearAllMocks();
+        }
+      ),
+      { numRuns: 100 }
+    );
+  });
+
+  /**
+   * Property 9.3: Response structure uses simplified format
+   * 
+   * The response should use referenceService/comparisonService naming and missingMembers array.
+   * 
+   * Validates: Requirements 5.2, 5.3
+   */
+  it('should return simplified response structure with referenceService, comparisonService, and missingMembers', async () => {
+    await fc.assert(
+      fc.asyncProperty(
+        airtableIdArb, // referenceServiceId
+        airtableIdArb, // comparisonServiceId
+        fc.string({ minLength: 1, maxLength: 50 }), // refServiceName
+        fc.string({ minLength: 1, maxLength: 50 }), // compServiceName
+        async (referenceServiceId, comparisonServiceId, refServiceName, compServiceName) => {
+          // Mock service records
+          const refServiceRecord: AirtableRecord = {
+            id: referenceServiceId,
+            fields: { 
+              'Service Name + Date': refServiceName,
+              'Attendance': [],
+            },
+            createdTime: new Date().toISOString(),
+          };
+          const compServiceRecord: AirtableRecord = {
+            id: comparisonServiceId,
+            fields: { 
+              'Service Name + Date': compServiceName,
+              'Attendance': [],
+            },
+            createdTime: new Date().toISOString(),
+          };
+
+          mockAirtableClient.getRecord.mockImplementation(async (table, id) => {
+            if (table === 'Services') {
+              if (id === referenceServiceId) return refServiceRecord;
+              if (id === comparisonServiceId) return compServiceRecord;
+            }
+            throw new Error(`Record not found: ${table}/${id}`);
+          });
+
+          mockAirtableClient.findRecords.mockResolvedValue([]);
+
+          const result = await queryService.compareTwoServices(referenceServiceId, comparisonServiceId);
+
+          // Verify response structure
+          expect(result).toHaveProperty('referenceService');
+          expect(result).toHaveProperty('comparisonService');
+          expect(result).toHaveProperty('missingMembers');
+          
+          // Verify service info
+          expect(result.referenceService.id).toBe(referenceServiceId);
+          expect(result.referenceService.name).toBe(refServiceName);
+          expect(result.comparisonService.id).toBe(comparisonServiceId);
+          expect(result.comparisonService.name).toBe(compServiceName);
+          
+          // Verify missingMembers is an array
+          expect(Array.isArray(result.missingMembers)).toBe(true);
+
+          jest.clearAllMocks();
+        }
+      ),
+      { numRuns: 100 }
+    );
+  });
+
+  /**
+   * Property 9.4: Members present in both services are NOT in missing members
+   * 
+   * Members who attended both services should not appear in the missing members list.
+   * 
+   * Validates: Requirements 5.2
+   */
+  it('should NOT include members who attended both services', async () => {
+    await fc.assert(
+      fc.asyncProperty(
+        airtableIdArb, // referenceServiceId
+        airtableIdArb, // comparisonServiceId
+        fc.uniqueArray(airtableIdArb, { minLength: 1, maxLength: 10 }), // membersInBothServices
+        async (referenceServiceId, comparisonServiceId, membersInBoth) => {
+          const uniqueMembersInBoth = [...new Set(membersInBoth)];
+
+          // Mock attendance records - same members in both services
+          const attendanceRef: AirtableRecord[] = uniqueMembersInBoth.map((memberId, i) => ({
+            id: `recAttRef${i.toString().padStart(9, '0')}`,
+            fields: { 'Member': [memberId], 'Service': [referenceServiceId], 'Present?': true },
+            createdTime: new Date().toISOString(),
+          }));
+
+          const attendanceComp: AirtableRecord[] = uniqueMembersInBoth.map((memberId, i) => ({
+            id: `recAttComp${i.toString().padStart(8, '0')}`,
+            fields: { 'Member': [memberId], 'Service': [comparisonServiceId], 'Present?': true },
+            createdTime: new Date().toISOString(),
+          }));
+
+          // Mock service records
+          const refServiceRecord: AirtableRecord = {
+            id: referenceServiceId,
+            fields: { 
+              'Service Name + Date': 'Reference Service',
+              'Attendance': attendanceRef.map(a => a.id),
+            },
+            createdTime: new Date().toISOString(),
+          };
+          const compServiceRecord: AirtableRecord = {
+            id: comparisonServiceId,
+            fields: { 
+              'Service Name + Date': 'Comparison Service',
+              'Attendance': attendanceComp.map(a => a.id),
+            },
+            createdTime: new Date().toISOString(),
+          };
+
+          // Mock member records
+          const memberRecords: AirtableRecord[] = uniqueMembersInBoth.map((memberId, i) => ({
+            id: memberId,
+            fields: {
+              'First Name': `First${i}`,
+              'Last Name': `Last${i}`,
+              'Full Name': `First${i} Last${i}`,
+              'Phone': `+1234567890${i}`,
+              'Status': 'Member',
+              'Source': 'Other',
+              'Date First Captured': '2024-01-01',
+              'Follow-up Status': 'Not Started',
+            },
+            createdTime: new Date().toISOString(),
+          }));
+
+          mockAirtableClient.getRecord.mockImplementation(async (table, id) => {
+            if (table === 'Services') {
+              if (id === referenceServiceId) return refServiceRecord;
+              if (id === comparisonServiceId) return compServiceRecord;
+            }
+            if (table === 'Attendance') {
+              const recordRef = attendanceRef.find(a => a.id === id);
+              if (recordRef) return recordRef;
+              const recordComp = attendanceComp.find(a => a.id === id);
+              if (recordComp) return recordComp;
+            }
+            if (table === 'Members') {
+              const member = memberRecords.find(m => m.id === id);
+              if (member) return member;
+            }
+            throw new Error(`Record not found: ${table}/${id}`);
+          });
+
+          mockAirtableClient.findRecords.mockImplementation(async (table, filter) => {
+            if (table === 'Members') {
+              const idMatches = filter.match(/RECORD_ID\(\) = '([^']+)'/g) || [];
+              const requestedIds = idMatches.map(match => {
+                const idMatch = match.match(/RECORD_ID\(\) = '([^']+)'/);
+                return idMatch ? idMatch[1] : null;
+              }).filter((id): id is string => id !== null);
+              
+              return memberRecords.filter(m => requestedIds.includes(m.id));
+            }
+            return [];
+          });
+
+          const result = await queryService.compareTwoServices(referenceServiceId, comparisonServiceId);
+
+          // Result should be empty - all members attended both services
+          expect(result.missingMembers).toHaveLength(0);
+
+          jest.clearAllMocks();
+        }
+      ),
+      { numRuns: 100 }
+    );
   });
 });

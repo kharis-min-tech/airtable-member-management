@@ -1,4 +1,5 @@
 import { useState, useCallback } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../hooks/useAuth';
 import { useApi } from '../../hooks/useApi';
 import { useLiveMode } from '../../hooks/useLiveMode';
@@ -10,12 +11,15 @@ import {
   AttendanceBreakdownChart,
   SoulsAssignedTable,
   FollowUpCommentsTable,
+  AttendanceDrillDownModal,
 } from '../../components/dashboard';
+import type { AttendanceCategory, DrillDownMember } from '../../components/dashboard';
 import { DataRefreshControls } from '../../components/common';
 import type { Service } from '../../types';
 
 function PastorDashboard() {
   const { user } = useAuth();
+  const navigate = useNavigate();
 
   // State for selections
   const [selectedServiceId, setSelectedServiceId] = useState<string | null>(null);
@@ -29,6 +33,21 @@ function PastorDashboard() {
       endDate: today.toISOString().split('T')[0],
     };
   });
+
+  // Drill-down modal state - Requirements: 3.1, 3.2
+  const [drillDownModal, setDrillDownModal] = useState<{
+    isOpen: boolean;
+    category: AttendanceCategory;
+    categoryLabel: string;
+    departmentId?: string;
+  }>({
+    isOpen: false,
+    category: 'firstTimers',
+    categoryLabel: '',
+    departmentId: undefined,
+  });
+  const [drillDownMembers, setDrillDownMembers] = useState<DrillDownMember[]>([]);
+  const [isDrillDownLoading, setIsDrillDownLoading] = useState(false);
 
   // Fetch services
   const {
@@ -124,6 +143,62 @@ function PastorDashboard() {
     []
   );
 
+  /**
+   * Handle category click for drill-down
+   * Requirements: 3.1, 3.2
+   */
+  const handleCategoryClick = useCallback(
+    async (category: AttendanceCategory, categoryLabel: string, departmentId?: string) => {
+      if (!selectedServiceId) return;
+
+      setDrillDownModal({
+        isOpen: true,
+        category,
+        categoryLabel,
+        departmentId,
+      });
+      setIsDrillDownLoading(true);
+      setDrillDownMembers([]);
+
+      try {
+        const response = await churchApi.attendance.getAttendeesByCategory(
+          selectedServiceId,
+          category,
+          departmentId
+        );
+        setDrillDownMembers(response.data || []);
+      } catch (error) {
+        console.error('Failed to fetch attendees by category:', error);
+        setDrillDownMembers([]);
+      } finally {
+        setIsDrillDownLoading(false);
+      }
+    },
+    [selectedServiceId]
+  );
+
+  /**
+   * Handle closing the drill-down modal
+   * Requirements: 3.6
+   */
+  const handleCloseDrillDown = useCallback(() => {
+    setDrillDownModal(prev => ({ ...prev, isOpen: false }));
+  }, []);
+
+  /**
+   * Handle member click in drill-down modal
+   * Requirements: 3.4
+   */
+  const handleMemberClick = useCallback(
+    (memberId: string) => {
+      navigate(`/members/${memberId}`);
+    },
+    [navigate]
+  );
+
+  // Get selected service name for modal
+  const selectedServiceName = services?.find(s => s.id === selectedServiceId)?.serviceName || '';
+
   // Format last updated time
   const isAnyLoading = isLoadingServices || isLoadingKPIs || isLoadingEvangelism || isLoadingSouls || isLoadingComments;
 
@@ -167,7 +242,12 @@ function PastorDashboard() {
 
       {/* Charts and Stats Row */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <AttendanceBreakdownChart kpis={kpis} isLoading={isLoadingKPIs} />
+        <AttendanceBreakdownChart 
+          kpis={kpis} 
+          isLoading={isLoadingKPIs}
+          serviceId={selectedServiceId}
+          onCategoryClick={handleCategoryClick}
+        />
         <EvangelismStatsCard
           stats={evangelismStats}
           period={evangelismPeriod}
@@ -187,6 +267,19 @@ function PastorDashboard() {
           onDateRangeChange={handleCommentsDateRangeChange}
         />
       </div>
+
+      {/* Attendance Drill-Down Modal - Requirements: 3.2, 3.3, 3.4, 3.5, 3.6 */}
+      <AttendanceDrillDownModal
+        isOpen={drillDownModal.isOpen}
+        onClose={handleCloseDrillDown}
+        category={drillDownModal.category}
+        categoryLabel={drillDownModal.categoryLabel}
+        serviceId={selectedServiceId || ''}
+        serviceName={selectedServiceName}
+        members={drillDownMembers}
+        isLoading={isDrillDownLoading}
+        onMemberClick={handleMemberClick}
+      />
     </div>
   );
 }

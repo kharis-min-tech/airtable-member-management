@@ -1,4 +1,4 @@
-import { useMemo } from 'react';
+import { useMemo, useCallback } from 'react';
 import {
   BarChart,
   Bar,
@@ -11,10 +11,27 @@ import {
   Legend,
 } from 'recharts';
 import type { ServiceKPIs } from '../../types';
+import type { AttendanceCategory } from './AttendanceDrillDownModal';
+
+/**
+ * Chart data item with category information for drill-down
+ */
+interface ChartDataItem {
+  name: string;
+  count: number;
+  category: AttendanceCategory;
+  departmentId?: string;
+}
 
 interface AttendanceBreakdownChartProps {
   kpis: ServiceKPIs | null;
   isLoading?: boolean;
+  serviceId?: string | null;
+  /**
+   * Callback when a category bar is clicked for drill-down
+   * Requirements: 3.1
+   */
+  onCategoryClick?: (category: AttendanceCategory, categoryLabel: string, departmentId?: string) => void;
 }
 
 const COLORS = {
@@ -25,14 +42,14 @@ const COLORS = {
   'Other': '#6B7280', // gray-500
 };
 
-function AttendanceBreakdownChart({ kpis, isLoading = false }: AttendanceBreakdownChartProps) {
-  const chartData = useMemo(() => {
+function AttendanceBreakdownChart({ kpis, isLoading = false, serviceId, onCategoryClick }: AttendanceBreakdownChartProps) {
+  const chartData = useMemo((): ChartDataItem[] => {
     if (!kpis) return [];
 
-    // Build chart data from KPIs
-    const data = [
-      { name: 'First Timers', count: kpis.firstTimersCount },
-      { name: 'Returners', count: kpis.returnersCount },
+    // Build chart data from KPIs with category information for drill-down
+    const data: ChartDataItem[] = [
+      { name: 'First Timers', count: kpis.firstTimersCount, category: 'firstTimers' },
+      { name: 'Returners', count: kpis.returnersCount, category: 'returners' },
     ];
 
     // Add department breakdown
@@ -41,12 +58,24 @@ function AttendanceBreakdownChart({ kpis, isLoading = false }: AttendanceBreakdo
         data.push({
           name: dept.department,
           count: dept.count,
+          category: 'department',
+          departmentId: dept.department, // Using department name as ID for now
         });
       });
     }
 
     return data;
   }, [kpis]);
+
+  /**
+   * Handle bar click for drill-down
+   * Requirements: 3.1 - Click on any category to drill down
+   */
+  const handleBarClick = useCallback((data: ChartDataItem) => {
+    if (onCategoryClick && serviceId) {
+      onCategoryClick(data.category, data.name, data.departmentId);
+    }
+  }, [onCategoryClick, serviceId]);
 
   const getBarColor = (name: string) => {
     if (name in COLORS) {
@@ -83,7 +112,12 @@ function AttendanceBreakdownChart({ kpis, isLoading = false }: AttendanceBreakdo
 
   return (
     <div className="bg-white rounded-lg shadow p-6">
-      <h2 className="text-lg font-semibold text-gray-800 mb-4">Attendance Breakdown</h2>
+      <div className="flex items-center justify-between mb-4">
+        <h2 className="text-lg font-semibold text-gray-800">Attendance Breakdown</h2>
+        {onCategoryClick && serviceId && (
+          <span className="text-xs text-gray-400">Click bars to view members</span>
+        )}
+      </div>
       <div className="h-64">
         <ResponsiveContainer width="100%" height="100%">
           <BarChart
@@ -113,7 +147,17 @@ function AttendanceBreakdownChart({ kpis, isLoading = false }: AttendanceBreakdo
               formatter={(value) => [value, 'Count']}
             />
             <Legend />
-            <Bar dataKey="count" name="Attendees" radius={[4, 4, 0, 0]}>
+            <Bar 
+              dataKey="count" 
+              name="Attendees" 
+              radius={[4, 4, 0, 0]}
+              cursor={onCategoryClick && serviceId ? 'pointer' : 'default'}
+              onClick={(data) => {
+                if (data && data.payload) {
+                  handleBarClick(data.payload as ChartDataItem);
+                }
+              }}
+            >
               {chartData.map((entry, index) => (
                 <Cell key={`cell-${index}`} fill={getBarColor(entry.name)} />
               ))}

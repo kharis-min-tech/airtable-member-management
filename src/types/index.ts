@@ -155,6 +155,17 @@ export interface ServiceComparison {
   presentInBMissingInA: Member[];
 }
 
+/**
+ * Simplified service comparison - unidirectional
+ * Only returns members present in reference service (A) but missing from comparison service (B)
+ * Requirements: 5.2, 5.3
+ */
+export interface SimplifiedServiceComparison {
+  referenceService: { id: string; name: string };
+  comparisonService: { id: string; name: string };
+  missingMembers: Member[];
+}
+
 // Airtable Record Interface
 export interface AirtableRecord {
   id: string;

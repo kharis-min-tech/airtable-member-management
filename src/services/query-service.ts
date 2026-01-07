@@ -15,6 +15,7 @@ import {
   AssignmentStatus,
   ServiceKPIs,
   ServiceComparison,
+  SimplifiedServiceComparison,
   MemberJourney,
   TimelineEvent,
   JourneySummary,
@@ -55,6 +56,22 @@ export interface AttendanceBreakdown {
   returners: number;
   evangelismContacts: number;
   departments: { departmentId: string; departmentName: string; count: number }[];
+}
+
+/**
+ * Attendance category for drill-down
+ */
+export type AttendanceCategory = 'firstTimers' | 'returners' | 'evangelismContacts' | 'department';
+
+/**
+ * Member details for drill-down view
+ */
+export interface DrillDownMember {
+  id: string;
+  fullName: string;
+  phone?: string;
+  email?: string;
+  status: string;
 }
 
 /**
@@ -449,6 +466,94 @@ export class QueryService {
   }
 
   /**
+   * Get attendees by category for drill-down view
+   * Requirements: 3.2, 3.3
+   * 
+   * @param serviceId - The service ID to get attendees for
+   * @param category - The attendance category (firstTimers, returners, evangelismContacts, department)
+   * @param departmentId - Optional department ID when category is 'department'
+   * @returns Array of DrillDownMember with id, fullName, phone, email, status
+   */
+  async getAttendeesByCategory(
+    serviceId: string,
+    category: AttendanceCategory,
+    departmentId?: string
+  ): Promise<DrillDownMember[]> {
+    if (!serviceId) {
+      throw new Error('Service ID is required');
+    }
+
+    if (category === 'department' && !departmentId) {
+      throw new Error('Department ID is required when category is department');
+    }
+
+    // Get the service record to access linked attendance records
+    const serviceRecord = await this.airtableClient.getRecord(AIRTABLE_TABLES.SERVICES, serviceId);
+    const attendanceIds = (serviceRecord.fields['Attendance'] as string[]) || [];
+
+    // Fetch attendance records that are marked present
+    const attendanceRecords: AirtableRecord[] = [];
+    for (const attendanceId of attendanceIds) {
+      try {
+        const record = await this.airtableClient.getRecord(AIRTABLE_TABLES.ATTENDANCE, attendanceId);
+        if (record.fields['Present?'] === true) {
+          attendanceRecords.push(record);
+        }
+      } catch {
+        // Skip if record not found
+      }
+    }
+
+    const memberIds = attendanceRecords
+      .map(r => this.extractLinkedRecordId(r.fields['Member']))
+      .filter((id): id is string => !!id);
+
+    const uniqueMemberIds = [...new Set(memberIds)];
+    const memberRecords = await this.getMembersByIds(uniqueMemberIds);
+
+    // Filter members by category
+    let filteredMembers: AirtableRecord[] = [];
+
+    if (category === 'firstTimers') {
+      filteredMembers = memberRecords.filter(
+        m => (m.fields['Status'] as MemberStatus) === 'First Timer'
+      );
+    } else if (category === 'returners') {
+      filteredMembers = memberRecords.filter(
+        m => (m.fields['Status'] as MemberStatus) === 'Returner'
+      );
+    } else if (category === 'evangelismContacts') {
+      filteredMembers = memberRecords.filter(
+        m => (m.fields['Status'] as MemberStatus) === 'Evangelism Contact'
+      );
+    } else if (category === 'department' && departmentId) {
+      filteredMembers = memberRecords.filter(m => {
+        const memberDepts = m.fields['Member Departments'] as string[] | undefined;
+        return memberDepts && memberDepts.includes(departmentId);
+      });
+    }
+
+    // Map to DrillDownMember format
+    return filteredMembers.map(m => this.mapRecordToDrillDownMember(m));
+  }
+
+  /**
+   * Map Airtable record to DrillDownMember interface
+   */
+  private mapRecordToDrillDownMember(record: AirtableRecord): DrillDownMember {
+    const fields = record.fields;
+
+    return {
+      id: record.id,
+      fullName: (fields['Full Name'] as string) ||
+        `${(fields['First Name'] as string) || ''} ${(fields['Last Name'] as string) || ''}`.trim(),
+      phone: (fields['Phone'] as string) || undefined,
+      email: (fields['Email'] as string) || undefined,
+      status: (fields['Status'] as string) || 'Unknown',
+    };
+  }
+
+  /**
    * Get department attendance with percentage calculation
    * Requirements: 16.4, 16.5, 16.6
    * 
@@ -545,10 +650,11 @@ export class QueryService {
   // ============================================
 
   /**
-   * Compare attendance between two services
+   * Compare attendance between two services (bidirectional - legacy)
    * Requirements: 17.1, 17.2, 17.3, 17.4, 17.5
+   * @deprecated Use compareTwoServicesSimplified for unidirectional comparison
    */
-  async compareTwoServices(serviceAId: string, serviceBId: string): Promise<ServiceComparison> {
+  async compareTwoServicesBidirectional(serviceAId: string, serviceBId: string): Promise<ServiceComparison> {
     if (!serviceAId || !serviceBId) {
       throw new Error('Both service IDs are required');
     }
@@ -624,6 +730,83 @@ export class QueryService {
       serviceB,
       presentInAMissingInB: membersInANotB.map(r => this.mapRecordToMember(r)),
       presentInBMissingInA: membersInBNotA.map(r => this.mapRecordToMember(r)),
+    };
+  }
+
+  /**
+   * Compare attendance between two services (unidirectional - simplified)
+   * Returns only members present in reference service (A) but missing from comparison service (B)
+   * Requirements: 5.2, 5.3
+   */
+  async compareTwoServices(referenceServiceId: string, comparisonServiceId: string): Promise<SimplifiedServiceComparison> {
+    if (!referenceServiceId || !comparisonServiceId) {
+      throw new Error('Both service IDs are required');
+    }
+
+    // Get service info and linked attendance records
+    const [referenceServiceRecord, comparisonServiceRecord] = await Promise.all([
+      this.airtableClient.getRecord(AIRTABLE_TABLES.SERVICES, referenceServiceId),
+      this.airtableClient.getRecord(AIRTABLE_TABLES.SERVICES, comparisonServiceId),
+    ]);
+
+    const referenceService = {
+      id: referenceServiceId,
+      name: (referenceServiceRecord.fields['Service Name + Date'] as string) || referenceServiceId,
+    };
+
+    const comparisonService = {
+      id: comparisonServiceId,
+      name: (comparisonServiceRecord.fields['Service Name + Date'] as string) || comparisonServiceId,
+    };
+
+    // Get attendance IDs from service records
+    const attendanceIdsRef = (referenceServiceRecord.fields['Attendance'] as string[]) || [];
+    const attendanceIdsComp = (comparisonServiceRecord.fields['Attendance'] as string[]) || [];
+
+    // Fetch attendance records for reference service
+    const attendanceRef: AirtableRecord[] = [];
+    for (const id of attendanceIdsRef) {
+      try {
+        const record = await this.airtableClient.getRecord(AIRTABLE_TABLES.ATTENDANCE, id);
+        if (record.fields['Present?'] === true) {
+          attendanceRef.push(record);
+        }
+      } catch { /* skip */ }
+    }
+
+    // Fetch attendance records for comparison service
+    const attendanceComp: AirtableRecord[] = [];
+    for (const id of attendanceIdsComp) {
+      try {
+        const record = await this.airtableClient.getRecord(AIRTABLE_TABLES.ATTENDANCE, id);
+        if (record.fields['Present?'] === true) {
+          attendanceComp.push(record);
+        }
+      } catch { /* skip */ }
+    }
+
+    const memberIdsRef = new Set(
+      attendanceRef
+        .map(r => this.extractLinkedRecordId(r.fields['Member']))
+        .filter((id): id is string => !!id)
+    );
+
+    const memberIdsComp = new Set(
+      attendanceComp
+        .map(r => this.extractLinkedRecordId(r.fields['Member']))
+        .filter((id): id is string => !!id)
+    );
+
+    // Find members in reference service but not in comparison service (unidirectional)
+    const missingMemberIds = [...memberIdsRef].filter(id => !memberIdsComp.has(id));
+
+    // Get member details
+    const missingMemberRecords = await this.getMembersByIds(missingMemberIds);
+
+    return {
+      referenceService,
+      comparisonService,
+      missingMembers: missingMemberRecords.map(r => this.mapRecordToMember(r)),
     };
   }
 
@@ -1110,21 +1293,110 @@ export class QueryService {
   }
 
   /**
-   * Get recent services
+   * Get recent services with optional limit
+   * Requirements: 2.1, 2.5
+   * @param limit - Optional limit on number of services returned. If undefined, returns all services.
    */
-  async getRecentServices(limit: number = 10): Promise<{
+  async getRecentServices(limit?: number): Promise<{
     id: string;
     serviceName: string;
     serviceDate: Date | null;
     serviceCode: string;
   }[]> {
+    const options: { sort: { field: string; direction: 'asc' | 'desc' }[]; maxRecords?: number } = {
+      sort: [{ field: 'Service Date', direction: 'desc' }],
+    };
+    
+    if (limit !== undefined) {
+      options.maxRecords = limit;
+    }
+
     const records = await this.airtableClient.findRecords(
       AIRTABLE_TABLES.SERVICES,
       'TRUE()',
-      { 
-        sort: [{ field: 'Service Date', direction: 'desc' }],
-        maxRecords: limit 
-      }
+      options
+    );
+
+    return records.map(record => ({
+      id: record.id,
+      serviceName: (record.fields['Service Name + Date'] as string) || '',
+      serviceDate: this.parseDate(record.fields['Service Date'] as string),
+      serviceCode: (record.fields['Service Type'] as string) || '',
+    }));
+  }
+
+  /**
+   * Get all services without any limit
+   * Requirements: 2.1, 2.5
+   * Services are sorted by date in descending order (most recent first)
+   */
+  async getAllServices(): Promise<{
+    id: string;
+    serviceName: string;
+    serviceDate: Date | null;
+    serviceCode: string;
+  }[]> {
+    return this.getRecentServices(undefined);
+  }
+
+  /**
+   * Get services within a date range
+   * Requirements: 2.3
+   * @param startDate - Start date of the range (inclusive)
+   * @param endDate - End date of the range (inclusive)
+   */
+  async getServicesByDateRange(startDate: Date, endDate: Date): Promise<{
+    id: string;
+    serviceName: string;
+    serviceDate: Date | null;
+    serviceCode: string;
+  }[]> {
+    const filterFormula = `AND(
+      {Service Date} >= '${this.formatDate(startDate)}',
+      {Service Date} <= '${this.formatDate(endDate)}'
+    )`;
+
+    const records = await this.airtableClient.findRecords(
+      AIRTABLE_TABLES.SERVICES,
+      filterFormula,
+      { sort: [{ field: 'Service Date', direction: 'desc' }] }
+    );
+
+    return records.map(record => ({
+      id: record.id,
+      serviceName: (record.fields['Service Name + Date'] as string) || '',
+      serviceDate: this.parseDate(record.fields['Service Date'] as string),
+      serviceCode: (record.fields['Service Type'] as string) || '',
+    }));
+  }
+
+  /**
+   * Search services by name or date
+   * Requirements: 2.4
+   * @param query - Search query string (case-insensitive)
+   */
+  async searchServices(query: string): Promise<{
+    id: string;
+    serviceName: string;
+    serviceDate: Date | null;
+    serviceCode: string;
+  }[]> {
+    if (!query || query.trim().length === 0) {
+      return [];
+    }
+
+    const searchTerm = query.trim().toLowerCase();
+
+    // Search by service name or date
+    const filterFormula = `OR(
+      FIND('${searchTerm}', LOWER({Service Name + Date})),
+      FIND('${searchTerm}', {Service Date})
+    )`;
+
+    const records = await this.airtableClient.findRecords(
+      AIRTABLE_TABLES.SERVICES,
+      filterFormula,
+      { sort: [{ field: 'Service Date', direction: 'desc' }] }
     );
 
     return records.map(record => ({

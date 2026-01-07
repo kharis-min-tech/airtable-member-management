@@ -72,6 +72,31 @@ export const churchApi = {
       apiClient.get<ServiceComparison>(
         `/query/attendance?type=compare&serviceA=${serviceAId}&serviceB=${serviceBId}`
       ),
+
+    /**
+     * Get attendees by category for drill-down view
+     * Requirements: 3.2, 3.3
+     * @param serviceId - The service ID to get attendees for
+     * @param category - The attendance category (firstTimers, returners, evangelismContacts, department)
+     * @param departmentId - Optional department ID when category is 'department'
+     */
+    getAttendeesByCategory: (
+      serviceId: string, 
+      category: 'firstTimers' | 'returners' | 'evangelismContacts' | 'department',
+      departmentId?: string
+    ) => {
+      const params = new URLSearchParams({
+        type: 'attendees-by-category',
+        serviceId,
+        category,
+      });
+      if (departmentId) {
+        params.append('departmentId', departmentId);
+      }
+      return apiClient.get<{ id: string; fullName: string; phone?: string; email?: string; status: string }[]>(
+        `/query/attendance?${params.toString()}`
+      );
+    },
   },
 
   // Member endpoints
@@ -98,15 +123,52 @@ export const churchApi = {
   // Service endpoints
   services: {
     /**
-     * Get all services
+     * Get all services without limit
+     * Returns all services sorted by date descending
+     * Requirements: 2.1
      */
     getAll: () => apiClient.get<Service[]>('/query/dashboard?type=services'),
 
     /**
-     * Get recent services
+     * Get recent services with optional limit
+     * If limit is undefined, returns all services
+     * Requirements: 2.1, 2.2
      */
-    getRecent: (limit: number = 10) =>
-      apiClient.get<Service[]>(`/query/dashboard?type=services&limit=${limit}`),
+    getRecent: (limit?: number) => {
+      const params = new URLSearchParams({ type: 'services' });
+      if (limit !== undefined) {
+        params.append('limit', limit.toString());
+      }
+      return apiClient.get<Service[]>(`/query/dashboard?${params.toString()}`);
+    },
+
+    /**
+     * Get services within a date range
+     * Requirements: 2.3
+     * @param startDate - Start date of the range (inclusive)
+     * @param endDate - End date of the range (inclusive)
+     */
+    getByDateRange: (startDate: string, endDate: string) => {
+      const params = new URLSearchParams({
+        type: 'services',
+        startDate,
+        endDate,
+      });
+      return apiClient.get<Service[]>(`/query/dashboard?${params.toString()}`);
+    },
+
+    /**
+     * Search services by name or date
+     * Requirements: 2.4
+     * @param query - Search query string (case-insensitive)
+     */
+    search: (query: string) => {
+      const params = new URLSearchParams({
+        type: 'services',
+        search: query,
+      });
+      return apiClient.get<Service[]>(`/query/dashboard?${params.toString()}`);
+    },
 
     /**
      * Get service by ID

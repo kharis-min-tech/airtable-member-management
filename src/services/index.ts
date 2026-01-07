@@ -22,6 +22,8 @@ export type {
   EvangelismStats,
   FollowUpSummary,
   AttendanceBreakdown,
+  AttendanceCategory,
+  DrillDownMember,
   DepartmentAttendance,
   FollowUpInteraction,
   EvangelismRecord,

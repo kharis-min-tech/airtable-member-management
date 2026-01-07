@@ -7,6 +7,7 @@ import PublicRoute from '../components/PublicRoute';
 // Layout components
 const MainLayout = lazy(() => import('../layouts/MainLayout'));
 const AuthLayout = lazy(() => import('../layouts/AuthLayout'));
+const DemoLayout = lazy(() => import('../layouts/DemoLayout'));
 
 // Auth pages
 const LoginPage = lazy(() => import('../pages/auth/LoginPage'));
@@ -19,6 +20,12 @@ const MissingMembers = lazy(() => import('../pages/attendance/MissingMembers'));
 const MemberJourney = lazy(() => import('../pages/members/MemberJourney'));
 const AdminViews = lazy(() => import('../pages/admin/AdminViews'));
 
+// Demo pages
+const DemoAttendanceExplorer = lazy(() => import('../pages/demo/DemoAttendanceExplorer'));
+const DemoMissingMembers = lazy(() => import('../pages/demo/DemoMissingMembers'));
+const DemoMemberJourney = lazy(() => import('../pages/demo/DemoMemberJourney'));
+const DemoAdminViews = lazy(() => import('../pages/demo/DemoAdminViews'));
+
 // Error pages
 const UnauthorizedPage = lazy(() => import('../pages/UnauthorizedPage'));
 const NotFoundPage = lazy(() => import('../pages/NotFoundPage'));
@@ -26,13 +33,67 @@ const NotFoundPage = lazy(() => import('../pages/NotFoundPage'));
 // Router configuration
 export const router = createBrowserRouter([
   {
-    // Demo route (no auth required)
+    // Demo routes (no auth required) with DemoLayout
     path: '/demo',
     element: (
       <Suspense fallback={<LoadingSpinner />}>
-        <DemoDashboard />
+        <DemoLayout />
       </Suspense>
     ),
+    children: [
+      {
+        index: true,
+        element: <Navigate to="/demo/dashboard" replace />,
+      },
+      {
+        path: 'dashboard',
+        element: (
+          <Suspense fallback={<LoadingSpinner />}>
+            <DemoDashboard />
+          </Suspense>
+        ),
+      },
+      {
+        path: 'attendance',
+        element: (
+          <Suspense fallback={<LoadingSpinner />}>
+            <DemoAttendanceExplorer />
+          </Suspense>
+        ),
+      },
+      {
+        path: 'missing-members',
+        element: (
+          <Suspense fallback={<LoadingSpinner />}>
+            <DemoMissingMembers />
+          </Suspense>
+        ),
+      },
+      {
+        path: 'members/:memberId',
+        element: (
+          <Suspense fallback={<LoadingSpinner />}>
+            <DemoMemberJourney />
+          </Suspense>
+        ),
+      },
+      {
+        path: 'members',
+        element: (
+          <Suspense fallback={<LoadingSpinner />}>
+            <DemoMemberJourney />
+          </Suspense>
+        ),
+      },
+      {
+        path: 'admin',
+        element: (
+          <Suspense fallback={<LoadingSpinner />}>
+            <DemoAdminViews />
+          </Suspense>
+        ),
+      },
+    ],
   },
   {
     // Public routes (auth)
