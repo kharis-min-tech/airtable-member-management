@@ -1,4 +1,9 @@
 import type { Member, Service } from '../../types';
+import { Table, TableHeader, TableBody, TableRow, TableCell } from '../tailus-ui/Table';
+import { Card } from '../tailus-ui/Card';
+import { LoadingSpinner } from '../LoadingSpinner';
+import { EmptyState } from '../common/EmptyState';
+import { Users } from 'lucide-react';
 
 interface MissingMembersListProps {
   title: string;
@@ -26,122 +31,100 @@ function MissingMembersList({
 
   if (isLoading) {
     return (
-      <div className="bg-white rounded-lg shadow p-6">
-        <h3 className="text-lg font-semibold text-gray-800 mb-4">{title}</h3>
+      <Card className="p-6">
+        <h3 className="text-lg font-semibold text-text-primary-light dark:text-text-primary-dark mb-4">{title}</h3>
         <div className="h-64 flex items-center justify-center">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+          <LoadingSpinner text="Loading members..." />
         </div>
-      </div>
+      </Card>
     );
   }
 
   if (!serviceFrom || !serviceTo) {
     return (
-      <div className="bg-white rounded-lg shadow p-6">
-        <h3 className="text-lg font-semibold text-gray-800 mb-4">{title}</h3>
-        <div className="h-64 flex items-center justify-center text-gray-400">
-          Select both services to see comparison
-        </div>
-      </div>
+      <Card className="p-6">
+        <h3 className="text-lg font-semibold text-text-primary-light dark:text-text-primary-dark mb-4">{title}</h3>
+        <EmptyState
+          icon={Users}
+          title="Select services to compare"
+          description="Select both services to see comparison"
+        />
+      </Card>
     );
   }
 
   return (
-    <div className="bg-white rounded-lg shadow p-6">
+    <Card className="p-6">
       <div className="flex justify-between items-start mb-4">
         <div>
-          <h3 className="text-lg font-semibold text-gray-800">{title}</h3>
-          <p className="text-sm text-gray-500">
+          <h3 className="text-lg font-semibold text-text-primary-light dark:text-text-primary-dark">{title}</h3>
+          <p className="text-sm text-text-secondary-light dark:text-text-secondary-dark">
             Present in {formatServiceName(serviceFrom)}, missing from{' '}
             {formatServiceName(serviceTo)}
           </p>
         </div>
-        <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+        <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 dark:bg-blue-900/50 text-blue-800 dark:text-blue-300">
           {members.length} member{members.length !== 1 ? 's' : ''}
         </span>
       </div>
 
       {members.length === 0 ? (
-        <div className="h-48 flex items-center justify-center text-gray-400">
-          No missing members found
-        </div>
+        <EmptyState
+          icon={Users}
+          title="No missing members"
+          description="No missing members found for this comparison"
+        />
       ) : (
-        <div className="overflow-x-auto">
-          <table className="min-w-full divide-y divide-gray-200">
-            <thead className="bg-gray-50">
-              <tr>
-                <th
-                  scope="col"
-                  className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
-                >
-                  Name
-                </th>
-                <th
-                  scope="col"
-                  className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
-                >
-                  Phone
-                </th>
-                <th
-                  scope="col"
-                  className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
-                >
-                  Status
-                </th>
-                <th
-                  scope="col"
-                  className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
-                >
-                  Follow-up Owner
-                </th>
-              </tr>
-            </thead>
-            <tbody className="bg-white divide-y divide-gray-200">
-              {members.map((member) => (
-                <tr key={member.id} className="hover:bg-gray-50">
-                  <td className="px-4 py-3 whitespace-nowrap">
-                    <div className="text-sm font-medium text-gray-900">{member.fullName}</div>
-                    {member.email && (
-                      <div className="text-xs text-gray-500">{member.email}</div>
-                    )}
-                  </td>
-                  <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-500">
-                    {member.phone || '-'}
-                  </td>
-                  <td className="px-4 py-3 whitespace-nowrap">
-                    <span
-                      className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${getStatusColor(
-                        member.status
-                      )}`}
-                    >
-                      {member.status}
-                    </span>
-                  </td>
-                  <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-500">
-                    {member.followUpOwner || '-'}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableCell header>Name</TableCell>
+              <TableCell header>Phone</TableCell>
+              <TableCell header>Status</TableCell>
+              <TableCell header>Follow-up Owner</TableCell>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {members.map((member) => (
+              <TableRow key={member.id}>
+                <TableCell>
+                  <div className="text-sm font-medium text-text-primary-light dark:text-text-primary-dark">{member.fullName}</div>
+                  {member.email && (
+                    <div className="text-xs text-text-secondary-light dark:text-text-secondary-dark">{member.email}</div>
+                  )}
+                </TableCell>
+                <TableCell>{member.phone || '-'}</TableCell>
+                <TableCell>
+                  <span
+                    className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${getStatusColor(
+                      member.status
+                    )}`}
+                  >
+                    {member.status}
+                  </span>
+                </TableCell>
+                <TableCell>{member.followUpOwner || '-'}</TableCell>
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>
       )}
-    </div>
+    </Card>
   );
 }
 
 function getStatusColor(status: string): string {
   switch (status) {
     case 'Member':
-      return 'bg-green-100 text-green-800';
+      return 'bg-green-100 dark:bg-green-900/50 text-green-800 dark:text-green-300';
     case 'First Timer':
-      return 'bg-blue-100 text-blue-800';
+      return 'bg-blue-100 dark:bg-blue-900/50 text-blue-800 dark:text-blue-300';
     case 'Returner':
-      return 'bg-purple-100 text-purple-800';
+      return 'bg-purple-100 dark:bg-purple-900/50 text-purple-800 dark:text-purple-300';
     case 'Evangelism Contact':
-      return 'bg-yellow-100 text-yellow-800';
+      return 'bg-yellow-100 dark:bg-yellow-900/50 text-yellow-800 dark:text-yellow-300';
     default:
-      return 'bg-gray-100 text-gray-800';
+      return 'bg-gray-100 dark:bg-gray-700 text-gray-800 dark:text-gray-300';
   }
 }
 

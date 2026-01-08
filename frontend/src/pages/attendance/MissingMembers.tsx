@@ -4,6 +4,9 @@ import { useLiveMode } from '../../hooks/useLiveMode';
 import { churchApi } from '../../services/church-api';
 import { DualServiceSelector, MissingMembersList } from '../../components/attendance';
 import { DataRefreshControls } from '../../components/common';
+import { Card } from '../../components/tailus-ui/Card';
+import { Select } from '../../components/tailus-ui/Select';
+import { Button } from '../../components/tailus-ui/Button';
 import type { Service, ServiceComparison, Member } from '../../types';
 
 function MissingMembers() {
@@ -136,8 +139,8 @@ function MissingMembers() {
       {/* Page header */}
       <div className="flex flex-wrap justify-between items-center gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-gray-800">Missing Members</h1>
-          <p className="text-gray-600">
+          <h1 className="text-2xl font-bold text-text-primary-light dark:text-text-primary-dark">Missing Members</h1>
+          <p className="text-text-secondary-light dark:text-text-secondary-dark">
             Find members who attended one service but missed another
           </p>
         </div>
@@ -167,41 +170,39 @@ function MissingMembers() {
 
       {/* Filters */}
       {canCompare && (
-        <div className="bg-white rounded-lg shadow p-4">
-          <div className="flex flex-wrap items-center gap-4">
-            <div className="flex items-center gap-2">
-              <label htmlFor="status-filter" className="text-sm font-medium text-gray-700">
-                Filter by Status:
-              </label>
-              <select
+        <Card className="p-4">
+          <div className="flex flex-wrap items-end gap-4">
+            <div className="w-48">
+              <Select
                 id="status-filter"
+                label="Filter by Status"
                 value={statusFilter}
                 onChange={(e) => setStatusFilter(e.target.value)}
-                className="px-3 py-1.5 bg-white border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm"
-              >
-                <option value="">All Statuses</option>
-                <option value="Member">Member</option>
-                <option value="First Timer">First Timer</option>
-                <option value="Returner">Returner</option>
-                <option value="Evangelism Contact">Evangelism Contact</option>
-              </select>
+                placeholder="All Statuses"
+                options={[
+                  { value: '', label: 'All Statuses' },
+                  { value: 'Member', label: 'Member' },
+                  { value: 'First Timer', label: 'First Timer' },
+                  { value: 'Returner', label: 'Returner' },
+                  { value: 'Evangelism Contact', label: 'Evangelism Contact' },
+                ]}
+              />
             </div>
             {/* Department filter placeholder - would need department data */}
-            <div className="flex items-center gap-2">
-              <label htmlFor="department-filter" className="text-sm font-medium text-gray-700">
-                Filter by Department:
-              </label>
-              <select
+            <div className="w-48">
+              <Select
                 id="department-filter"
+                label="Filter by Department"
                 value={departmentFilter}
                 onChange={(e) => setDepartmentFilter(e.target.value)}
-                className="px-3 py-1.5 bg-white border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm"
-              >
-                <option value="">All Departments</option>
-              </select>
+                placeholder="All Departments"
+                options={[
+                  { value: '', label: 'All Departments' },
+                ]}
+              />
             </div>
           </div>
-        </div>
+        </Card>
       )}
 
       {/* Comparison result - single unidirectional list */}
@@ -219,17 +220,14 @@ function MissingMembers() {
 
       {/* Export button */}
       <div className="flex justify-end">
-        <button
+        <Button
           onClick={handleExport}
           disabled={!hasResults}
-          className={`px-4 py-2 rounded-md transition-colors ${
-            hasResults
-              ? 'bg-green-600 text-white hover:bg-green-700'
-              : 'bg-gray-300 text-gray-500 cursor-not-allowed'
-          }`}
+          variant="primary"
+          className="bg-green-600 hover:bg-green-700 dark:bg-green-600 dark:hover:bg-green-700"
         >
           Export Missing Members
-        </button>
+        </Button>
       </div>
     </div>
   );

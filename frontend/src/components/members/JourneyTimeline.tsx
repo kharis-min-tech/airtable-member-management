@@ -1,93 +1,112 @@
 import type { TimelineEvent, EventType } from '../../types';
+import { Card, CardHeader, CardTitle, CardContent } from '../tailus-ui/Card';
 
 interface JourneyTimelineProps {
   events: TimelineEvent[];
   isLoading?: boolean;
 }
 
-const eventConfig: Record<EventType, { icon: React.ReactNode; color: string; bgColor: string }> = {
+const eventConfig: Record<EventType, { icon: React.ReactNode; color: string; bgColor: string; darkBgColor: string }> = {
   evangelism: {
     icon: <MegaphoneIcon />,
-    color: 'text-orange-600',
+    color: 'text-orange-600 dark:text-orange-400',
     bgColor: 'bg-orange-100',
+    darkBgColor: 'dark:bg-orange-900/30',
   },
   first_timer: {
     icon: <StarIcon />,
-    color: 'text-blue-600',
+    color: 'text-blue-600 dark:text-blue-400',
     bgColor: 'bg-blue-100',
+    darkBgColor: 'dark:bg-blue-900/30',
   },
   attendance: {
     icon: <CalendarIcon />,
-    color: 'text-green-600',
+    color: 'text-green-600 dark:text-green-400',
     bgColor: 'bg-green-100',
+    darkBgColor: 'dark:bg-green-900/30',
   },
   home_visit: {
     icon: <HomeIcon />,
-    color: 'text-purple-600',
+    color: 'text-purple-600 dark:text-purple-400',
     bgColor: 'bg-purple-100',
+    darkBgColor: 'dark:bg-purple-900/30',
   },
   follow_up: {
     icon: <ChatIcon />,
-    color: 'text-indigo-600',
+    color: 'text-indigo-600 dark:text-indigo-400',
     bgColor: 'bg-indigo-100',
+    darkBgColor: 'dark:bg-indigo-900/30',
   },
   department_join: {
     icon: <UsersIcon />,
-    color: 'text-teal-600',
+    color: 'text-teal-600 dark:text-teal-400',
     bgColor: 'bg-teal-100',
+    darkBgColor: 'dark:bg-teal-900/30',
   },
   program_session: {
     icon: <BookIcon />,
-    color: 'text-amber-600',
+    color: 'text-amber-600 dark:text-amber-400',
     bgColor: 'bg-amber-100',
+    darkBgColor: 'dark:bg-amber-900/30',
   },
   water_baptism: {
     icon: <WaterIcon />,
-    color: 'text-cyan-600',
+    color: 'text-cyan-600 dark:text-cyan-400',
     bgColor: 'bg-cyan-100',
+    darkBgColor: 'dark:bg-cyan-900/30',
   },
   membership_completed: {
     icon: <BadgeIcon />,
-    color: 'text-emerald-600',
+    color: 'text-emerald-600 dark:text-emerald-400',
     bgColor: 'bg-emerald-100',
+    darkBgColor: 'dark:bg-emerald-900/30',
   },
   spiritual_maturity: {
     icon: <CrownIcon />,
-    color: 'text-yellow-600',
+    color: 'text-yellow-600 dark:text-yellow-400',
     bgColor: 'bg-yellow-100',
+    darkBgColor: 'dark:bg-yellow-900/30',
   },
 };
 
 function JourneyTimeline({ events, isLoading = false }: JourneyTimelineProps) {
   if (isLoading) {
     return (
-      <div className="bg-white rounded-lg shadow p-6">
-        <h2 className="text-lg font-semibold text-gray-800 mb-4">Journey Timeline</h2>
-        <div className="animate-pulse space-y-6">
-          {[1, 2, 3, 4].map((i) => (
-            <div key={i} className="flex gap-4">
-              <div className="w-10 h-10 bg-gray-200 rounded-full"></div>
-              <div className="flex-1 space-y-2">
-                <div className="h-4 w-32 bg-gray-200 rounded"></div>
-                <div className="h-3 w-48 bg-gray-200 rounded"></div>
-                <div className="h-3 w-24 bg-gray-200 rounded"></div>
+      <Card variant="default">
+        <CardHeader>
+          <CardTitle>Journey Timeline</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="animate-pulse space-y-6">
+            {[1, 2, 3, 4].map((i) => (
+              <div key={i} className="flex gap-4">
+                <div className="w-10 h-10 bg-gray-200 dark:bg-gray-700 rounded-full"></div>
+                <div className="flex-1 space-y-2">
+                  <div className="h-4 w-32 bg-gray-200 dark:bg-gray-700 rounded"></div>
+                  <div className="h-3 w-48 bg-gray-200 dark:bg-gray-700 rounded"></div>
+                  <div className="h-3 w-24 bg-gray-200 dark:bg-gray-700 rounded"></div>
+                </div>
               </div>
-            </div>
-          ))}
-        </div>
-      </div>
+            ))}
+          </div>
+        </CardContent>
+      </Card>
     );
   }
 
   if (!events || events.length === 0) {
     return (
-      <div className="bg-white rounded-lg shadow p-6">
-        <h2 className="text-lg font-semibold text-gray-800 mb-4">Journey Timeline</h2>
-        <div className="h-48 flex flex-col items-center justify-center text-gray-400">
-          <CalendarIcon className="w-12 h-12 mb-2" />
-          <p>No events recorded yet</p>
-        </div>
-      </div>
+      <Card variant="default">
+        <CardHeader>
+          <CardTitle>Journey Timeline</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="h-48 flex flex-col items-center justify-center text-gray-400 dark:text-gray-500">
+            <CalendarIcon className="w-12 h-12 mb-2" />
+            <p>No events recorded yet</p>
+          </div>
+        </CardContent>
+      </Card>
     );
   }
 
@@ -119,60 +138,61 @@ function JourneyTimeline({ events, isLoading = false }: JourneyTimelineProps) {
   }, {} as Record<string, TimelineEvent[]>);
 
   return (
-    <div className="bg-white rounded-lg shadow p-6">
-      <div className="flex items-center justify-between mb-4">
-        <h2 className="text-lg font-semibold text-gray-800">Journey Timeline</h2>
-        <span className="text-sm text-gray-500">{events.length} events</span>
-      </div>
+    <Card variant="default">
+      <CardHeader className="flex flex-row items-center justify-between">
+        <CardTitle>Journey Timeline</CardTitle>
+        <span className="text-sm text-text-secondary-light dark:text-text-secondary-dark">{events.length} events</span>
+      </CardHeader>
+      <CardContent>
+        <div className="space-y-6">
+          {Object.entries(groupedEvents).map(([dateKey, dateEvents]) => (
+            <div key={dateKey}>
+              {/* Date header */}
+              <div className="flex items-center gap-2 mb-3">
+                <div className="h-px flex-1 bg-gray-200 dark:bg-gray-700"></div>
+                <span className="text-xs font-medium text-text-secondary-light dark:text-text-secondary-dark px-2">{dateKey}</span>
+                <div className="h-px flex-1 bg-gray-200 dark:bg-gray-700"></div>
+              </div>
 
-      <div className="space-y-6">
-        {Object.entries(groupedEvents).map(([dateKey, dateEvents]) => (
-          <div key={dateKey}>
-            {/* Date header */}
-            <div className="flex items-center gap-2 mb-3">
-              <div className="h-px flex-1 bg-gray-200"></div>
-              <span className="text-xs font-medium text-gray-500 px-2">{dateKey}</span>
-              <div className="h-px flex-1 bg-gray-200"></div>
-            </div>
-
-            {/* Events for this date */}
-            <div className="space-y-4 ml-2">
-              {dateEvents.map((event, index) => {
-                const config = eventConfig[event.type] || eventConfig.attendance;
-                return (
-                  <div key={index} className="flex gap-4">
-                    {/* Icon */}
-                    <div className={`w-10 h-10 rounded-full ${config.bgColor} ${config.color} flex items-center justify-center flex-shrink-0`}>
-                      {config.icon}
-                    </div>
-
-                    {/* Content */}
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-start justify-between gap-2">
-                        <h3 className="text-sm font-medium text-gray-900">{event.title}</h3>
-                        <span className="text-xs text-gray-400 flex-shrink-0">
-                          {formatTime(event.date)}
-                        </span>
+              {/* Events for this date */}
+              <div className="space-y-4 ml-2">
+                {dateEvents.map((event, index) => {
+                  const config = eventConfig[event.type] || eventConfig.attendance;
+                  return (
+                    <div key={index} className="flex gap-4">
+                      {/* Icon */}
+                      <div className={`w-10 h-10 rounded-full ${config.bgColor} ${config.darkBgColor} ${config.color} flex items-center justify-center flex-shrink-0`}>
+                        {config.icon}
                       </div>
-                      <p className="text-sm text-gray-600 mt-0.5">{event.description}</p>
-                      {event.metadata && Object.keys(event.metadata).length > 0 && (
-                        <div className="mt-2 flex flex-wrap gap-2">
-                          {Object.entries(event.metadata).map(([key, value]) => (
-                            <span key={key} className="text-xs bg-gray-100 text-gray-600 px-2 py-0.5 rounded">
-                              {key}: {String(value)}
-                            </span>
-                          ))}
+
+                      {/* Content */}
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-start justify-between gap-2">
+                          <h3 className="text-sm font-medium text-text-primary-light dark:text-text-primary-dark">{event.title}</h3>
+                          <span className="text-xs text-gray-400 dark:text-gray-500 flex-shrink-0">
+                            {formatTime(event.date)}
+                          </span>
                         </div>
-                      )}
+                        <p className="text-sm text-text-secondary-light dark:text-text-secondary-dark mt-0.5">{event.description}</p>
+                        {event.metadata && Object.keys(event.metadata).length > 0 && (
+                          <div className="mt-2 flex flex-wrap gap-2">
+                            {Object.entries(event.metadata).map(([key, value]) => (
+                              <span key={key} className="text-xs bg-gray-100 dark:bg-gray-700 text-text-secondary-light dark:text-text-secondary-dark px-2 py-0.5 rounded">
+                                {key}: {String(value)}
+                              </span>
+                            ))}
+                          </div>
+                        )}
+                      </div>
                     </div>
-                  </div>
-                );
-              })}
+                  );
+                })}
+              </div>
             </div>
-          </div>
-        ))}
-      </div>
-    </div>
+          ))}
+        </div>
+      </CardContent>
+    </Card>
   );
 }
 

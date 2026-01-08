@@ -35,7 +35,7 @@ function ServiceSelector({
 
   return (
     <div className="flex items-center gap-3">
-      <label htmlFor="service-selector" className="text-sm font-medium text-gray-700">
+      <label htmlFor="service-selector" className="text-sm font-medium text-text-primary-light dark:text-text-primary-dark">
         {label}
       </label>
       <select
@@ -43,7 +43,7 @@ function ServiceSelector({
         value={selectedServiceId || ''}
         onChange={handleChange}
         disabled={isLoading || services.length === 0}
-        className="block w-64 px-3 py-2 bg-white border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm disabled:bg-gray-100 disabled:cursor-not-allowed"
+        className="block w-64 px-3 py-2 bg-surface-light dark:bg-surface-dark border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-primary dark:focus:ring-primary-dark focus:border-primary dark:focus:border-primary-dark text-sm text-text-primary-light dark:text-text-primary-dark disabled:bg-gray-100 dark:disabled:bg-gray-700 disabled:cursor-not-allowed"
       >
         {isLoading ? (
           <option value="">Loading services...</option>

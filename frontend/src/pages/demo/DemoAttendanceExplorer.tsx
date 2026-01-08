@@ -89,8 +89,8 @@ function DemoAttendanceExplorer() {
       {/* Page header */}
       <div className="flex flex-wrap justify-between items-center gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-gray-800">Service Attendance Explorer</h1>
-          <p className="text-gray-600">Explore attendance details for any service</p>
+          <h1 className="text-2xl font-bold text-text-primary-light dark:text-text-primary-dark">Service Attendance Explorer</h1>
+          <p className="text-text-secondary-light dark:text-text-secondary-dark">Explore attendance details for any service</p>
         </div>
         <DataRefreshControls
           lastUpdated={lastUpdated}
@@ -112,16 +112,16 @@ function DemoAttendanceExplorer() {
       />
 
       {/* Attendees list with drill-down capability */}
-      <div className="bg-white rounded-lg shadow p-6">
+      <div className="bg-surface-light dark:bg-surface-dark rounded-lg shadow p-6">
         <div className="flex items-center justify-between mb-4">
-          <h2 className="text-lg font-semibold text-gray-800">Attendees</h2>
+          <h2 className="text-lg font-semibold text-text-primary-light dark:text-text-primary-dark">Attendees</h2>
           {attendanceBreakdown && (
-            <span className="text-sm text-gray-500">{attendanceBreakdown.serviceName}</span>
+            <span className="text-sm text-text-secondary-light dark:text-text-secondary-dark">{attendanceBreakdown.serviceName}</span>
           )}
         </div>
 
         {!attendanceBreakdown ? (
-          <div className="h-48 flex items-center justify-center text-gray-400">
+          <div className="h-48 flex items-center justify-center text-gray-400 dark:text-gray-500">
             Select a service to view attendees
           </div>
         ) : (
@@ -159,16 +159,16 @@ function DemoAttendanceExplorer() {
 
         {attendanceBreakdown && attendanceBreakdown.departments.length > 0 && (
           <div className="mt-6">
-            <h3 className="text-sm font-medium text-gray-700 mb-3">By Department (click to drill down)</h3>
+            <h3 className="text-sm font-medium text-text-secondary-light dark:text-text-secondary-dark mb-3">By Department (click to drill down)</h3>
             <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3">
               {attendanceBreakdown.departments.map((dept) => (
                 <button
                   key={dept.departmentId}
                   onClick={() => handleDrillDown(dept.departmentName)}
-                  className="p-3 bg-gray-50 rounded-lg border border-gray-200 hover:bg-blue-50 hover:border-blue-300 transition-colors text-left"
+                  className="p-3 bg-gray-50 dark:bg-gray-700 rounded-lg border border-gray-200 dark:border-gray-600 hover:bg-blue-50 dark:hover:bg-blue-900/30 hover:border-blue-300 dark:hover:border-blue-500 transition-colors text-left"
                 >
-                  <p className="text-lg font-bold text-blue-600">{dept.count}</p>
-                  <p className="text-xs text-gray-500">{dept.departmentName}</p>
+                  <p className="text-lg font-bold text-primary dark:text-primary-light">{dept.count}</p>
+                  <p className="text-xs text-text-secondary-light dark:text-text-secondary-dark">{dept.departmentName}</p>
                 </button>
               ))}
             </div>
@@ -218,28 +218,28 @@ interface DrillDownStatBoxProps {
 
 function DrillDownStatBox({ label, value, color, onClick, clickable }: DrillDownStatBoxProps) {
   const colorClasses = {
-    blue: 'text-blue-600',
-    green: 'text-green-600',
-    purple: 'text-purple-600',
-    orange: 'text-orange-600',
+    blue: 'text-blue-600 dark:text-blue-400',
+    green: 'text-green-600 dark:text-green-400',
+    purple: 'text-purple-600 dark:text-purple-400',
+    orange: 'text-orange-600 dark:text-orange-400',
   };
 
   const hoverClasses = clickable
-    ? 'cursor-pointer hover:bg-blue-50 hover:border-blue-300'
+    ? 'cursor-pointer hover:bg-blue-50 dark:hover:bg-blue-900/30 hover:border-blue-300 dark:hover:border-blue-500'
     : '';
 
   return (
     <button
       onClick={clickable ? onClick : undefined}
       disabled={!clickable}
-      className={`text-center p-4 bg-gray-50 rounded-lg border border-gray-200 transition-colors ${hoverClasses} ${
+      className={`text-center p-4 bg-gray-50 dark:bg-gray-700 rounded-lg border border-gray-200 dark:border-gray-600 transition-colors ${hoverClasses} ${
         !clickable ? 'cursor-default' : ''
       }`}
     >
       <p className={`text-3xl font-bold ${colorClasses[color]}`}>{value}</p>
-      <p className="text-xs text-gray-500 mt-1">{label}</p>
+      <p className="text-xs text-text-secondary-light dark:text-text-secondary-dark mt-1">{label}</p>
       {clickable && (
-        <p className="text-xs text-blue-500 mt-1">Click to view</p>
+        <p className="text-xs text-primary dark:text-primary-light mt-1">Click to view</p>
       )}
     </button>
   );

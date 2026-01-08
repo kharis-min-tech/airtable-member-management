@@ -25,6 +25,7 @@ const DemoAttendanceExplorer = lazy(() => import('../pages/demo/DemoAttendanceEx
 const DemoMissingMembers = lazy(() => import('../pages/demo/DemoMissingMembers'));
 const DemoMemberJourney = lazy(() => import('../pages/demo/DemoMemberJourney'));
 const DemoAdminViews = lazy(() => import('../pages/demo/DemoAdminViews'));
+const ComponentShowcase = lazy(() => import('../pages/demo/ComponentShowcase'));
 
 // Error pages
 const UnauthorizedPage = lazy(() => import('../pages/UnauthorizedPage'));
@@ -90,6 +91,14 @@ export const router = createBrowserRouter([
         element: (
           <Suspense fallback={<LoadingSpinner />}>
             <DemoAdminViews />
+          </Suspense>
+        ),
+      },
+      {
+        path: 'components',
+        element: (
+          <Suspense fallback={<LoadingSpinner />}>
+            <ComponentShowcase />
           </Suspense>
         ),
       },

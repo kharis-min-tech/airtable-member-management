@@ -127,7 +127,7 @@ function EnhancedServiceSelector({
     <div className="space-y-3">
       {/* Main selector row */}
       <div className="flex items-center gap-3 flex-wrap">
-        <label htmlFor="enhanced-service-selector" className="text-sm font-medium text-gray-700">
+        <label htmlFor="enhanced-service-selector" className="text-sm font-medium text-text-secondary-light dark:text-text-secondary-dark">
           {label}
         </label>
         <select
@@ -135,7 +135,7 @@ function EnhancedServiceSelector({
           value={selectedServiceId || ''}
           onChange={handleServiceChange}
           disabled={isLoading || filteredServices.length === 0}
-          className="block w-64 px-3 py-2 bg-white border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm disabled:bg-gray-100 disabled:cursor-not-allowed"
+          className="block w-64 px-3 py-2 bg-surface-light dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm text-text-primary-light dark:text-text-primary-dark disabled:bg-gray-100 dark:disabled:bg-gray-800 disabled:cursor-not-allowed"
         >
           {isLoading ? (
             <option value="">Loading services...</option>
@@ -160,8 +160,8 @@ function EnhancedServiceSelector({
             onClick={() => setShowFilters(!showFilters)}
             className={`px-3 py-2 text-sm font-medium rounded-md border transition-colors ${
               showFilters || hasActiveFilters
-                ? 'bg-blue-50 border-blue-300 text-blue-700'
-                : 'bg-white border-gray-300 text-gray-700 hover:bg-gray-50'
+                ? 'bg-blue-50 dark:bg-blue-900/30 border-blue-300 dark:border-blue-700 text-blue-700 dark:text-blue-300'
+                : 'bg-surface-light dark:bg-gray-700 border-gray-300 dark:border-gray-600 text-text-secondary-light dark:text-text-secondary-dark hover:bg-gray-50 dark:hover:bg-gray-600'
             }`}
             aria-expanded={showFilters}
             aria-controls="service-filters"
@@ -183,7 +183,7 @@ function EnhancedServiceSelector({
               </svg>
               Filters
               {hasActiveFilters && (
-                <span className="ml-1 px-1.5 py-0.5 text-xs bg-blue-100 text-blue-800 rounded-full">
+                <span className="ml-1 px-1.5 py-0.5 text-xs bg-blue-100 dark:bg-blue-800 text-blue-800 dark:text-blue-200 rounded-full">
                   Active
                 </span>
               )}
@@ -197,7 +197,7 @@ function EnhancedServiceSelector({
             type="button"
             onClick={onLoadMore}
             disabled={isLoadingMore}
-            className="px-3 py-2 text-sm font-medium text-blue-600 hover:text-blue-800 disabled:text-gray-400 disabled:cursor-not-allowed"
+            className="px-3 py-2 text-sm font-medium text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300 disabled:text-gray-400 dark:disabled:text-gray-500 disabled:cursor-not-allowed"
           >
             {isLoadingMore ? 'Loading...' : 'Load More'}
           </button>
@@ -208,7 +208,7 @@ function EnhancedServiceSelector({
       {showFilters && (enableDateFilter || enableSearch) && (
         <div
           id="service-filters"
-          className="p-4 bg-gray-50 rounded-lg border border-gray-200 space-y-4"
+          className="p-4 bg-gray-50 dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 space-y-4"
         >
           <div className="flex flex-wrap gap-4">
             {/* Search input */}
@@ -216,7 +216,7 @@ function EnhancedServiceSelector({
               <div className="flex-1 min-w-[200px]">
                 <label
                   htmlFor="service-search"
-                  className="block text-sm font-medium text-gray-700 mb-1"
+                  className="block text-sm font-medium text-text-secondary-light dark:text-text-secondary-dark mb-1"
                 >
                   Search Services
                 </label>
@@ -226,7 +226,7 @@ function EnhancedServiceSelector({
                   value={filters.searchQuery}
                   onChange={handleSearchChange}
                   placeholder="Search by name or date..."
-                  className="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm"
+                  className="block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm bg-surface-light dark:bg-gray-700 text-text-primary-light dark:text-text-primary-dark placeholder-gray-400 dark:placeholder-gray-500"
                 />
               </div>
             )}
@@ -237,7 +237,7 @@ function EnhancedServiceSelector({
                 <div className="min-w-[150px]">
                   <label
                     htmlFor="service-start-date"
-                    className="block text-sm font-medium text-gray-700 mb-1"
+                    className="block text-sm font-medium text-text-secondary-light dark:text-text-secondary-dark mb-1"
                   >
                     From Date
                   </label>
@@ -246,13 +246,13 @@ function EnhancedServiceSelector({
                     id="service-start-date"
                     value={filters.startDate}
                     onChange={handleStartDateChange}
-                    className="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm"
+                    className="block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm bg-surface-light dark:bg-gray-700 text-text-primary-light dark:text-text-primary-dark"
                   />
                 </div>
                 <div className="min-w-[150px]">
                   <label
                     htmlFor="service-end-date"
-                    className="block text-sm font-medium text-gray-700 mb-1"
+                    className="block text-sm font-medium text-text-secondary-light dark:text-text-secondary-dark mb-1"
                   >
                     To Date
                   </label>
@@ -261,7 +261,7 @@ function EnhancedServiceSelector({
                     id="service-end-date"
                     value={filters.endDate}
                     onChange={handleEndDateChange}
-                    className="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm"
+                    className="block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm bg-surface-light dark:bg-gray-700 text-text-primary-light dark:text-text-primary-dark"
                   />
                 </div>
               </>
@@ -274,7 +274,7 @@ function EnhancedServiceSelector({
               <button
                 type="button"
                 onClick={handleClearFilters}
-                className="text-sm text-gray-600 hover:text-gray-800 underline"
+                className="text-sm text-text-secondary-light dark:text-text-secondary-dark hover:text-text-primary-light dark:hover:text-text-primary-dark underline"
               >
                 Clear all filters
               </button>
@@ -285,7 +285,7 @@ function EnhancedServiceSelector({
 
       {/* Service count indicator */}
       {!isLoading && filteredServices.length > 0 && (
-        <p className="text-xs text-gray-500">
+        <p className="text-xs text-text-secondary-light dark:text-text-secondary-dark">
           Showing {filteredServices.length} service{filteredServices.length !== 1 ? 's' : ''}
           {hasMore && ' (more available)'}
         </p>

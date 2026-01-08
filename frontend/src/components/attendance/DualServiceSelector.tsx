@@ -1,5 +1,7 @@
-import { useCallback } from 'react';
+import { useCallback, useMemo } from 'react';
 import type { Service } from '../../types';
+import { Card } from '../tailus-ui/Card';
+import { Select } from '../tailus-ui/Select';
 
 interface DualServiceSelectorProps {
   services: Service[];
@@ -51,103 +53,83 @@ function DualServiceSelector({
     });
   };
 
-  const renderServiceOptions = (excludeId: string | null) => {
+  const serviceAOptions = useMemo(() => {
     return services
-      .filter((service) => service.id !== excludeId)
-      .map((service) => (
-        <option key={service.id} value={service.id}>
-          {service.serviceName} - {formatServiceDate(service.serviceDate)}
-        </option>
-      ));
+      .filter((service) => service.id !== serviceBId)
+      .map((service) => ({
+        value: service.id,
+        label: `${service.serviceName} - ${formatServiceDate(service.serviceDate)}`,
+      }));
+  }, [services, serviceBId]);
+
+  const serviceBOptions = useMemo(() => {
+    return services
+      .filter((service) => service.id !== serviceAId)
+      .map((service) => ({
+        value: service.id,
+        label: `${service.serviceName} - ${formatServiceDate(service.serviceDate)}`,
+      }));
+  }, [services, serviceAId]);
+
+  const getPlaceholder = () => {
+    if (isLoading) return 'Loading services...';
+    if (services.length === 0) return 'No services available';
+    return undefined;
   };
 
   return (
-    <div className="bg-white rounded-lg shadow p-6">
-      <h2 className="text-lg font-semibold text-gray-800 mb-4">Select Services to Compare</h2>
+    <Card className="p-6">
+      <h2 className="text-lg font-semibold text-text-primary-light dark:text-text-primary-dark mb-4">Select Services to Compare</h2>
       
       {/* Helper text explaining comparison direction */}
       {helperText && (
-        <p className="text-sm text-gray-600 mb-4 bg-blue-50 p-3 rounded-md border border-blue-100">
-          <span className="text-blue-600 font-medium">ℹ️ </span>
+        <p className="text-sm text-text-secondary-light dark:text-text-secondary-dark mb-4 bg-blue-50 dark:bg-blue-900/30 p-3 rounded-md border border-blue-100 dark:border-blue-800">
+          <span className="text-blue-600 dark:text-blue-400 font-medium">ℹ️ </span>
           {helperText}
         </p>
       )}
       
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         {/* Service A Selector */}
-        <div>
-          <label
-            htmlFor="service-a-selector"
-            className="block text-sm font-medium text-gray-700 mb-2"
-          >
-            {labelA}
-          </label>
-          <select
-            id="service-a-selector"
-            value={serviceAId || ''}
-            onChange={handleServiceAChange}
-            disabled={isLoading || services.length === 0}
-            className="block w-full px-3 py-2 bg-white border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm disabled:bg-gray-100 disabled:cursor-not-allowed"
-          >
-            {isLoading ? (
-              <option value="">Loading services...</option>
-            ) : services.length === 0 ? (
-              <option value="">No services available</option>
-            ) : (
-              <>
-                <option value="">Select {labelA}...</option>
-                {renderServiceOptions(serviceBId)}
-              </>
-            )}
-          </select>
-        </div>
+        <Select
+          id="service-a-selector"
+          label={labelA}
+          value={serviceAId || ''}
+          onChange={handleServiceAChange}
+          disabled={isLoading || services.length === 0}
+          placeholder={getPlaceholder() || `Select ${labelA}...`}
+          options={serviceAOptions}
+        />
 
         {/* Service B Selector */}
-        <div>
-          <label
-            htmlFor="service-b-selector"
-            className="block text-sm font-medium text-gray-700 mb-2"
-          >
-            {labelB}
-          </label>
-          <select
-            id="service-b-selector"
-            value={serviceBId || ''}
-            onChange={handleServiceBChange}
-            disabled={isLoading || services.length === 0}
-            className="block w-full px-3 py-2 bg-white border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm disabled:bg-gray-100 disabled:cursor-not-allowed"
-          >
-            {isLoading ? (
-              <option value="">Loading services...</option>
-            ) : services.length === 0 ? (
-              <option value="">No services available</option>
-            ) : (
-              <>
-                <option value="">Select {labelB}...</option>
-                {renderServiceOptions(serviceAId)}
-              </>
-            )}
-          </select>
-        </div>
+        <Select
+          id="service-b-selector"
+          label={labelB}
+          value={serviceBId || ''}
+          onChange={handleServiceBChange}
+          disabled={isLoading || services.length === 0}
+          placeholder={getPlaceholder() || `Select ${labelB}...`}
+          options={serviceBOptions}
+        />
       </div>
 
       {/* Default helper text when no custom helper text is provided */}
       {!helperText && !serviceAId && !serviceBId && !isLoading && services.length > 0 && (
-        <p className="mt-4 text-sm text-gray-500">
+        <p className="mt-4 text-sm text-text-secondary-light dark:text-text-secondary-dark">
           Select two services to compare attendance and identify missing members.
         </p>
       )}
       {!helperText && serviceAId && !serviceBId && (
-        <p className="mt-4 text-sm text-gray-500">
+        <p className="mt-4 text-sm text-text-secondary-light dark:text-text-secondary-dark">
           Now select {labelB} to see the comparison.
         </p>
       )}
       {!helperText && !serviceAId && serviceBId && (
-        <p className="mt-4 text-sm text-gray-500">
+        <p className="mt-4 text-sm text-text-secondary-light dark:text-text-secondary-dark">
           Now select {labelA} to see the comparison.
         </p>
       )}
-    </div>
+    </Card>
   );
 }
 

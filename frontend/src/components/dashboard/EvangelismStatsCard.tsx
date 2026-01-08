@@ -1,5 +1,6 @@
 import { useMemo } from 'react';
 import PeriodToggle from './PeriodToggle';
+import { Card } from '../tailus-ui';
 import type { EvangelismStats } from '../../types';
 
 interface EvangelismStatsCardProps {
@@ -57,37 +58,37 @@ function EvangelismStatsCard({
     period === 'week' ? 'Sunday to Saturday' : `${dateRange.start.toLocaleDateString('en-GB', { month: 'long', year: 'numeric' })}`;
 
   return (
-    <div className="bg-white rounded-lg shadow p-6">
+    <Card variant="default">
       <div className="flex items-center justify-between mb-4">
         <div>
-          <h3 className="text-lg font-semibold text-gray-800">Evangelism Contacts</h3>
-          <p className="text-sm text-gray-500">{periodDescription}</p>
+          <h3 className="text-lg font-semibold text-text-primary-light dark:text-text-primary-dark">Evangelism Contacts</h3>
+          <p className="text-sm text-text-secondary-light dark:text-text-secondary-dark">{periodDescription}</p>
         </div>
         <PeriodToggle period={period} onPeriodChange={onPeriodChange} disabled={isLoading} />
       </div>
 
       <div className="flex items-baseline gap-2">
         {isLoading ? (
-          <div className="h-12 w-24 bg-gray-200 animate-pulse rounded"></div>
+          <div className="h-12 w-24 bg-gray-200 dark:bg-gray-700 animate-pulse rounded"></div>
         ) : (
           <>
-            <span className="text-4xl font-bold text-purple-600">
+            <span className="text-4xl font-bold text-accent dark:text-accent-light">
               {stats?.contactCount ?? 0}
             </span>
-            <span className="text-gray-500">contacts</span>
+            <span className="text-text-secondary-light dark:text-text-secondary-dark">contacts</span>
           </>
         )}
       </div>
 
-      <div className="mt-4 pt-4 border-t border-gray-100">
+      <div className="mt-4 pt-4 border-t border-gray-100 dark:border-gray-700">
         <div className="flex items-center justify-between text-sm">
-          <span className="text-gray-500">Period:</span>
-          <span className="font-medium text-gray-700">
+          <span className="text-text-secondary-light dark:text-text-secondary-dark">Period:</span>
+          <span className="font-medium text-text-primary-light dark:text-text-primary-dark">
             {formatDate(dateRange.start)} - {formatDate(dateRange.end)}
           </span>
         </div>
       </div>
-    </div>
+    </Card>
   );
 }
 

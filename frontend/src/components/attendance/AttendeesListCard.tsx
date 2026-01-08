@@ -1,5 +1,11 @@
 import { useState, useMemo } from 'react';
 import type { AttendanceBreakdown } from '../../types';
+import { Card } from '../tailus-ui/Card';
+import { Button } from '../tailus-ui/Button';
+import { Table, TableHeader, TableBody, TableRow, TableCell } from '../tailus-ui/Table';
+import { LoadingSpinner } from '../LoadingSpinner';
+import { EmptyState } from '../common/EmptyState';
+import { Users } from 'lucide-react';
 
 interface AttendeesListCardProps {
   breakdown: AttendanceBreakdown | null;
@@ -35,57 +41,59 @@ function AttendeesListCard({ breakdown, isLoading = false }: AttendeesListCardPr
 
   if (isLoading) {
     return (
-      <div className="bg-white rounded-lg shadow p-6">
-        <h2 className="text-lg font-semibold text-gray-800 mb-4">Attendees</h2>
+      <Card className="p-6">
+        <h2 className="text-lg font-semibold text-text-primary-light dark:text-text-primary-dark mb-4">Attendees</h2>
         <div className="animate-pulse space-y-4">
           <div className="flex gap-2">
             {[1, 2, 3, 4, 5].map((i) => (
-              <div key={i} className="h-8 w-24 bg-gray-200 rounded"></div>
+              <div key={i} className="h-8 w-24 bg-gray-200 dark:bg-gray-700 rounded"></div>
             ))}
           </div>
-          <div className="h-48 bg-gray-200 rounded"></div>
+          <div className="h-48 flex items-center justify-center">
+            <LoadingSpinner text="Loading attendees..." />
+          </div>
         </div>
-      </div>
+      </Card>
     );
   }
 
   if (!breakdown) {
     return (
-      <div className="bg-white rounded-lg shadow p-6">
-        <h2 className="text-lg font-semibold text-gray-800 mb-4">Attendees</h2>
-        <div className="h-48 flex items-center justify-center text-gray-400">
-          Select a service to view attendees
-        </div>
-      </div>
+      <Card className="p-6">
+        <h2 className="text-lg font-semibold text-text-primary-light dark:text-text-primary-dark mb-4">Attendees</h2>
+        <EmptyState
+          icon={Users}
+          title="No service selected"
+          description="Select a service to view attendees"
+        />
+      </Card>
     );
   }
 
   return (
-    <div className="bg-white rounded-lg shadow p-6">
+    <Card className="p-6">
       <div className="flex items-center justify-between mb-4">
-        <h2 className="text-lg font-semibold text-gray-800">Attendees</h2>
-        <span className="text-sm text-gray-500">{breakdown.serviceName}</span>
+        <h2 className="text-lg font-semibold text-text-primary-light dark:text-text-primary-dark">Attendees</h2>
+        <span className="text-sm text-text-secondary-light dark:text-text-secondary-dark">{breakdown.serviceName}</span>
       </div>
 
       {/* Filter buttons */}
       <div className="flex flex-wrap gap-2 mb-4">
         {filterButtons.map((btn) => (
-          <button
+          <Button
             key={btn.key}
             onClick={() => setFilter(btn.key)}
-            className={`px-3 py-1.5 text-sm rounded-full transition-colors ${
-              filter === btn.key
-                ? 'bg-blue-600 text-white'
-                : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-            }`}
+            variant={filter === btn.key ? 'primary' : 'secondary'}
+            size="sm"
+            className="rounded-full"
           >
             {btn.label} ({btn.count})
-          </button>
+          </Button>
         ))}
       </div>
 
       {/* Stats display based on filter */}
-      <div className="border rounded-lg overflow-hidden">
+      <div className="border border-gray-200 dark:border-gray-700 rounded-lg overflow-hidden">
         {filter === 'all' && (
           <div className="p-4">
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
@@ -100,8 +108,8 @@ function AttendeesListCard({ breakdown, isLoading = false }: AttendeesListCardPr
         {filter === 'firstTimers' && (
           <div className="p-4">
             <div className="text-center py-8">
-              <p className="text-4xl font-bold text-green-600">{stats?.firstTimers || 0}</p>
-              <p className="text-gray-500 mt-2">First Timers attended this service</p>
+              <p className="text-4xl font-bold text-green-600 dark:text-green-400">{stats?.firstTimers || 0}</p>
+              <p className="text-text-secondary-light dark:text-text-secondary-dark mt-2">First Timers attended this service</p>
             </div>
           </div>
         )}
@@ -109,8 +117,8 @@ function AttendeesListCard({ breakdown, isLoading = false }: AttendeesListCardPr
         {filter === 'returners' && (
           <div className="p-4">
             <div className="text-center py-8">
-              <p className="text-4xl font-bold text-purple-600">{stats?.returners || 0}</p>
-              <p className="text-gray-500 mt-2">Returners attended this service</p>
+              <p className="text-4xl font-bold text-purple-600 dark:text-purple-400">{stats?.returners || 0}</p>
+              <p className="text-text-secondary-light dark:text-text-secondary-dark mt-2">Returners attended this service</p>
             </div>
           </div>
         )}
@@ -118,30 +126,40 @@ function AttendeesListCard({ breakdown, isLoading = false }: AttendeesListCardPr
         {filter === 'evangelismContacts' && (
           <div className="p-4">
             <div className="text-center py-8">
-              <p className="text-4xl font-bold text-orange-600">{stats?.evangelismContacts || 0}</p>
-              <p className="text-gray-500 mt-2">Evangelism Contacts attended this service</p>
+              <p className="text-4xl font-bold text-orange-600 dark:text-orange-400">{stats?.evangelismContacts || 0}</p>
+              <p className="text-text-secondary-light dark:text-text-secondary-dark mt-2">Evangelism Contacts attended this service</p>
             </div>
           </div>
         )}
 
         {filter === 'departments' && (
-          <div className="divide-y">
+          <>
             {breakdown.departments.length === 0 ? (
-              <div className="p-4 text-center text-gray-500">
+              <div className="p-4 text-center text-text-secondary-light dark:text-text-secondary-dark">
                 No department data available
               </div>
             ) : (
-              breakdown.departments.map((dept) => (
-                <div key={dept.departmentId} className="p-3 flex justify-between items-center hover:bg-gray-50">
-                  <span className="font-medium text-gray-700">{dept.departmentName}</span>
-                  <span className="text-blue-600 font-semibold">{dept.count}</span>
-                </div>
-              ))
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableCell header>Department</TableCell>
+                    <TableCell header>Count</TableCell>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {breakdown.departments.map((dept) => (
+                    <TableRow key={dept.departmentId}>
+                      <TableCell className="font-medium">{dept.departmentName}</TableCell>
+                      <TableCell className="text-primary dark:text-primary-dark font-semibold">{dept.count}</TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
             )}
-          </div>
+          </>
         )}
       </div>
-    </div>
+    </Card>
   );
 }
 
@@ -153,16 +171,16 @@ interface StatBoxProps {
 
 function StatBox({ label, value, color }: StatBoxProps) {
   const colorClasses = {
-    blue: 'text-blue-600',
-    green: 'text-green-600',
-    purple: 'text-purple-600',
-    orange: 'text-orange-600',
+    blue: 'text-blue-600 dark:text-blue-400',
+    green: 'text-green-600 dark:text-green-400',
+    purple: 'text-purple-600 dark:text-purple-400',
+    orange: 'text-orange-600 dark:text-orange-400',
   };
 
   return (
-    <div className="text-center p-3 bg-gray-50 rounded-lg">
+    <div className="text-center p-3 bg-gray-50 dark:bg-gray-800 rounded-lg">
       <p className={`text-2xl font-bold ${colorClasses[color]}`}>{value}</p>
-      <p className="text-xs text-gray-500 mt-1">{label}</p>
+      <p className="text-xs text-text-secondary-light dark:text-text-secondary-dark mt-1">{label}</p>
     </div>
   );
 }

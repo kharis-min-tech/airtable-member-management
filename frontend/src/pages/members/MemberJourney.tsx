@@ -2,6 +2,8 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { useCallback, useEffect, useRef } from 'react';
 import { MemberProfileCard, JourneyTimeline, JourneySummaryCard, MemberSearchBar } from '../../components/members';
 import { DataRefreshControls } from '../../components/common';
+import { Card, CardHeader, CardTitle, CardContent } from '../../components/tailus-ui/Card';
+import { Button } from '../../components/tailus-ui/Button';
 import { useApi } from '../../hooks/useApi';
 import { useLiveMode } from '../../hooks/useLiveMode';
 import { churchApi } from '../../services/church-api';
@@ -46,7 +48,6 @@ function getErrorMessage(error: string, memberId: string | undefined): string {
   if (lowerError.includes('network') || lowerError.includes('connect') || lowerError.includes('timeout')) {
     return 'Unable to connect to the server. Please check your internet connection and try again.';
   }
-  // For other errors, show the actual error message
   return error;
 }
 
@@ -69,10 +70,8 @@ function MemberJourney() {
   const { memberId } = useParams<{ memberId: string }>();
   const navigate = useNavigate();
   
-  // Track previous memberId to detect changes
   const prevMemberIdRef = useRef<string | undefined>(undefined);
 
-  // Fetch member journey data when memberId is present
   const apiCall = useCallback(() => {
     if (!memberId) {
       return Promise.resolve({ data: null as MemberJourneyType | null, lastUpdated: new Date(), cached: false });
@@ -84,36 +83,29 @@ function MemberJourney() {
     immediate: !!memberId,
   });
 
-  // Re-fetch when memberId changes (handles navigation between members)
   useEffect(() => {
-    // Skip initial mount (handled by immediate: true)
     if (prevMemberIdRef.current === undefined) {
       prevMemberIdRef.current = memberId;
       return;
     }
     
-    // If memberId changed, reset and re-fetch
     if (memberId !== prevMemberIdRef.current) {
       prevMemberIdRef.current = memberId;
       
       if (memberId) {
-        // Reset state and fetch new member data
         reset();
         execute();
       } else {
-        // No memberId, just reset
         reset();
       }
     }
   }, [memberId, execute, reset]);
 
-  // Live mode for real-time updates
   const { isLive, toggleLive } = useLiveMode({
     interval: 30000,
     onRefresh: refresh,
   });
 
-  // Handle member selection from search
   const handleMemberSelect = useCallback((member: Member) => {
     navigate(`/members/${member.id}`);
   }, [navigate]);
@@ -123,8 +115,8 @@ function MemberJourney() {
       {/* Page header */}
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-gray-800">Member Journey</h1>
-          <p className="text-gray-600">
+          <h1 className="text-2xl font-bold text-text-primary-light dark:text-text-primary-dark">Member Journey</h1>
+          <p className="text-text-secondary-light dark:text-text-secondary-dark">
             {journey?.member ? `Viewing: ${journey.member.fullName}` : 'Search for a member to view their journey'}
           </p>
         </div>
@@ -141,65 +133,75 @@ function MemberJourney() {
       </div>
 
       {/* Member search */}
-      <div className="bg-white rounded-lg shadow p-6">
-        <h2 className="text-lg font-semibold text-gray-800 mb-4">Search Member</h2>
-        <MemberSearchBar 
-          onMemberSelect={handleMemberSelect}
-          autoFocus={!memberId}
-        />
-      </div>
+      <Card variant="default">
+        <CardHeader>
+          <CardTitle>Search Member</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <MemberSearchBar 
+            onMemberSelect={handleMemberSelect}
+            autoFocus={!memberId}
+          />
+        </CardContent>
+      </Card>
 
       {/* Error state */}
       {error && (
-        <div className="bg-red-50 border border-red-200 rounded-lg p-6">
-          <div className="flex items-start gap-3">
-            <div className="flex-shrink-0">
-              <ErrorIcon className="w-6 h-6 text-red-600" />
-            </div>
-            <div className="flex-1">
-              <h3 className="text-lg font-semibold text-red-800">
-                {getErrorTitle(error)}
-              </h3>
-              <p className="text-red-600 mt-1">
-                {getErrorMessage(error, memberId)}
-              </p>
-              {getErrorHint(error) && (
-                <p className="text-red-500 text-sm mt-2 italic">
-                  {getErrorHint(error)}
+        <Card variant="outlined" className="border-error-200 dark:border-error/30 bg-error-50 dark:bg-error/10">
+          <CardContent className="p-0">
+            <div className="flex items-start gap-3">
+              <div className="flex-shrink-0">
+                <ErrorIcon className="w-6 h-6 text-error" />
+              </div>
+              <div className="flex-1">
+                <h3 className="text-lg font-semibold text-error-700 dark:text-error-400">
+                  {getErrorTitle(error)}
+                </h3>
+                <p className="text-error-600 dark:text-error-400 mt-1">
+                  {getErrorMessage(error, memberId)}
                 </p>
-              )}
-              <div className="mt-4 flex gap-3">
-                <button 
-                  onClick={() => execute()}
-                  disabled={isLoading}
-                  className="inline-flex items-center gap-2 px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-                >
-                  <RefreshIcon className={`w-4 h-4 ${isLoading ? 'animate-spin' : ''}`} />
-                  {isLoading ? 'Retrying...' : 'Try Again'}
-                </button>
-                <button 
-                  onClick={() => navigate('/members')}
-                  className="inline-flex items-center gap-2 px-4 py-2 border border-red-300 text-red-700 rounded-md hover:bg-red-50 transition-colors"
-                >
-                  Search for Another Member
-                </button>
+                {getErrorHint(error) && (
+                  <p className="text-error-500 dark:text-error-400 text-sm mt-2 italic">
+                    {getErrorHint(error)}
+                  </p>
+                )}
+                <div className="mt-4 flex gap-3">
+                  <Button 
+                    onClick={() => execute()}
+                    disabled={isLoading}
+                    variant="primary"
+                    className="bg-error hover:bg-error-700"
+                  >
+                    <RefreshIcon className={`w-4 h-4 mr-2 ${isLoading ? 'animate-spin' : ''}`} />
+                    {isLoading ? 'Retrying...' : 'Try Again'}
+                  </Button>
+                  <Button 
+                    onClick={() => navigate('/members')}
+                    variant="outline"
+                    className="border-error-300 dark:border-error/50 text-error-700 dark:text-error-400 hover:bg-error-50 dark:hover:bg-error/10"
+                  >
+                    Search for Another Member
+                  </Button>
+                </div>
               </div>
             </div>
-          </div>
-        </div>
+          </CardContent>
+        </Card>
       )}
 
       {memberId ? (
         <>
           {/* Loading indicator for initial load */}
           {isLoading && !journey && (
-            <div className="bg-white rounded-lg shadow p-8">
-              <div className="flex flex-col items-center justify-center">
-                <LoadingSpinner className="w-12 h-12 text-blue-600" />
-                <p className="mt-4 text-gray-600 font-medium">Loading member journey...</p>
-                <p className="text-sm text-gray-400 mt-1">Please wait while we fetch the data</p>
-              </div>
-            </div>
+            <Card variant="default">
+              <CardContent>
+                <div className="flex flex-col items-center justify-center py-8">
+                  <LoadingSpinner className="w-12 h-12 text-primary dark:text-primary-dark" />
+                  <p className="mt-4 text-text-primary-light dark:text-text-primary-dark font-medium">Loading member journey...</p>
+                  <p className="text-sm text-text-secondary-light dark:text-text-secondary-dark mt-1">Please wait while we fetch the data</p>
+                </div>
+              </CardContent>
+            </Card>
           )}
 
           {/* Member profile */}
@@ -222,34 +224,38 @@ function MemberJourney() {
 
           {/* Navigation buttons */}
           {journey?.member && (
-            <div className="flex justify-between items-center bg-white rounded-lg shadow p-4">
-              <button
-                onClick={() => navigate('/members')}
-                className="flex items-center gap-2 text-gray-600 hover:text-gray-800 transition-colors"
-              >
-                <BackIcon className="w-5 h-5" />
-                <span>Back to Search</span>
-              </button>
-              <div className="flex gap-2">
+            <Card variant="default">
+              <CardContent className="p-4 flex justify-between items-center">
                 <button
-                  onClick={() => window.print()}
-                  className="flex items-center gap-2 px-4 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50 transition-colors"
+                  onClick={() => navigate('/members')}
+                  className="flex items-center gap-2 text-text-secondary-light dark:text-text-secondary-dark hover:text-text-primary-light dark:hover:text-text-primary-dark transition-colors"
                 >
-                  <PrintIcon className="w-4 h-4" />
-                  <span>Print</span>
+                  <BackIcon className="w-5 h-5" />
+                  <span>Back to Search</span>
                 </button>
-              </div>
-            </div>
+                <div className="flex gap-2">
+                  <Button
+                    onClick={() => window.print()}
+                    variant="outline"
+                  >
+                    <PrintIcon className="w-4 h-4 mr-2" />
+                    <span>Print</span>
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
           )}
         </>
       ) : (
-        <div className="bg-white rounded-lg shadow p-6">
-          <div className="h-64 flex flex-col items-center justify-center text-gray-400">
-            <UserIcon className="w-16 h-16 mb-4" />
-            <p className="text-lg">Search for a member to view their journey</p>
-            <p className="text-sm mt-2">You can search by name, phone number, or email address</p>
-          </div>
-        </div>
+        <Card variant="default">
+          <CardContent>
+            <div className="h-64 flex flex-col items-center justify-center text-text-secondary-light dark:text-text-secondary-dark">
+              <UserIcon className="w-16 h-16 mb-4" />
+              <p className="text-lg">Search for a member to view their journey</p>
+              <p className="text-sm mt-2">You can search by name, phone number, or email address</p>
+            </div>
+          </CardContent>
+        </Card>
       )}
     </div>
   );

@@ -8,6 +8,7 @@ import {
   FollowUpCommentsTable,
 } from '../../components/dashboard';
 import { DataRefreshControls } from '../../components/common';
+import { Card } from '../../components/tailus-ui';
 import type {
   Service,
   ServiceKPIs,
@@ -198,11 +199,11 @@ function DemoDashboard() {
   const lastUpdated = useMemo(() => new Date(), []);
 
   return (
-    <div className="min-h-screen bg-gray-100 p-6">
+    <div className="min-h-screen bg-background-light dark:bg-background-dark p-6">
       <div className="max-w-7xl mx-auto space-y-6">
         {/* Demo Banner */}
-        <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
-          <p className="text-yellow-800 text-sm">
+        <div className="bg-accent/10 dark:bg-accent-dark/20 border border-accent/30 dark:border-accent-dark/30 rounded-lg p-4">
+          <p className="text-accent-700 dark:text-accent-light text-sm">
             <strong>Demo Mode:</strong> This dashboard is showing mock data for preview purposes.
           </p>
         </div>
@@ -210,8 +211,8 @@ function DemoDashboard() {
         {/* Page header */}
         <div className="flex flex-wrap justify-between items-center gap-4">
           <div>
-            <h1 className="text-2xl font-bold text-gray-800">Pastor Dashboard</h1>
-            <p className="text-gray-600">Welcome back, pastor@church.org</p>
+            <h1 className="text-2xl font-bold text-text-primary-light dark:text-text-primary-dark">Pastor Dashboard</h1>
+            <p className="text-text-secondary-light dark:text-text-secondary-dark">Welcome back, pastor@church.org</p>
           </div>
           <DataRefreshControls
             lastUpdated={lastUpdated}
@@ -224,7 +225,7 @@ function DemoDashboard() {
         </div>
 
         {/* Service selector */}
-        <div className="bg-white rounded-lg shadow p-4">
+        <Card variant="default">
           <ServiceSelector
             services={mockServices}
             selectedServiceId={selectedServiceId}
@@ -232,7 +233,7 @@ function DemoDashboard() {
             isLoading={false}
             label="Select Service for KPIs"
           />
-        </div>
+        </Card>
 
         {/* KPI Tiles */}
         <KPITilesSection

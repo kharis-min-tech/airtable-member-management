@@ -5,6 +5,9 @@
  */
 
 import { useMemo, useState } from 'react';
+import { Input } from '../tailus-ui/Input';
+import { Table, TableHeader, TableBody, TableRow, TableCell } from '../tailus-ui/Table';
+import { EmptyState } from '../common/EmptyState';
 import type { EvangelismRecord } from '../../types';
 
 interface IncompleteEvangelismViewProps {
@@ -38,9 +41,9 @@ function IncompleteEvangelismView({ data, isLoading = false }: IncompleteEvangel
   };
 
   const getCompletenessColor = (completeness: number) => {
-    if (completeness >= 80) return 'bg-green-100 text-green-800';
-    if (completeness >= 50) return 'bg-yellow-100 text-yellow-800';
-    return 'bg-red-100 text-red-800';
+    if (completeness >= 80) return 'bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-300';
+    if (completeness >= 50) return 'bg-yellow-100 dark:bg-yellow-900/30 text-yellow-800 dark:text-yellow-300';
+    return 'bg-red-100 dark:bg-red-900/30 text-red-800 dark:text-red-300';
   };
 
   const getMissingFields = (record: EvangelismRecord) => {
@@ -57,7 +60,7 @@ function IncompleteEvangelismView({ data, isLoading = false }: IncompleteEvangel
       <div className="space-y-3">
         {[1, 2, 3, 4, 5].map((i) => (
           <div key={i} className="animate-pulse">
-            <div className="h-16 bg-gray-200 rounded"></div>
+            <div className="h-16 bg-gray-200 dark:bg-gray-700 rounded"></div>
           </div>
         ))}
       </div>
@@ -68,106 +71,90 @@ function IncompleteEvangelismView({ data, isLoading = false }: IncompleteEvangel
     <div className="space-y-4">
       {/* Search */}
       <div className="flex items-center gap-4">
-        <input
-          type="text"
-          placeholder="Search by name, phone, email, or captured by..."
-          value={searchTerm}
-          onChange={(e) => setSearchTerm(e.target.value)}
-          className="flex-1 px-4 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-        />
-        <span className="text-sm text-gray-500">
+        <div className="flex-1">
+          <Input
+            type="text"
+            placeholder="Search by name, phone, email, or captured by..."
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+          />
+        </div>
+        <span className="text-sm text-text-secondary-light dark:text-text-secondary-dark whitespace-nowrap">
           {filteredData.length} records with incomplete data
         </span>
       </div>
 
       {/* Table */}
       {filteredData.length === 0 ? (
-        <div className="text-center py-12 text-gray-400">
-          {data && data.length > 0
-            ? 'No records match your search'
-            : 'No incomplete evangelism records found'}
-        </div>
+        <EmptyState
+          title={data && data.length > 0 ? 'No records match your search' : 'No incomplete evangelism records found'}
+          description={data && data.length > 0 ? 'Try adjusting your search terms' : 'All evangelism records are complete'}
+        />
       ) : (
-        <div className="overflow-x-auto">
-          <table className="w-full">
-            <thead className="bg-gray-50">
-              <tr>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">
-                  Name
-                </th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">
-                  Phone
-                </th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">
-                  Email
-                </th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">
-                  Date
-                </th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">
-                  Captured By
-                </th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">
-                  Completeness
-                </th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">
-                  Missing Fields
-                </th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-gray-200">
-              {filteredData.map((record) => {
-                const missingFields = getMissingFields(record);
-                return (
-                  <tr key={record.id} className="hover:bg-gray-50">
-                    <td className="px-4 py-3 text-sm font-medium text-gray-800">
-                      {record.firstName || record.lastName
-                        ? `${record.firstName || ''} ${record.lastName || ''}`.trim()
-                        : '-'}
-                    </td>
-                    <td className="px-4 py-3 text-sm text-gray-600">
-                      {record.phone || <span className="text-red-500">Missing</span>}
-                    </td>
-                    <td className="px-4 py-3 text-sm text-gray-600">
-                      {record.email || <span className="text-red-500">Missing</span>}
-                    </td>
-                    <td className="px-4 py-3 text-sm text-gray-600">
-                      {formatDate(record.date)}
-                    </td>
-                    <td className="px-4 py-3 text-sm text-gray-600">
-                      {record.capturedByName || record.capturedBy || '-'}
-                    </td>
-                    <td className="px-4 py-3">
-                      <span
-                        className={`text-xs font-medium px-2 py-1 rounded ${getCompletenessColor(
-                          record.dataCompleteness
-                        )}`}
-                      >
-                        {record.dataCompleteness}%
-                      </span>
-                    </td>
-                    <td className="px-4 py-3 text-sm">
-                      {missingFields.length > 0 ? (
-                        <div className="flex flex-wrap gap-1">
-                          {missingFields.map((field) => (
-                            <span
-                              key={field}
-                              className="bg-red-50 text-red-600 text-xs px-1.5 py-0.5 rounded"
-                            >
-                              {field}
-                            </span>
-                          ))}
-                        </div>
-                      ) : (
-                        '-'
-                      )}
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
-        </div>
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableCell header>Name</TableCell>
+              <TableCell header>Phone</TableCell>
+              <TableCell header>Email</TableCell>
+              <TableCell header>Date</TableCell>
+              <TableCell header>Captured By</TableCell>
+              <TableCell header>Completeness</TableCell>
+              <TableCell header>Missing Fields</TableCell>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {filteredData.map((record) => {
+              const missingFields = getMissingFields(record);
+              return (
+                <TableRow key={record.id}>
+                  <TableCell className="font-medium text-text-primary-light dark:text-text-primary-dark">
+                    {record.firstName || record.lastName
+                      ? `${record.firstName || ''} ${record.lastName || ''}`.trim()
+                      : '-'}
+                  </TableCell>
+                  <TableCell>
+                    {record.phone || <span className="text-red-500 dark:text-red-400">Missing</span>}
+                  </TableCell>
+                  <TableCell>
+                    {record.email || <span className="text-red-500 dark:text-red-400">Missing</span>}
+                  </TableCell>
+                  <TableCell>
+                    {formatDate(record.date)}
+                  </TableCell>
+                  <TableCell>
+                    {record.capturedByName || record.capturedBy || '-'}
+                  </TableCell>
+                  <TableCell>
+                    <span
+                      className={`text-xs font-medium px-2 py-1 rounded ${getCompletenessColor(
+                        record.dataCompleteness
+                      )}`}
+                    >
+                      {record.dataCompleteness}%
+                    </span>
+                  </TableCell>
+                  <TableCell>
+                    {missingFields.length > 0 ? (
+                      <div className="flex flex-wrap gap-1">
+                        {missingFields.map((field) => (
+                          <span
+                            key={field}
+                            className="bg-red-50 dark:bg-red-900/30 text-red-600 dark:text-red-400 text-xs px-1.5 py-0.5 rounded"
+                          >
+                            {field}
+                          </span>
+                        ))}
+                      </div>
+                    ) : (
+                      '-'
+                    )}
+                  </TableCell>
+                </TableRow>
+              );
+            })}
+          </TableBody>
+        </Table>
       )}
     </div>
   );

@@ -21,6 +21,15 @@ vi.mock('../hooks/useAuth', () => ({
   useAuth: () => mockUseAuth(),
 }));
 
+// Mock ThemeContext
+vi.mock('../contexts/ThemeContext', () => ({
+  useTheme: () => ({
+    theme: 'light',
+    toggleTheme: vi.fn(),
+    setTheme: vi.fn(),
+  }),
+}));
+
 /**
  * Helper to render MainLayout with router context
  */
@@ -121,7 +130,7 @@ describe('MainLayout Navigation - Active State', () => {
     const mainNav = screen.getByRole('navigation', { name: 'Main navigation' });
     const dashboardLink = within(mainNav).getByText('Dashboard').closest('a');
     
-    expect(dashboardLink).toHaveClass('bg-blue-600', 'text-white');
+    expect(dashboardLink).toHaveClass('bg-primary', 'text-white');
   });
 
   it('should highlight Attendance tab when on attendance page', () => {
@@ -130,7 +139,7 @@ describe('MainLayout Navigation - Active State', () => {
     const mainNav = screen.getByRole('navigation', { name: 'Main navigation' });
     const attendanceLink = within(mainNav).getByText('Attendance Explorer').closest('a');
     
-    expect(attendanceLink).toHaveClass('bg-blue-600', 'text-white');
+    expect(attendanceLink).toHaveClass('bg-primary', 'text-white');
   });
 
   it('should highlight Missing Members tab when on missing members page', () => {
@@ -139,7 +148,7 @@ describe('MainLayout Navigation - Active State', () => {
     const mainNav = screen.getByRole('navigation', { name: 'Main navigation' });
     const missingLink = within(mainNav).getByText('Missing Members').closest('a');
     
-    expect(missingLink).toHaveClass('bg-blue-600', 'text-white');
+    expect(missingLink).toHaveClass('bg-primary', 'text-white');
   });
 
   it('should highlight Member Journey tab when on members page', () => {
@@ -148,7 +157,7 @@ describe('MainLayout Navigation - Active State', () => {
     const mainNav = screen.getByRole('navigation', { name: 'Main navigation' });
     const membersLink = within(mainNav).getByText('Member Journey').closest('a');
     
-    expect(membersLink).toHaveClass('bg-blue-600', 'text-white');
+    expect(membersLink).toHaveClass('bg-primary', 'text-white');
   });
 
   it('should highlight Admin tab when on admin page', () => {
@@ -157,7 +166,7 @@ describe('MainLayout Navigation - Active State', () => {
     const mainNav = screen.getByRole('navigation', { name: 'Main navigation' });
     const adminLink = within(mainNav).getByText('Admin').closest('a');
     
-    expect(adminLink).toHaveClass('bg-blue-600', 'text-white');
+    expect(adminLink).toHaveClass('bg-primary', 'text-white');
   });
 
   it('should not highlight inactive tabs', () => {
@@ -166,8 +175,8 @@ describe('MainLayout Navigation - Active State', () => {
     const mainNav = screen.getByRole('navigation', { name: 'Main navigation' });
     const attendanceLink = within(mainNav).getByText('Attendance Explorer').closest('a');
     
-    expect(attendanceLink).not.toHaveClass('bg-blue-600');
-    expect(attendanceLink).toHaveClass('text-gray-700');
+    expect(attendanceLink).not.toHaveClass('bg-primary');
+    expect(attendanceLink).toHaveClass('text-text-secondary-light');
   });
 });
 

@@ -1,5 +1,9 @@
 import { useMemo } from 'react';
 import type { DepartmentAttendance } from '../../types';
+import { Card } from '../tailus-ui/Card';
+import { LoadingSpinner } from '../LoadingSpinner';
+import { EmptyState } from '../common/EmptyState';
+import { Building2 } from 'lucide-react';
 
 interface DepartmentBreakdownCardProps {
   departments: DepartmentAttendance[] | null;
@@ -31,39 +35,39 @@ function DepartmentBreakdownCard({
 
   if (isLoading) {
     return (
-      <div className="bg-white rounded-lg shadow p-6">
-        <h2 className="text-lg font-semibold text-gray-800 mb-4">Department Breakdown</h2>
-        <div className="animate-pulse space-y-3">
-          {[1, 2, 3, 4, 5].map((i) => (
-            <div key={i} className="h-12 bg-gray-200 rounded"></div>
-          ))}
+      <Card className="p-6">
+        <h2 className="text-lg font-semibold text-text-primary-light dark:text-text-primary-dark mb-4">Department Breakdown</h2>
+        <div className="h-64 flex items-center justify-center">
+          <LoadingSpinner text="Loading departments..." />
         </div>
-      </div>
+      </Card>
     );
   }
 
   if (!departments) {
     return (
-      <div className="bg-white rounded-lg shadow p-6">
-        <h2 className="text-lg font-semibold text-gray-800 mb-4">Department Breakdown</h2>
-        <div className="h-64 flex items-center justify-center text-gray-400">
-          Select a service to view department breakdown
-        </div>
-      </div>
+      <Card className="p-6">
+        <h2 className="text-lg font-semibold text-text-primary-light dark:text-text-primary-dark mb-4">Department Breakdown</h2>
+        <EmptyState
+          icon={Building2}
+          title="No service selected"
+          description="Select a service to view department breakdown"
+        />
+      </Card>
     );
   }
 
   return (
-    <div className="bg-white rounded-lg shadow p-6">
+    <Card className="p-6">
       <div className="flex items-center justify-between mb-4">
-        <h2 className="text-lg font-semibold text-gray-800">Department Breakdown</h2>
+        <h2 className="text-lg font-semibold text-text-primary-light dark:text-text-primary-dark">Department Breakdown</h2>
         {stats && (
           <div className="flex items-center gap-4 text-sm">
-            <span className="text-gray-500">
-              Avg: <span className="font-medium text-gray-700">{stats.avgPercentage}%</span>
+            <span className="text-text-secondary-light dark:text-text-secondary-dark">
+              Avg: <span className="font-medium text-text-primary-light dark:text-text-primary-dark">{stats.avgPercentage}%</span>
             </span>
             {stats.belowThreshold > 0 && (
-              <span className="text-red-600">
+              <span className="text-red-600 dark:text-red-400">
                 {stats.belowThreshold} below {threshold}%
               </span>
             )}
@@ -72,9 +76,11 @@ function DepartmentBreakdownCard({
       </div>
 
       {sortedDepartments.length === 0 ? (
-        <div className="h-48 flex items-center justify-center text-gray-400">
-          No department data available for this service
-        </div>
+        <EmptyState
+          icon={Building2}
+          title="No department data"
+          description="No department data available for this service"
+        />
       ) : (
         <div className="space-y-3">
           {sortedDepartments.map((dept) => (
@@ -88,7 +94,7 @@ function DepartmentBreakdownCard({
       )}
 
       {/* Legend */}
-      <div className="mt-4 pt-4 border-t flex items-center gap-4 text-xs text-gray-500">
+      <div className="mt-4 pt-4 border-t border-gray-200 dark:border-gray-700 flex items-center gap-4 text-xs text-text-secondary-light dark:text-text-secondary-dark">
         <div className="flex items-center gap-1">
           <div className="w-3 h-3 bg-green-500 rounded"></div>
           <span>Above {threshold}%</span>
@@ -98,7 +104,7 @@ function DepartmentBreakdownCard({
           <span>Below {threshold}%</span>
         </div>
       </div>
-    </div>
+    </Card>
   );
 }
 
@@ -111,24 +117,24 @@ function DepartmentRow({ department, threshold }: DepartmentRowProps) {
   const percentage = Math.round(department.attendancePercentage * 10) / 10;
   const isBelowThreshold = department.attendancePercentage < threshold;
   const barColor = isBelowThreshold ? 'bg-red-500' : 'bg-green-500';
-  const textColor = isBelowThreshold ? 'text-red-600' : 'text-green-600';
+  const textColor = isBelowThreshold ? 'text-red-600 dark:text-red-400' : 'text-green-600 dark:text-green-400';
 
   return (
     <div
       className={`p-3 rounded-lg border ${
-        isBelowThreshold ? 'border-red-200 bg-red-50' : 'border-gray-200 bg-gray-50'
+        isBelowThreshold ? 'border-red-200 dark:border-red-800 bg-red-50 dark:bg-red-900/30' : 'border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800'
       }`}
     >
       <div className="flex items-center justify-between mb-2">
-        <span className="font-medium text-gray-700">{department.departmentName}</span>
+        <span className="font-medium text-text-secondary-light dark:text-text-secondary-dark">{department.departmentName}</span>
         <div className="flex items-center gap-3">
-          <span className="text-sm text-gray-500">
+          <span className="text-sm text-text-secondary-light dark:text-text-secondary-dark">
             {department.presentCount} / {department.activeMemberCount}
           </span>
           <span className={`font-semibold ${textColor}`}>{percentage}%</span>
         </div>
       </div>
-      <div className="w-full bg-gray-200 rounded-full h-2">
+      <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2">
         <div
           className={`h-2 rounded-full transition-all ${barColor}`}
           style={{ width: `${Math.min(percentage, 100)}%` }}

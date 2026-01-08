@@ -12,6 +12,8 @@ import {
 } from 'recharts';
 import type { ServiceKPIs } from '../../types';
 import type { AttendanceCategory } from './AttendanceDrillDownModal';
+import { useTheme } from '../../contexts/ThemeContext';
+import { Card } from '../tailus-ui';
 
 /**
  * Chart data item with category information for drill-down
@@ -34,15 +36,28 @@ interface AttendanceBreakdownChartProps {
   onCategoryClick?: (category: AttendanceCategory, categoryLabel: string, departmentId?: string) => void;
 }
 
-const COLORS = {
-  'First Timers': '#3B82F6', // blue-500
-  'Returners': '#10B981', // green-500
-  'Evangelism Contacts': '#8B5CF6', // purple-500
-  'Department Members': '#F59E0B', // amber-500
+// Modern color palette with complementary colors
+const COLORS_LIGHT = {
+  'First Timers': '#1e3a5f', // primary navy
+  'Returners': '#06b6d4', // secondary teal
+  'Evangelism Contacts': '#f59e0b', // accent gold
+  'Department Members': '#a855f7', // tertiary purple
   'Other': '#6B7280', // gray-500
 };
 
+const COLORS_DARK = {
+  'First Timers': '#60a5fa', // primary-dark (brighter blue)
+  'Returners': '#22d3ee', // secondary-400 (brighter teal)
+  'Evangelism Contacts': '#fbbf24', // accent-light (brighter gold)
+  'Department Members': '#c084fc', // tertiary-400 (brighter purple)
+  'Other': '#94a3b8', // gray-400
+};
+
 function AttendanceBreakdownChart({ kpis, isLoading = false, serviceId, onCategoryClick }: AttendanceBreakdownChartProps) {
+  const { theme } = useTheme();
+  const isDark = theme === 'dark';
+  const COLORS = isDark ? COLORS_DARK : COLORS_LIGHT;
+  
   const chartData = useMemo((): ChartDataItem[] => {
     if (!kpis) return [];
 
@@ -87,35 +102,41 @@ function AttendanceBreakdownChart({ kpis, isLoading = false, serviceId, onCatego
 
   if (isLoading) {
     return (
-      <div className="bg-white rounded-lg shadow p-6">
-        <h2 className="text-lg font-semibold text-gray-800 mb-4">Attendance Breakdown</h2>
+      <Card variant="default">
+        <h2 className="text-lg font-semibold text-text-primary-light dark:text-text-primary-dark mb-4">Attendance Breakdown</h2>
         <div className="h-64 flex items-center justify-center">
           <div className="animate-pulse flex flex-col items-center gap-2">
-            <div className="h-32 w-full bg-gray-200 rounded"></div>
-            <div className="h-4 w-48 bg-gray-200 rounded"></div>
+            <div className="h-32 w-full bg-gray-200 dark:bg-gray-700 rounded"></div>
+            <div className="h-4 w-48 bg-gray-200 dark:bg-gray-700 rounded"></div>
           </div>
         </div>
-      </div>
+      </Card>
     );
   }
 
   if (!kpis || chartData.length === 0) {
     return (
-      <div className="bg-white rounded-lg shadow p-6">
-        <h2 className="text-lg font-semibold text-gray-800 mb-4">Attendance Breakdown</h2>
-        <div className="h-64 flex items-center justify-center text-gray-400">
+      <Card variant="default">
+        <h2 className="text-lg font-semibold text-text-primary-light dark:text-text-primary-dark mb-4">Attendance Breakdown</h2>
+        <div className="h-64 flex items-center justify-center text-text-secondary-light dark:text-text-secondary-dark">
           Select a service to view attendance breakdown
         </div>
-      </div>
+      </Card>
     );
   }
 
+  // Theme-aware colors for chart elements
+  const gridColor = isDark ? '#374151' : '#E5E7EB';
+  const textColor = isDark ? '#94a3b8' : '#6B7280';
+  const tooltipBg = isDark ? '#1e293b' : '#fff';
+  const tooltipBorder = isDark ? '#374151' : '#E5E7EB';
+
   return (
-    <div className="bg-white rounded-lg shadow p-6">
+    <Card variant="default">
       <div className="flex items-center justify-between mb-4">
-        <h2 className="text-lg font-semibold text-gray-800">Attendance Breakdown</h2>
+        <h2 className="text-lg font-semibold text-text-primary-light dark:text-text-primary-dark">Attendance Breakdown</h2>
         {onCategoryClick && serviceId && (
-          <span className="text-xs text-gray-400">Click bars to view members</span>
+          <span className="text-xs text-text-secondary-light dark:text-text-secondary-dark">Click bars to view members</span>
         )}
       </div>
       <div className="h-64">
@@ -134,25 +155,26 @@ function AttendanceBreakdownChart({ kpis, isLoading = false, serviceId, onCatego
               }
             }}
           >
-            <CartesianGrid strokeDasharray="3 3" stroke="#E5E7EB" />
+            <CartesianGrid strokeDasharray="3 3" stroke={gridColor} />
             <XAxis
               dataKey="name"
-              tick={{ fontSize: 12, fill: '#6B7280' }}
+              tick={{ fontSize: 12, fill: textColor }}
               tickLine={false}
-              axisLine={{ stroke: '#E5E7EB' }}
+              axisLine={{ stroke: gridColor }}
             />
             <YAxis
-              tick={{ fontSize: 12, fill: '#6B7280' }}
+              tick={{ fontSize: 12, fill: textColor }}
               tickLine={false}
-              axisLine={{ stroke: '#E5E7EB' }}
+              axisLine={{ stroke: gridColor }}
               allowDecimals={false}
             />
             <Tooltip
               contentStyle={{
-                backgroundColor: '#fff',
-                border: '1px solid #E5E7EB',
+                backgroundColor: tooltipBg,
+                border: `1px solid ${tooltipBorder}`,
                 borderRadius: '8px',
                 boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)',
+                color: textColor,
               }}
               formatter={(value) => [value, 'Count']}
             />
@@ -177,13 +199,13 @@ function AttendanceBreakdownChart({ kpis, isLoading = false, serviceId, onCatego
           </BarChart>
         </ResponsiveContainer>
       </div>
-      <div className="mt-4 pt-4 border-t border-gray-100">
+      <div className="mt-4 pt-4 border-t border-gray-100 dark:border-gray-700">
         <div className="flex items-center justify-between text-sm">
-          <span className="text-gray-500">Total Attendance:</span>
-          <span className="font-semibold text-gray-800">{kpis.totalAttendance}</span>
+          <span className="text-text-secondary-light dark:text-text-secondary-dark">Total Attendance:</span>
+          <span className="font-semibold text-accent dark:text-accent-light">{kpis.totalAttendance}</span>
         </div>
       </div>
-    </div>
+    </Card>
   );
 }
 

@@ -148,7 +148,7 @@ function MemberSearchBar({
           onFocus={() => results.length > 0 && setIsOpen(true)}
           placeholder={placeholder}
           autoFocus={autoFocus}
-          className="block w-full pl-10 pr-10 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-colors"
+          className="block w-full pl-10 pr-10 py-2.5 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-primary focus:border-primary outline-none transition-colors bg-surface-light dark:bg-surface-dark text-text-primary-light dark:text-text-primary-dark"
         />
         {isLoading && (
           <div className="absolute inset-y-0 right-0 pr-3 flex items-center">
@@ -174,19 +174,19 @@ function MemberSearchBar({
       {isOpen && results.length > 0 && (
         <div 
           ref={dropdownRef}
-          className="absolute z-50 w-full mt-1 bg-white rounded-lg shadow-lg border border-gray-200 max-h-80 overflow-y-auto"
+          className="absolute z-50 w-full mt-1 bg-surface-light dark:bg-surface-dark rounded-lg shadow-lg border border-gray-200 dark:border-gray-700 max-h-80 overflow-y-auto"
         >
           {results.map((member, index) => (
             <button
               key={member.id}
               onClick={() => handleSelectMember(member)}
               onMouseEnter={() => setSelectedIndex(index)}
-              className={`w-full px-4 py-3 flex items-center gap-3 text-left hover:bg-gray-50 transition-colors ${
-                index === selectedIndex ? 'bg-blue-50' : ''
-              } ${index !== results.length - 1 ? 'border-b border-gray-100' : ''}`}
+              className={`w-full px-4 py-3 flex items-center gap-3 text-left hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors ${
+                index === selectedIndex ? 'bg-blue-50 dark:bg-blue-900/30' : ''
+              } ${index !== results.length - 1 ? 'border-b border-gray-100 dark:border-gray-700' : ''}`}
             >
               {/* Avatar */}
-              <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-blue-600 rounded-full flex items-center justify-center text-white text-sm font-medium flex-shrink-0">
+              <div className="w-10 h-10 bg-gradient-to-br from-primary to-primary-dark rounded-full flex items-center justify-center text-white text-sm font-medium flex-shrink-0">
                 {member.firstName?.[0]?.toUpperCase() || '?'}
                 {member.lastName?.[0]?.toUpperCase() || ''}
               </div>
@@ -194,12 +194,12 @@ function MemberSearchBar({
               {/* Member Info */}
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-2">
-                  <span className="font-medium text-gray-900 truncate">{member.fullName}</span>
-                  <span className={`px-2 py-0.5 text-xs font-medium rounded-full ${statusColors[member.status] || 'bg-gray-100 text-gray-800'}`}>
+                  <span className="font-medium text-text-primary-light dark:text-text-primary-dark truncate">{member.fullName}</span>
+                  <span className={`px-2 py-0.5 text-xs font-medium rounded-full ${statusColors[member.status] || 'bg-gray-100 dark:bg-gray-700 text-gray-800 dark:text-gray-200'}`}>
                     {member.status}
                   </span>
                 </div>
-                <div className="flex items-center gap-3 text-sm text-gray-500 mt-0.5">
+                <div className="flex items-center gap-3 text-sm text-text-secondary-light dark:text-text-secondary-dark mt-0.5">
                   {member.phone && (
                     <span className="flex items-center gap-1">
                       <PhoneIcon className="w-3 h-3" />
@@ -216,7 +216,7 @@ function MemberSearchBar({
               </div>
 
               {/* Arrow */}
-              <ChevronRightIcon className="w-5 h-5 text-gray-400 flex-shrink-0" />
+              <ChevronRightIcon className="w-5 h-5 text-gray-400 dark:text-gray-500 flex-shrink-0" />
             </button>
           ))}
         </div>
@@ -224,7 +224,7 @@ function MemberSearchBar({
 
       {/* No Results Message */}
       {isOpen && query.length >= 2 && results.length === 0 && !isLoading && (
-        <div className="absolute z-50 w-full mt-1 bg-white rounded-lg shadow-lg border border-gray-200 p-4 text-center text-gray-500">
+        <div className="absolute z-50 w-full mt-1 bg-surface-light dark:bg-surface-dark rounded-lg shadow-lg border border-gray-200 dark:border-gray-700 p-4 text-center text-text-secondary-light dark:text-text-secondary-dark">
           No members found matching "{query}"
         </div>
       )}

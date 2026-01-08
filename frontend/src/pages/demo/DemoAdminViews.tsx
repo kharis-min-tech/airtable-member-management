@@ -109,8 +109,8 @@ function DemoAdminViews() {
       {/* Page header */}
       <div className="flex justify-between items-center">
         <div>
-          <h1 className="text-2xl font-bold text-gray-800">Admin Quick Views</h1>
-          <p className="text-gray-600">Pre-configured views for common admin tasks</p>
+          <h1 className="text-2xl font-bold text-text-primary-light dark:text-text-primary-dark">Admin Quick Views</h1>
+          <p className="text-text-secondary-light dark:text-text-secondary-dark">Pre-configured views for common admin tasks</p>
         </div>
         <DataRefreshControls
           lastUpdated={lastUpdated}
@@ -123,7 +123,7 @@ function DemoAdminViews() {
       </div>
 
       {/* View selector tabs */}
-      <div className="bg-white rounded-lg shadow p-4">
+      <div className="bg-surface-light dark:bg-surface-dark rounded-lg shadow p-4">
         <div className="flex flex-wrap gap-2">
           {ADMIN_VIEWS.map((view) => (
             <button
@@ -131,8 +131,8 @@ function DemoAdminViews() {
               onClick={() => handleViewChange(view.id)}
               className={`px-4 py-2 rounded-md text-sm transition-colors ${
                 activeView === view.id
-                  ? 'bg-blue-600 text-white'
-                  : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                  ? 'bg-primary dark:bg-primary-dark text-white'
+                  : 'bg-gray-100 dark:bg-gray-700 text-text-secondary-light dark:text-text-secondary-dark hover:bg-gray-200 dark:hover:bg-gray-600'
               }`}
             >
               {view.label}
@@ -142,11 +142,11 @@ function DemoAdminViews() {
       </div>
 
       {/* Active view content */}
-      <div className="bg-white rounded-lg shadow p-6">
-        <h2 className="text-lg font-semibold text-gray-800 mb-2">
+      <div className="bg-surface-light dark:bg-surface-dark rounded-lg shadow p-6">
+        <h2 className="text-lg font-semibold text-text-primary-light dark:text-text-primary-dark mb-2">
           {activeViewConfig?.label}
         </h2>
-        <p className="text-gray-500 mb-4">{activeViewConfig?.description}</p>
+        <p className="text-text-secondary-light dark:text-text-secondary-dark mb-4">{activeViewConfig?.description}</p>
         {renderViewContent()}
       </div>
     </div>

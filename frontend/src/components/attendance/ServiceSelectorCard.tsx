@@ -1,5 +1,7 @@
 import { useCallback } from 'react';
 import type { Service } from '../../types';
+import { Card } from '../tailus-ui/Card';
+import { Select } from '../tailus-ui/Select';
 
 interface ServiceSelectorCardProps {
   services: Service[];
@@ -31,42 +33,37 @@ function ServiceSelectorCard({
     });
   };
 
+  const serviceOptions = services.map((service) => ({
+    value: service.id,
+    label: `${service.serviceName} - ${formatServiceDate(service.serviceDate)}`,
+  }));
+
   return (
-    <div className="bg-white rounded-lg shadow p-6">
-      <h2 className="text-lg font-semibold text-gray-800 mb-4">Select Service</h2>
-      <div className="flex items-center gap-3">
-        <label htmlFor="attendance-service-selector" className="text-sm font-medium text-gray-700">
-          Service
-        </label>
-        <select
+    <Card className="p-6">
+      <h2 className="text-lg font-semibold text-text-primary-light dark:text-text-primary-dark mb-4">Select Service</h2>
+      <div className="max-w-md">
+        <Select
           id="attendance-service-selector"
+          label="Service"
           value={selectedServiceId || ''}
           onChange={handleChange}
           disabled={isLoading || services.length === 0}
-          className="block w-full max-w-md px-3 py-2 bg-white border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm disabled:bg-gray-100 disabled:cursor-not-allowed"
-        >
-          {isLoading ? (
-            <option value="">Loading services...</option>
-          ) : services.length === 0 ? (
-            <option value="">No services available</option>
-          ) : (
-            <>
-              <option value="">Select a service to explore...</option>
-              {services.map((service) => (
-                <option key={service.id} value={service.id}>
-                  {service.serviceName} - {formatServiceDate(service.serviceDate)}
-                </option>
-              ))}
-            </>
-          )}
-        </select>
+          placeholder={
+            isLoading
+              ? 'Loading services...'
+              : services.length === 0
+              ? 'No services available'
+              : 'Select a service to explore...'
+          }
+          options={serviceOptions}
+        />
       </div>
       {!selectedServiceId && !isLoading && services.length > 0 && (
-        <p className="mt-3 text-sm text-gray-500">
+        <p className="mt-3 text-sm text-text-secondary-light dark:text-text-secondary-dark">
           Select a service to view attendance details and department breakdown.
         </p>
       )}
-    </div>
+    </Card>
   );
 }
 

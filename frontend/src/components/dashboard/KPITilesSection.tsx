@@ -32,28 +32,28 @@ function KPITilesSection({
         title="Total Attendance"
         value={kpis?.totalAttendance ?? '--'}
         subtitle="Selected service"
-        color="gray"
+        color="accent"
         isLoading={isLoadingKPIs}
       />
       <KPITile
         title="First Timers"
         value={kpis?.firstTimersCount ?? '--'}
         subtitle="Selected service"
-        color="blue"
+        color="accent"
         isLoading={isLoadingKPIs}
       />
       <KPITile
         title="Returners"
         value={kpis?.returnersCount ?? '--'}
         subtitle="Selected service"
-        color="green"
+        color="accent"
         isLoading={isLoadingKPIs}
       />
       <KPITile
         title="Evangelism Contacts"
         value={evangelismStats?.contactCount ?? '--'}
         subtitle={evangelismSubtitle}
-        color="purple"
+        color="accent"
         isLoading={isLoadingEvangelism}
       />
     </div>

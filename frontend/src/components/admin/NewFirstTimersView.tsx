@@ -5,6 +5,9 @@
  */
 
 import { useMemo, useState } from 'react';
+import { Input } from '../tailus-ui/Input';
+import { Table, TableHeader, TableBody, TableRow, TableCell } from '../tailus-ui/Table';
+import { EmptyState } from '../common/EmptyState';
 import type { Member } from '../../types';
 
 interface NewFirstTimersViewProps {
@@ -50,7 +53,7 @@ function NewFirstTimersView({ data, isLoading = false }: NewFirstTimersViewProps
       <div className="space-y-3">
         {[1, 2, 3, 4, 5].map((i) => (
           <div key={i} className="animate-pulse">
-            <div className="h-16 bg-gray-200 rounded"></div>
+            <div className="h-16 bg-gray-200 dark:bg-gray-700 rounded"></div>
           </div>
         ))}
       </div>
@@ -61,78 +64,64 @@ function NewFirstTimersView({ data, isLoading = false }: NewFirstTimersViewProps
     <div className="space-y-4">
       {/* Search */}
       <div className="flex items-center gap-4">
-        <input
-          type="text"
-          placeholder="Search by name, phone, or email..."
-          value={searchTerm}
-          onChange={(e) => setSearchTerm(e.target.value)}
-          className="flex-1 px-4 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-        />
-        <span className="text-sm text-gray-500">
+        <div className="flex-1">
+          <Input
+            type="text"
+            placeholder="Search by name, phone, or email..."
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+          />
+        </div>
+        <span className="text-sm text-text-secondary-light dark:text-text-secondary-dark whitespace-nowrap">
           {filteredData.length} first timers in the last 30 days
         </span>
       </div>
 
       {/* Table */}
       {filteredData.length === 0 ? (
-        <div className="text-center py-12 text-gray-400">
-          {data && data.length > 0
-            ? 'No first timers match your search'
-            : 'No new first timers in the last 30 days'}
-        </div>
+        <EmptyState
+          title={data && data.length > 0 ? 'No first timers match your search' : 'No new first timers in the last 30 days'}
+          description={data && data.length > 0 ? 'Try adjusting your search terms' : 'Check back later for new visitors'}
+        />
       ) : (
-        <div className="overflow-x-auto">
-          <table className="w-full">
-            <thead className="bg-gray-50">
-              <tr>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">
-                  Name
-                </th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">
-                  Phone
-                </th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">
-                  Email
-                </th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">
-                  Date First Captured
-                </th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">
-                  Days Ago
-                </th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">
-                  Follow-up Status
-                </th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-gray-200">
-              {filteredData.map((member) => (
-                <tr key={member.id} className="hover:bg-gray-50">
-                  <td className="px-4 py-3 text-sm font-medium text-gray-800">
-                    {member.fullName || `${member.firstName} ${member.lastName}`}
-                  </td>
-                  <td className="px-4 py-3 text-sm text-gray-600">
-                    {member.phone || '-'}
-                  </td>
-                  <td className="px-4 py-3 text-sm text-gray-600">
-                    {member.email || '-'}
-                  </td>
-                  <td className="px-4 py-3 text-sm text-gray-600">
-                    {formatDate(member.dateFirstCaptured)}
-                  </td>
-                  <td className="px-4 py-3 text-sm">
-                    <span className="bg-blue-100 text-blue-800 text-xs font-medium px-2 py-1 rounded">
-                      {getDaysSince(member.dateFirstCaptured)} days
-                    </span>
-                  </td>
-                  <td className="px-4 py-3 text-sm text-gray-600">
-                    {member.followUpStatus || 'Not Started'}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableCell header>Name</TableCell>
+              <TableCell header>Phone</TableCell>
+              <TableCell header>Email</TableCell>
+              <TableCell header>Date First Captured</TableCell>
+              <TableCell header>Days Ago</TableCell>
+              <TableCell header>Follow-up Status</TableCell>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {filteredData.map((member) => (
+              <TableRow key={member.id}>
+                <TableCell className="font-medium text-text-primary-light dark:text-text-primary-dark">
+                  {member.fullName || `${member.firstName} ${member.lastName}`}
+                </TableCell>
+                <TableCell>
+                  {member.phone || '-'}
+                </TableCell>
+                <TableCell>
+                  {member.email || '-'}
+                </TableCell>
+                <TableCell>
+                  {formatDate(member.dateFirstCaptured)}
+                </TableCell>
+                <TableCell>
+                  <span className="bg-blue-100 dark:bg-blue-900/30 text-blue-800 dark:text-blue-300 text-xs font-medium px-2 py-1 rounded">
+                    {getDaysSince(member.dateFirstCaptured)} days
+                  </span>
+                </TableCell>
+                <TableCell>
+                  {member.followUpStatus || 'Not Started'}
+                </TableCell>
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>
       )}
     </div>
   );

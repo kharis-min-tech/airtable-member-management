@@ -78,8 +78,8 @@ function AttendanceExplorer() {
       {/* Page header */}
       <div className="flex flex-wrap justify-between items-center gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-gray-800">Service Attendance Explorer</h1>
-          <p className="text-gray-600">Explore attendance details for any service</p>
+          <h1 className="text-2xl font-bold text-text-primary-light dark:text-text-primary-dark">Service Attendance Explorer</h1>
+          <p className="text-text-secondary-light dark:text-text-secondary-dark">Explore attendance details for any service</p>
         </div>
         <DataRefreshControls
           lastUpdated={lastUpdated}

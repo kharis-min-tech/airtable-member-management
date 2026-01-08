@@ -109,35 +109,35 @@ function AttendanceDrillDownModal({
       aria-labelledby="modal-title"
       onKeyDown={handleKeyDown}
     >
-      {/* Backdrop */}
+      {/* Backdrop - semi-transparent to see page beneath */}
       <div 
-        className="fixed inset-0 bg-black bg-opacity-50 transition-opacity"
+        className="fixed inset-0 bg-black/30 dark:bg-black/50 transition-opacity backdrop-blur-sm"
         onClick={handleBackdropClick}
         aria-hidden="true"
       />
       
       {/* Modal container */}
       <div className="flex min-h-full items-center justify-center p-4">
-        <div className="relative bg-white rounded-lg shadow-xl max-w-2xl w-full max-h-[80vh] flex flex-col">
+        <div className="relative bg-surface-light dark:bg-surface-dark rounded-lg shadow-xl max-w-2xl w-full max-h-[80vh] flex flex-col border border-gray-200 dark:border-gray-700">
           {/* Header */}
-          <div className="flex items-center justify-between p-4 border-b border-gray-200">
+          <div className="flex items-center justify-between p-4 border-b border-gray-200 dark:border-gray-700">
             <div>
-              <h2 id="modal-title" className="text-lg font-semibold text-gray-800">
+              <h2 id="modal-title" className="text-lg font-semibold text-text-primary-light dark:text-text-primary-dark">
                 {displayLabel}
               </h2>
-              <p className="text-sm text-gray-500 mt-1">
+              <p className="text-sm text-text-secondary-light dark:text-text-secondary-dark mt-1">
                 {serviceName}
               </p>
             </div>
             <div className="flex items-center gap-4">
               {/* Member count - Requirements: 3.5 */}
-              <span className="text-sm font-medium text-gray-600 bg-gray-100 px-3 py-1 rounded-full">
+              <span className="text-sm font-medium text-text-secondary-light dark:text-text-secondary-dark bg-gray-100 dark:bg-gray-700 px-3 py-1 rounded-full">
                 {safeMembers.length} {safeMembers.length === 1 ? 'member' : 'members'}
               </span>
               {/* Close button - Requirements: 3.6 */}
               <button
                 onClick={onClose}
-                className="text-gray-400 hover:text-gray-600 transition-colors p-1 rounded-full hover:bg-gray-100"
+                className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors p-1 rounded-full hover:bg-gray-100 dark:hover:bg-gray-700"
                 aria-label="Close modal"
               >
                 <CloseIcon className="w-6 h-6" />
@@ -160,10 +160,10 @@ function AttendanceDrillDownModal({
           </div>
 
           {/* Footer */}
-          <div className="flex justify-end p-4 border-t border-gray-200">
+          <div className="flex justify-end p-4 border-t border-gray-200 dark:border-gray-700">
             <button
               onClick={onClose}
-              className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-md transition-colors"
+              className="px-4 py-2 text-sm font-medium text-text-primary-light dark:text-text-primary-dark bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 rounded-md transition-colors"
             >
               Close
             </button>
@@ -180,8 +180,8 @@ function AttendanceDrillDownModal({
 function LoadingState() {
   return (
     <div className="flex flex-col items-center justify-center py-12">
-      <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500 mb-4" />
-      <p className="text-gray-500">Loading members...</p>
+      <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary dark:border-primary-dark mb-4" />
+      <p className="text-text-secondary-light dark:text-text-secondary-dark">Loading members...</p>
     </div>
   );
 }
@@ -191,7 +191,7 @@ function LoadingState() {
  */
 function EmptyState({ category }: { category: string }) {
   return (
-    <div className="flex flex-col items-center justify-center py-12 text-gray-400">
+    <div className="flex flex-col items-center justify-center py-12 text-text-secondary-light dark:text-text-secondary-dark">
       <UserGroupIcon className="w-12 h-12 mb-4" />
       <p className="text-lg">No {category.toLowerCase()} found</p>
       <p className="text-sm mt-1">There are no members in this category for this service</p>
@@ -242,15 +242,15 @@ function MemberRow({
   return (
     <button
       onClick={onClick}
-      className="w-full text-left p-3 rounded-lg border border-gray-200 hover:border-blue-300 hover:bg-blue-50 transition-colors group"
+      className="w-full text-left p-3 rounded-lg border border-gray-200 dark:border-gray-700 hover:border-primary dark:hover:border-primary-dark hover:bg-primary/5 dark:hover:bg-primary-dark/10 transition-colors group"
     >
       <div className="flex items-center justify-between">
         <div className="flex-1 min-w-0">
           {/* Full Name - Requirements: 3.3 */}
-          <p className="font-medium text-gray-800 group-hover:text-blue-600 truncate">
+          <p className="font-medium text-text-primary-light dark:text-text-primary-dark group-hover:text-primary dark:group-hover:text-primary-dark truncate">
             {member.fullName}
           </p>
-          <div className="flex flex-wrap items-center gap-x-4 gap-y-1 mt-1 text-sm text-gray-500">
+          <div className="flex flex-wrap items-center gap-x-4 gap-y-1 mt-1 text-sm text-text-secondary-light dark:text-text-secondary-dark">
             {/* Phone - Requirements: 3.3 */}
             {member.phone && (
               <span className="flex items-center gap-1">
@@ -270,7 +270,7 @@ function MemberRow({
         {/* Status - Requirements: 3.3 */}
         <div className="flex items-center gap-2 ml-4">
           <StatusBadge status={member.status} />
-          <ChevronRightIcon className="w-5 h-5 text-gray-400 group-hover:text-blue-500" />
+          <ChevronRightIcon className="w-5 h-5 text-gray-400 group-hover:text-primary dark:group-hover:text-primary-dark" />
         </div>
       </div>
     </button>
@@ -284,15 +284,15 @@ function StatusBadge({ status }: { status: string }) {
   const getStatusColor = (status: string) => {
     switch (status) {
       case 'First Timer':
-        return 'bg-blue-100 text-blue-800';
+        return 'bg-blue-100 dark:bg-blue-900/50 text-blue-800 dark:text-blue-300';
       case 'Returner':
-        return 'bg-green-100 text-green-800';
+        return 'bg-green-100 dark:bg-green-900/50 text-green-800 dark:text-green-300';
       case 'Evangelism Contact':
-        return 'bg-purple-100 text-purple-800';
+        return 'bg-purple-100 dark:bg-purple-900/50 text-purple-800 dark:text-purple-300';
       case 'Member':
-        return 'bg-gray-100 text-gray-800';
+        return 'bg-gray-100 dark:bg-gray-700 text-gray-800 dark:text-gray-300';
       default:
-        return 'bg-gray-100 text-gray-600';
+        return 'bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-400';
     }
   };
 

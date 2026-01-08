@@ -108,8 +108,8 @@ function DemoMissingMembers() {
       {/* Page header */}
       <div className="flex flex-wrap justify-between items-center gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-gray-800">Missing Members</h1>
-          <p className="text-gray-600">
+          <h1 className="text-2xl font-bold text-text-primary-light dark:text-text-primary-dark">Missing Members</h1>
+          <p className="text-text-secondary-light dark:text-text-secondary-dark">
             Find members who attended one service but missed another
           </p>
         </div>
@@ -139,17 +139,17 @@ function DemoMissingMembers() {
 
       {/* Filters */}
       {canCompare && (
-        <div className="bg-white rounded-lg shadow p-4">
+        <div className="bg-surface-light dark:bg-surface-dark rounded-lg shadow p-4">
           <div className="flex flex-wrap items-center gap-4">
             <div className="flex items-center gap-2">
-              <label htmlFor="status-filter" className="text-sm font-medium text-gray-700">
+              <label htmlFor="status-filter" className="text-sm font-medium text-text-secondary-light dark:text-text-secondary-dark">
                 Filter by Status:
               </label>
               <select
                 id="status-filter"
                 value={statusFilter}
                 onChange={(e) => setStatusFilter(e.target.value)}
-                className="px-3 py-1.5 bg-white border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm"
+                className="px-3 py-1.5 bg-surface-light dark:bg-surface-dark border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary text-sm text-text-primary-light dark:text-text-primary-dark"
               >
                 <option value="">All Statuses</option>
                 <option value="Member">Member</option>

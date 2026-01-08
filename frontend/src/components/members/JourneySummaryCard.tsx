@@ -1,4 +1,5 @@
 import type { JourneySummary } from '../../types';
+import { Card, CardHeader, CardTitle, CardContent, CardFooter } from '../tailus-ui/Card';
 
 interface JourneySummaryCardProps {
   summary: JourneySummary | null;
@@ -8,28 +9,36 @@ interface JourneySummaryCardProps {
 function JourneySummaryCard({ summary, isLoading = false }: JourneySummaryCardProps) {
   if (isLoading) {
     return (
-      <div className="bg-white rounded-lg shadow p-6">
-        <h2 className="text-lg font-semibold text-gray-800 mb-4">Journey Summary</h2>
-        <div className="animate-pulse grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
-          {[1, 2, 3, 4, 5, 6].map((i) => (
-            <div key={i} className="space-y-2">
-              <div className="h-3 w-20 bg-gray-200 rounded"></div>
-              <div className="h-5 w-24 bg-gray-200 rounded"></div>
-            </div>
-          ))}
-        </div>
-      </div>
+      <Card variant="default">
+        <CardHeader>
+          <CardTitle>Journey Summary</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="animate-pulse grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
+            {[1, 2, 3, 4, 5, 6].map((i) => (
+              <div key={i} className="space-y-2">
+                <div className="h-3 w-20 bg-gray-200 dark:bg-gray-700 rounded"></div>
+                <div className="h-5 w-24 bg-gray-200 dark:bg-gray-700 rounded"></div>
+              </div>
+            ))}
+          </div>
+        </CardContent>
+      </Card>
     );
   }
 
   if (!summary) {
     return (
-      <div className="bg-white rounded-lg shadow p-6">
-        <h2 className="text-lg font-semibold text-gray-800 mb-4">Journey Summary</h2>
-        <div className="h-24 flex items-center justify-center text-gray-400">
-          Select a member to view their journey summary
-        </div>
-      </div>
+      <Card variant="default">
+        <CardHeader>
+          <CardTitle>Journey Summary</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="h-24 flex items-center justify-center text-gray-400 dark:text-gray-500">
+            Select a member to view their journey summary
+          </div>
+        </CardContent>
+      </Card>
     );
   }
 
@@ -60,75 +69,76 @@ function JourneySummaryCard({ summary, isLoading = false }: JourneySummaryCardPr
       value: formatDate(summary.firstEvangelised),
       subValue: summary.firstEvangelised ? calculateDaysSince(summary.firstEvangelised) : undefined,
       icon: <MegaphoneIcon />,
-      color: 'text-orange-600',
-      bgColor: 'bg-orange-50',
+      color: 'text-orange-600 dark:text-orange-400',
+      bgColor: 'bg-orange-50 dark:bg-orange-900/20',
     },
     {
       label: 'First Visited',
       value: formatDate(summary.firstVisited),
       subValue: summary.firstVisited ? calculateDaysSince(summary.firstVisited) : undefined,
       icon: <HomeIcon />,
-      color: 'text-purple-600',
-      bgColor: 'bg-purple-50',
+      color: 'text-purple-600 dark:text-purple-400',
+      bgColor: 'bg-purple-50 dark:bg-purple-900/20',
     },
     {
       label: 'First Attended',
       value: formatDate(summary.firstAttended),
       subValue: summary.firstAttended ? calculateDaysSince(summary.firstAttended) : undefined,
       icon: <CalendarIcon />,
-      color: 'text-green-600',
-      bgColor: 'bg-green-50',
+      color: 'text-green-600 dark:text-green-400',
+      bgColor: 'bg-green-50 dark:bg-green-900/20',
     },
     {
       label: 'Last Attended',
       value: formatDate(summary.lastAttended),
       subValue: summary.lastAttended ? calculateDaysSince(summary.lastAttended) : undefined,
       icon: <ClockIcon />,
-      color: 'text-blue-600',
-      bgColor: 'bg-blue-50',
+      color: 'text-blue-600 dark:text-blue-400',
+      bgColor: 'bg-blue-50 dark:bg-blue-900/20',
     },
     {
       label: 'Total Visits',
       value: summary.visitsCount.toString(),
       subValue: summary.visitsCount === 1 ? 'home visit' : 'home visits',
       icon: <HashIcon />,
-      color: 'text-indigo-600',
-      bgColor: 'bg-indigo-50',
+      color: 'text-indigo-600 dark:text-indigo-400',
+      bgColor: 'bg-indigo-50 dark:bg-indigo-900/20',
     },
     {
       label: 'Follow-up Person',
       value: summary.assignedFollowUpPerson || '--',
       icon: <UserIcon />,
-      color: 'text-teal-600',
-      bgColor: 'bg-teal-50',
+      color: 'text-teal-600 dark:text-teal-400',
+      bgColor: 'bg-teal-50 dark:bg-teal-900/20',
     },
   ];
 
   return (
-    <div className="bg-white rounded-lg shadow p-6">
-      <h2 className="text-lg font-semibold text-gray-800 mb-4">Journey Summary</h2>
-      
-      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
-        {summaryItems.map((item, index) => (
-          <div key={index} className={`${item.bgColor} rounded-lg p-4`}>
-            <div className="flex items-center gap-2 mb-2">
-              <span className={item.color}>{item.icon}</span>
-              <span className="text-xs font-medium text-gray-500">{item.label}</span>
+    <Card variant="default">
+      <CardHeader>
+        <CardTitle>Journey Summary</CardTitle>
+      </CardHeader>
+      <CardContent>
+        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
+          {summaryItems.map((item, index) => (
+            <div key={index} className={`${item.bgColor} rounded-lg p-4`}>
+              <div className="flex items-center gap-2 mb-2">
+                <span className={item.color}>{item.icon}</span>
+                <span className="text-xs font-medium text-text-secondary-light dark:text-text-secondary-dark">{item.label}</span>
+              </div>
+              <p className={`text-sm font-semibold ${item.color}`}>{item.value}</p>
+              {item.subValue && (
+                <p className="text-xs text-text-secondary-light dark:text-text-secondary-dark mt-0.5">{item.subValue}</p>
+              )}
             </div>
-            <p className={`text-sm font-semibold ${item.color}`}>{item.value}</p>
-            {item.subValue && (
-              <p className="text-xs text-gray-500 mt-0.5">{item.subValue}</p>
-            )}
-          </div>
-        ))}
-      </div>
-
-      {/* Journey Progress Bar */}
-      <div className="mt-6 pt-6 border-t border-gray-100">
-        <h3 className="text-sm font-semibold text-gray-700 mb-3">Journey Progress</h3>
+          ))}
+        </div>
+      </CardContent>
+      <CardFooter>
+        <h3 className="text-sm font-semibold text-text-secondary-light dark:text-text-secondary-dark mb-3">Journey Progress</h3>
         <JourneyProgressBar summary={summary} />
-      </div>
-    </div>
+      </CardFooter>
+    </Card>
   );
 }
 
@@ -151,7 +161,7 @@ function JourneyProgressBar({ summary }: JourneyProgressBarProps) {
     <div>
       {/* Progress bar */}
       <div className="relative">
-        <div className="h-2 bg-gray-200 rounded-full">
+        <div className="h-2 bg-gray-200 dark:bg-gray-700 rounded-full">
           <div 
             className="h-2 bg-gradient-to-r from-blue-500 to-green-500 rounded-full transition-all duration-500"
             style={{ width: `${progressPercentage}%` }}
@@ -165,7 +175,7 @@ function JourneyProgressBar({ summary }: JourneyProgressBarProps) {
               <div className={`w-4 h-4 rounded-full border-2 ${
                 stage.completed 
                   ? 'bg-green-500 border-green-500' 
-                  : 'bg-white border-gray-300'
+                  : 'bg-surface-light dark:bg-surface-dark border-gray-300 dark:border-gray-600'
               } flex items-center justify-center -mt-5`}>
                 {stage.completed && (
                   <svg className="w-2.5 h-2.5 text-white" fill="currentColor" viewBox="0 0 20 20">
@@ -173,7 +183,7 @@ function JourneyProgressBar({ summary }: JourneyProgressBarProps) {
                   </svg>
                 )}
               </div>
-              <span className={`text-xs mt-1 text-center ${stage.completed ? 'text-green-600 font-medium' : 'text-gray-400'}`}>
+              <span className={`text-xs mt-1 text-center ${stage.completed ? 'text-green-600 dark:text-green-400 font-medium' : 'text-gray-400 dark:text-gray-500'}`}>
                 {stage.label}
               </span>
             </div>

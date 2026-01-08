@@ -15,6 +15,7 @@ import {
 } from '../../components/dashboard';
 import type { AttendanceCategory, DrillDownMember } from '../../components/dashboard';
 import { DataRefreshControls } from '../../components/common';
+import { Card } from '../../components/tailus-ui';
 import type { Service } from '../../types';
 
 function PastorDashboard() {
@@ -211,8 +212,8 @@ function PastorDashboard() {
       {/* Page header */}
       <div className="flex flex-wrap justify-between items-center gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-gray-800">Pastor Dashboard</h1>
-          <p className="text-gray-600">Welcome back, {user?.email}</p>
+          <h1 className="text-2xl font-bold text-text-primary-light dark:text-text-primary-dark">Pastor Dashboard</h1>
+          <p className="text-text-secondary-light dark:text-text-secondary-dark">Welcome back, {user?.email}</p>
         </div>
         <DataRefreshControls
           lastUpdated={lastUpdated}
@@ -225,7 +226,7 @@ function PastorDashboard() {
       </div>
 
       {/* Service selector */}
-      <div className="bg-white rounded-lg shadow p-4">
+      <Card variant="default">
         <ServiceSelector
           services={services || []}
           selectedServiceId={selectedServiceId}
@@ -233,7 +234,7 @@ function PastorDashboard() {
           isLoading={isLoadingServices}
           label="Select Service for KPIs"
         />
-      </div>
+      </Card>
 
       {/* KPI Tiles */}
       <KPITilesSection

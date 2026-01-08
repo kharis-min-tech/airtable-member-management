@@ -9,6 +9,8 @@ import { useApi } from '../../hooks/useApi';
 import { useLiveMode } from '../../hooks/useLiveMode';
 import { churchApi } from '../../services/church-api';
 import { DataRefreshControls } from '../../components/common';
+import { Card, CardTitle, CardContent } from '../../components/tailus-ui/Card';
+import { Button } from '../../components/tailus-ui/Button';
 import {
   TodaysFollowUpsView,
   NewFirstTimersView,
@@ -142,8 +144,8 @@ function AdminViews() {
     <div className="space-y-6">
       <div className="flex justify-between items-center">
         <div>
-          <h1 className="text-2xl font-bold text-gray-800">Admin Quick Views</h1>
-          <p className="text-gray-600">Pre-configured views for common admin tasks</p>
+          <h1 className="text-2xl font-bold text-text-primary-light dark:text-text-primary-dark">Admin Quick Views</h1>
+          <p className="text-text-secondary-light dark:text-text-secondary-dark">Pre-configured views for common admin tasks</p>
         </div>
         <DataRefreshControls
           lastUpdated={lastUpdated}
@@ -155,27 +157,26 @@ function AdminViews() {
         />
       </div>
 
-      <div className="bg-white rounded-lg shadow p-4">
+      <Card variant="default">
         <div className="flex flex-wrap gap-2">
           {ADMIN_VIEWS.map((view) => (
-            <button
+            <Button
               key={view.id}
               onClick={() => handleViewChange(view.id)}
-              className={`px-4 py-2 rounded-md text-sm transition-colors ${
-                activeView === view.id ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-              }`}
+              variant={activeView === view.id ? 'primary' : 'secondary'}
+              size="sm"
             >
               {view.label}
-            </button>
+            </Button>
           ))}
         </div>
-      </div>
+      </Card>
 
-      <div className="bg-white rounded-lg shadow p-6">
-        <h2 className="text-lg font-semibold text-gray-800 mb-2">{activeViewConfig?.label}</h2>
-        <p className="text-gray-500 mb-4">{activeViewConfig?.description}</p>
+      <Card variant="default">
+        <CardTitle className="mb-2">{activeViewConfig?.label}</CardTitle>
+        <CardContent className="mb-4">{activeViewConfig?.description}</CardContent>
         {renderViewContent()}
-      </div>
+      </Card>
     </div>
   );
 }

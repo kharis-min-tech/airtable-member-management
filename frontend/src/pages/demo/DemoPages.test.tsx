@@ -15,6 +15,7 @@ import DemoAttendanceExplorer from './DemoAttendanceExplorer';
 import DemoMissingMembers from './DemoMissingMembers';
 import DemoMemberJourney from './DemoMemberJourney';
 import DemoAdminViews from './DemoAdminViews';
+import { ThemeProvider } from '../../contexts/ThemeContext';
 
 // Mock the dashboard components that use recharts
 vi.mock('../../components/dashboard', () => ({
@@ -37,9 +38,20 @@ const renderWithRouter = (ui: React.ReactElement, { route = '/' } = {}) => {
   );
 };
 
+// Helper to render with router and theme provider (for components that use ThemeToggle)
+const renderWithRouterAndTheme = (ui: React.ReactElement, { route = '/' } = {}) => {
+  return render(
+    <ThemeProvider>
+      <MemoryRouter initialEntries={[route]}>
+        {ui}
+      </MemoryRouter>
+    </ThemeProvider>
+  );
+};
+
 describe('DemoLayout', () => {
   it('should render demo banner indicating mock data mode', () => {
-    renderWithRouter(
+    renderWithRouterAndTheme(
       <Routes>
         <Route path="/" element={<DemoLayout />}>
           <Route index element={<div>Demo Content</div>} />
@@ -54,7 +66,7 @@ describe('DemoLayout', () => {
   });
 
   it('should render DEMO badge in header', () => {
-    renderWithRouter(
+    renderWithRouterAndTheme(
       <Routes>
         <Route path="/" element={<DemoLayout />}>
           <Route index element={<div>Demo Content</div>} />
@@ -66,7 +78,7 @@ describe('DemoLayout', () => {
   });
 
   it('should render all navigation tabs', () => {
-    renderWithRouter(
+    renderWithRouterAndTheme(
       <Routes>
         <Route path="/" element={<DemoLayout />}>
           <Route index element={<div>Demo Content</div>} />
@@ -83,7 +95,7 @@ describe('DemoLayout', () => {
   });
 
   it('should show demo user info', () => {
-    renderWithRouter(
+    renderWithRouterAndTheme(
       <Routes>
         <Route path="/" element={<DemoLayout />}>
           <Route index element={<div>Demo Content</div>} />
@@ -215,7 +227,7 @@ describe('DemoAdminViews', () => {
 
 describe('Demo Pages Navigation', () => {
   it('should have correct href for dashboard link', () => {
-    renderWithRouter(
+    renderWithRouterAndTheme(
       <Routes>
         <Route path="/demo" element={<DemoLayout />}>
           <Route index element={<div>Demo Home</div>} />
@@ -230,7 +242,7 @@ describe('Demo Pages Navigation', () => {
   });
 
   it('should have correct href for attendance link', () => {
-    renderWithRouter(
+    renderWithRouterAndTheme(
       <Routes>
         <Route path="/demo" element={<DemoLayout />}>
           <Route index element={<div>Demo Home</div>} />
@@ -244,7 +256,7 @@ describe('Demo Pages Navigation', () => {
   });
 
   it('should have correct href for missing members link', () => {
-    renderWithRouter(
+    renderWithRouterAndTheme(
       <Routes>
         <Route path="/demo" element={<DemoLayout />}>
           <Route index element={<div>Demo Home</div>} />
@@ -259,7 +271,7 @@ describe('Demo Pages Navigation', () => {
   });
 
   it('should have correct href for member journey link', () => {
-    renderWithRouter(
+    renderWithRouterAndTheme(
       <Routes>
         <Route path="/demo" element={<DemoLayout />}>
           <Route index element={<div>Demo Home</div>} />
@@ -274,7 +286,7 @@ describe('Demo Pages Navigation', () => {
   });
 
   it('should have correct href for admin link', () => {
-    renderWithRouter(
+    renderWithRouterAndTheme(
       <Routes>
         <Route path="/demo" element={<DemoLayout />}>
           <Route index element={<div>Demo Home</div>} />

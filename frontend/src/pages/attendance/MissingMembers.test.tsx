@@ -148,10 +148,15 @@ describe('MissingMembers Page - Simplified Unidirectional Comparison', () => {
       renderMissingMembers();
 
       await waitFor(() => {
-        // There should only be one "Missing Members" heading in the list component
-        // (plus the page title, so we check for the h3 specifically)
-        const listHeadings = screen.getAllByRole('heading', { level: 3 });
-        expect(listHeadings.length).toBe(1);
+        // There should only be one MissingMembersList component
+        // We check for the "Missing Members" title in the card header
+        // The EmptyState inside also has an h3, so we look for the specific card title
+        const missingMembersTitle = screen.getByRole('heading', { level: 3, name: 'Missing Members' });
+        expect(missingMembersTitle).toBeInTheDocument();
+        
+        // Verify there's only one card with this title (not two separate lists)
+        const allMissingMembersTitles = screen.getAllByRole('heading', { level: 3, name: 'Missing Members' });
+        expect(allMissingMembersTitles.length).toBe(1);
       });
     });
   });
