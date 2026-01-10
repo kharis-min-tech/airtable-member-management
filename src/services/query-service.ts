@@ -196,7 +196,7 @@ export class QueryService {
     for (const [deptId, count] of departmentCounts) {
       try {
         const deptRecord = await this.airtableClient.getRecord(AIRTABLE_TABLES.DEPARTMENTS, deptId);
-        const deptName = (deptRecord.fields['Name'] as string) || deptId;
+        const deptName = (deptRecord.fields['Department Name'] as string) || deptId;
         departmentBreakdown.push({ department: deptName, count });
       } catch {
         departmentBreakdown.push({ department: deptId, count });
@@ -440,7 +440,7 @@ export class QueryService {
             let deptName = deptId;
             try {
               const deptRecord = await this.airtableClient.getRecord(AIRTABLE_TABLES.DEPARTMENTS, deptId);
-              deptName = (deptRecord.fields['Name'] as string) || deptId;
+              deptName = (deptRecord.fields['Department Name'] as string) || deptId;
             } catch { /* use ID */ }
             departmentCounts.set(deptId, { id: deptId, name: deptName, count: 0 });
           }
@@ -876,8 +876,9 @@ export class QueryService {
 
           if (visitorId) {
             try {
-              const visitorRecord = await this.airtableClient.getRecord(AIRTABLE_TABLES.VOLUNTEERS, visitorId);
-              visitorName = (visitorRecord.fields['Name'] as string) || visitorId;
+              // Conducted By? field links to Members table, not Volunteers
+              const visitorRecord = await this.airtableClient.getRecord(AIRTABLE_TABLES.MEMBERS, visitorId);
+              visitorName = (visitorRecord.fields['Full Name'] as string) || visitorId;
             } catch { /* use default */ }
           }
 
@@ -1193,7 +1194,7 @@ export class QueryService {
 
     for (const dept of departments) {
       const deptId = dept.id;
-      const deptName = (dept.fields['Name'] as string) || deptId;
+      const deptName = (dept.fields['Department Name'] as string) || deptId;
 
       // Get active members in this department
       const memberDepts = await this.airtableClient.findRecords(
@@ -1454,7 +1455,13 @@ export class QueryService {
   async getSoulsAssignedByVolunteer(): Promise<{
     volunteerId: string;
     volunteerName: string;
-    souls: Member[];
+    members: {
+      id: string;
+      name: string;
+      status: MemberStatus;
+      phone?: string;
+      assignedDate: Date;
+    }[];
   }[]> {
     // Get all evangelism records with a Soul Winner assigned
     const evangelismRecords = await this.airtableClient.findRecords(
@@ -1462,40 +1469,68 @@ export class QueryService {
       `{Soul Winner} != BLANK()`
     );
 
-    // Group by volunteer
-    const byVolunteerMap: Map<string, { volunteerId: string; volunteerName: string; memberIds: Set<string> }> = new Map();
+    // Group by volunteer with member IDs and their evangelism dates
+    const byVolunteerMap: Map<string, { 
+      volunteerId: string; 
+      volunteerName: string; 
+      memberData: Map<string, Date>; // memberId -> evangelism date
+    }> = new Map();
 
     for (const record of evangelismRecords) {
       const volunteerId = this.extractLinkedRecordId(record.fields['Soul Winner']);
       const memberId = this.extractLinkedRecordId(record.fields['Linked Member']);
+      const evangelismDate = this.parseDate(record.fields['Date'] as string) || new Date();
 
       if (!volunteerId) continue;
 
       if (!byVolunteerMap.has(volunteerId)) {
         let volunteerName = volunteerId;
         try {
-          const volunteerRecord = await this.airtableClient.getRecord(AIRTABLE_TABLES.VOLUNTEERS, volunteerId);
-          volunteerName = (volunteerRecord.fields['Name'] as string) || volunteerId;
+          // Soul Winner field links to Members table, not Volunteers
+          const memberRecord = await this.airtableClient.getRecord(AIRTABLE_TABLES.MEMBERS, volunteerId);
+          volunteerName = (memberRecord.fields['Full Name'] as string) || volunteerId;
         } catch { /* use ID */ }
 
-        byVolunteerMap.set(volunteerId, { volunteerId, volunteerName, memberIds: new Set() });
+        byVolunteerMap.set(volunteerId, { volunteerId, volunteerName, memberData: new Map() });
       }
 
       if (memberId) {
-        byVolunteerMap.get(volunteerId)!.memberIds.add(memberId);
+        byVolunteerMap.get(volunteerId)!.memberData.set(memberId, evangelismDate);
       }
     }
 
-    // Fetch member details
-    const results: { volunteerId: string; volunteerName: string; souls: Member[] }[] = [];
+    // Fetch member details and build response
+    const results: {
+      volunteerId: string;
+      volunteerName: string;
+      members: {
+        id: string;
+        name: string;
+        status: MemberStatus;
+        phone?: string;
+        assignedDate: Date;
+      }[];
+    }[] = [];
 
     for (const [, data] of byVolunteerMap) {
-      const memberIds = Array.from(data.memberIds);
+      const memberIds = Array.from(data.memberData.keys());
       const memberRecords = await this.getMembersByIds(memberIds);
+      
+      const members = memberRecords.map(r => {
+        const member = this.mapRecordToMember(r);
+        return {
+          id: member.id,
+          name: member.fullName,
+          status: member.status,
+          phone: member.phone,
+          assignedDate: data.memberData.get(member.id) || new Date(),
+        };
+      });
+
       results.push({
         volunteerId: data.volunteerId,
         volunteerName: data.volunteerName,
-        souls: memberRecords.map(r => this.mapRecordToMember(r)),
+        members,
       });
     }
 
@@ -1556,7 +1591,7 @@ export class QueryService {
             let deptName = deptId;
             try {
               const deptRecord = await this.airtableClient.getRecord(AIRTABLE_TABLES.DEPARTMENTS, deptId);
-              deptName = (deptRecord.fields['Name'] as string) || deptId;
+              deptName = (deptRecord.fields['Department Name'] as string) || deptId;
             } catch { /* use ID */ }
             departmentMap.set(deptId, { id: deptId, name: deptName, members: [] });
           }

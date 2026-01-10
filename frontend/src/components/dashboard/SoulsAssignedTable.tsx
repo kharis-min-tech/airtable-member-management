@@ -24,7 +24,7 @@ function SoulsAssignedTable({ data, isLoading = false }: SoulsAssignedTableProps
 
   const totalSouls = useMemo(() => {
     if (!data) return 0;
-    return data.reduce((sum, volunteer) => sum + volunteer.members.length, 0);
+    return data.reduce((sum, volunteer) => sum + (volunteer.members?.length ?? 0), 0);
   }, [data]);
 
   const formatDate = (date: Date | string) => {
@@ -93,7 +93,7 @@ function SoulsAssignedTable({ data, isLoading = false }: SoulsAssignedTableProps
               </div>
               <div className="flex items-center gap-3">
                 <span className="bg-primary/10 dark:bg-primary-dark/20 text-primary dark:text-primary-dark text-sm font-medium px-2.5 py-0.5 rounded">
-                  {volunteer.members.length} souls
+                  {volunteer.members?.length ?? 0} souls
                 </span>
                 <svg
                   className={`w-5 h-5 text-text-secondary-light dark:text-text-secondary-dark transition-transform ${
@@ -133,7 +133,7 @@ function SoulsAssignedTable({ data, isLoading = false }: SoulsAssignedTableProps
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
-                    {volunteer.members.map((member) => (
+                    {(volunteer.members ?? []).map((member) => (
                       <tr key={member.id} className="hover:bg-gray-50 dark:hover:bg-gray-800">
                         <td className="px-4 py-3 text-sm text-text-primary-light dark:text-text-primary-dark">{member.name}</td>
                         <td className="px-4 py-3">

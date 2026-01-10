@@ -1,6 +1,6 @@
 @import "tailwindcss";
 
-/* Kharis Brand Color Theme - Modern palette with complementary colors */
+/* Kharis Brand Color Theme - CSS Custom Properties for Tailwind CSS 4 */
 @theme {
   /* Primary colors - Deep Navy Blue */
   --color-primary-50: #eef4ff;
@@ -32,7 +32,7 @@
   --color-accent-light: #fbbf24;
   --color-accent-dark: #fcd34d;
 
-  /* Secondary colors - Teal/Cyan for variety */
+  /* Secondary colors - Teal/Cyan */
   --color-secondary-50: #ecfeff;
   --color-secondary-100: #cffafe;
   --color-secondary-200: #a5f3fc;
@@ -45,7 +45,7 @@
   --color-secondary-900: #164e63;
   --color-secondary: #06b6d4;
 
-  /* Tertiary colors - Purple for additional variety */
+  /* Tertiary colors - Purple */
   --color-tertiary-50: #faf5ff;
   --color-tertiary-100: #f3e8ff;
   --color-tertiary-200: #e9d5ff;
@@ -118,8 +118,7 @@
     color: var(--color-text-primary-light);
   }
 
-  /* Dark mode body styles - using :where for lower specificity */
-  :where(.dark) body {
+  .dark body {
     background-color: var(--color-background-dark);
     color: var(--color-text-primary-dark);
   }
@@ -127,7 +126,6 @@
 
 /* Custom component styles */
 @layer components {
-  /* Form element base styles */
   input:disabled {
     background-color: #f3f4f6;
     cursor: not-allowed;
@@ -141,16 +139,7 @@
     cursor: not-allowed;
   }
 
-  /* SVG utilities */
   svg {
     display: block;
-  }
-
-  [fill="none"] {
-    fill: none;
-  }
-
-  [stroke="currentColor"] {
-    stroke: currentColor;
   }
 }

@@ -1462,7 +1462,7 @@ describe('Additional QueryService Methods', () => {
       expect(result).toHaveLength(1);
       expect(result[0]!.volunteerId).toBe(volunteerId);
       expect(result[0]!.volunteerName).toBe('John Volunteer');
-      expect(result[0]!.souls).toHaveLength(1);
+      expect(result[0]!.members).toHaveLength(1);
     });
   });
 

@@ -176,7 +176,9 @@ function JourneyTimeline({ events, isLoading = false }: JourneyTimelineProps) {
                         <p className="text-sm text-text-secondary-light dark:text-text-secondary-dark mt-0.5">{event.description}</p>
                         {event.metadata && Object.keys(event.metadata).length > 0 && (
                           <div className="mt-2 flex flex-wrap gap-2">
-                            {Object.entries(event.metadata).map(([key, value]) => (
+                            {Object.entries(event.metadata)
+                              .filter(([key]) => !key.endsWith('Id') && key !== 'recordId')
+                              .map(([key, value]) => (
                               <span key={key} className="text-xs bg-gray-100 dark:bg-gray-700 text-text-secondary-light dark:text-text-secondary-dark px-2 py-0.5 rounded">
                                 {key}: {String(value)}
                               </span>
