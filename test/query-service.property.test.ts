@@ -1437,7 +1437,7 @@ describe('Additional QueryService Methods', () => {
 
       const volunteerRecord: AirtableRecord = {
         id: volunteerId,
-        fields: { 'Name': 'John Volunteer' },
+        fields: { 'Full Name': 'John Volunteer' },
         createdTime: new Date().toISOString(),
       };
 

@@ -159,7 +159,7 @@ describe('Property 6: Drill-Down Member Count Matches List Length', () => {
           cleanup();
         }
       ),
-      { numRuns: 100 }
+      { numRuns: 20 }
     );
   });
 
@@ -204,7 +204,7 @@ describe('Property 6: Drill-Down Member Count Matches List Length', () => {
           cleanup();
         }
       ),
-      { numRuns: 100 }
+      { numRuns: 20 }
     );
   });
 

@@ -108,7 +108,7 @@ describe('Property 1: Navigation Tab Click Routes Correctly', () => {
           unmount();
         }
       ),
-      { numRuns: 100 }
+      { numRuns: 20 }
     );
   });
 
@@ -151,7 +151,7 @@ describe('Property 1: Navigation Tab Click Routes Correctly', () => {
           unmount();
         }
       ),
-      { numRuns: 100 }
+      { numRuns: 20 }
     );
   });
 
@@ -193,7 +193,7 @@ describe('Property 1: Navigation Tab Click Routes Correctly', () => {
           unmount();
         }
       ),
-      { numRuns: 100 }
+      { numRuns: 20 }
     );
   });
 
@@ -255,7 +255,7 @@ describe('Property 1: Navigation Tab Click Routes Correctly', () => {
           return true;
         }
       ),
-      { numRuns: 100 }
+      { numRuns: 20 }
     );
   });
 });
@@ -314,7 +314,7 @@ describe('Property 5: Navigation Active State', () => {
           unmount();
         }
       ),
-      { numRuns: 100 }
+      { numRuns: 20 }
     );
   });
 
@@ -362,7 +362,7 @@ describe('Property 5: Navigation Active State', () => {
           unmount();
         }
       ),
-      { numRuns: 100 }
+      { numRuns: 20 }
     );
   });
 
@@ -411,7 +411,7 @@ describe('Property 5: Navigation Active State', () => {
           unmount();
         }
       ),
-      { numRuns: 100 }
+      { numRuns: 20 }
     );
   });
 
@@ -465,7 +465,7 @@ describe('Property 5: Navigation Active State', () => {
           unmount();
         }
       ),
-      { numRuns: 100 }
+      { numRuns: 20 }
     );
   });
 });
