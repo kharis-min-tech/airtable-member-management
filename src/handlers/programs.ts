@@ -1,15 +1,13 @@
 /**
  * Programs Handler
  * Handles program completion webhooks from Airtable
- * Updates member records when program sessions are completed
- * 
- * Requirements: 10.3, 10.4
+ * Logs program session completion status
  */
 
 import { APIGatewayProxyEvent, APIGatewayProxyResult } from 'aws-lambda';
-import { AirtableClient, AIRTABLE_TABLES } from '../services/airtable-client';
+import { AirtableClient } from '../services/airtable-client';
 import { ConfigService } from '../services/config-service';
-import { AirtableConfig, AirtableRecord } from '../types';
+import { AirtableConfig } from '../types';
 
 /**
  * Program event parsed from webhook payload
@@ -61,8 +59,6 @@ export interface ProgramHandlerResult {
   success: boolean;
   memberId?: string;
   allSessionsCompleted: boolean;
-  membershipCompletedUpdated: boolean;
-  membershipCompletedDate?: string;
   error?: string;
 }
 
@@ -101,151 +97,37 @@ export function areAllSessionsCompleted(event: ProgramEvent): boolean {
   );
 }
 
-/**
- * Calculate the latest session date among all completed sessions
- * This will be used as the Membership Completed date
- * Requirement 10.2
- */
-export function calculateCompletionDate(event: ProgramEvent): string | null {
-  const dates: Date[] = [];
 
-  if (event.session1Date) {
-    const date = new Date(event.session1Date);
-    if (!isNaN(date.getTime())) dates.push(date);
-  }
-  if (event.session2Date) {
-    const date = new Date(event.session2Date);
-    if (!isNaN(date.getTime())) dates.push(date);
-  }
-  if (event.session3Date) {
-    const date = new Date(event.session3Date);
-    if (!isNaN(date.getTime())) dates.push(date);
-  }
-  if (event.session4Date) {
-    const date = new Date(event.session4Date);
-    if (!isNaN(date.getTime())) dates.push(date);
-  }
-
-  if (dates.length === 0) {
-    return null;
-  }
-
-  // Find the latest date
-  const latestDate = dates.reduce((latest, current) => 
-    current > latest ? current : latest
-  );
-
-  // Return ISO date string (YYYY-MM-DD)
-  return latestDate.toISOString().split('T')[0] || null;
-}
 
 /**
  * Process program event - core business logic
  * 
- * Requirements:
- * 10.3 - When Member Programs record is created/updated, update linked Member's program tracking fields
- * 10.4 - When all sessions completed for New Believers program, update Member's Membership Completed date if not already set
+ * Simply logs program completion status without updating member records.
  */
 export async function processProgramEvent(
   event: ProgramEvent,
-  airtableClient: AirtableClient
+  _airtableClient: AirtableClient
 ): Promise<ProgramHandlerResult> {
   // Validate required fields
   if (!event.memberId) {
     return {
       success: false,
       allSessionsCompleted: false,
-      membershipCompletedUpdated: false,
       error: 'Member ID is required',
     };
   }
 
-  try {
-    // Step 1: Check if all four sessions are completed (Requirement 10.3)
-    const allCompleted = areAllSessionsCompleted(event);
+  // Check if all four sessions are completed
+  const allCompleted = areAllSessionsCompleted(event);
 
-    if (!allCompleted) {
-      // Not all sessions completed yet - nothing to update
-      // eslint-disable-next-line no-console
-      console.log(`Program ${event.recordId} for member ${event.memberId}: Not all sessions completed yet`);
-      
-      return {
-        success: true,
-        memberId: event.memberId,
-        allSessionsCompleted: false,
-        membershipCompletedUpdated: false,
-      };
-    }
+  // eslint-disable-next-line no-console
+  console.log(`Program ${event.recordId} for member ${event.memberId}: ${allCompleted ? 'All sessions completed' : 'Not all sessions completed yet'}`);
 
-    // eslint-disable-next-line no-console
-    console.log(`Program ${event.recordId} for member ${event.memberId}: All sessions completed`);
-
-    // Step 2: Get the member record to check if Membership Completed is already set
-    const memberRecord: AirtableRecord = await airtableClient.getRecord(
-      AIRTABLE_TABLES.MEMBERS,
-      event.memberId
-    );
-
-    const currentMembershipCompleted = memberRecord.fields['Membership Completed'] as string | undefined;
-
-    // Step 3: Only update if Membership Completed is not already set (Requirement 10.4)
-    if (currentMembershipCompleted) {
-      // eslint-disable-next-line no-console
-      console.log(`Member ${event.memberId} already has Membership Completed date: ${currentMembershipCompleted}`);
-      
-      return {
-        success: true,
-        memberId: event.memberId,
-        allSessionsCompleted: true,
-        membershipCompletedUpdated: false,
-        membershipCompletedDate: currentMembershipCompleted,
-      };
-    }
-
-    // Step 4: Calculate completion date from session dates
-    const completionDate = calculateCompletionDate(event);
-
-    if (!completionDate) {
-      // eslint-disable-next-line no-console
-      console.warn(`Program ${event.recordId}: All sessions completed but no session dates available`);
-      
-      return {
-        success: true,
-        memberId: event.memberId,
-        allSessionsCompleted: true,
-        membershipCompletedUpdated: false,
-        error: 'No session dates available to calculate completion date',
-      };
-    }
-
-    // Step 5: Update member's Membership Completed date (Requirement 10.4)
-    await airtableClient.updateRecord(
-      AIRTABLE_TABLES.MEMBERS,
-      event.memberId,
-      { 'Membership Completed': completionDate }
-    );
-
-    // eslint-disable-next-line no-console
-    console.log(`Updated member ${event.memberId} Membership Completed date to ${completionDate}`);
-
-    return {
-      success: true,
-      memberId: event.memberId,
-      allSessionsCompleted: true,
-      membershipCompletedUpdated: true,
-      membershipCompletedDate: completionDate,
-    };
-  } catch (error) {
-    // eslint-disable-next-line no-console
-    console.error('Error processing program event:', error);
-    return {
-      success: false,
-      memberId: event.memberId,
-      allSessionsCompleted: false,
-      membershipCompletedUpdated: false,
-      error: error instanceof Error ? error.message : 'Unknown error',
-    };
-  }
+  return {
+    success: true,
+    memberId: event.memberId,
+    allSessionsCompleted: allCompleted,
+  };
 }
 
 /**
@@ -308,8 +190,6 @@ export const handler = async (event: APIGatewayProxyEvent): Promise<APIGatewayPr
         message: 'Programs webhook processed successfully',
         memberId: result.memberId,
         allSessionsCompleted: result.allSessionsCompleted,
-        membershipCompletedUpdated: result.membershipCompletedUpdated,
-        membershipCompletedDate: result.membershipCompletedDate,
       }),
     };
   } catch (error) {

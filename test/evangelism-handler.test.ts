@@ -157,7 +157,7 @@ describe('Evangelism Handler - Webhook Parsing', () => {
               'Email': data.email,
               'GhanaPost Code': data.ghanaPostCode,
               'Date': data.date,
-              'Captured By': data.capturedBy ? [data.capturedBy] : undefined,
+              'Soul Winner': data.capturedBy ? [data.capturedBy] : undefined,
             },
           },
         };

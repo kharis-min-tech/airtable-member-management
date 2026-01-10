@@ -22,6 +22,7 @@ export interface ReturnerEvent {
   phone?: string;
   email?: string;
   serviceId?: string;
+  linkedMemberId?: string;
 }
 
 /**
@@ -67,12 +68,44 @@ export function parseReturnerWebhook(payload: ReturnerWebhookPayload): ReturnerE
   const { record } = payload;
   const fields = record.fields;
 
+  // Extract Service ID - handle nested array format
+  let serviceId: string | undefined;
+  const serviceField = fields['Service'];
+  if (serviceField) {
+    if (Array.isArray(serviceField) && serviceField.length > 0) {
+      const firstService = serviceField[0];
+      if (typeof firstService === 'string') {
+        serviceId = firstService;
+      }
+    } else if (typeof serviceField === 'string') {
+      serviceId = serviceField;
+    }
+  }
+
+  // Extract Linked Member ID - handle nested array format
+  let linkedMemberId: string | undefined;
+  const linkedMemberField = fields['Linked Member'];
+  if (linkedMemberField) {
+    if (Array.isArray(linkedMemberField) && linkedMemberField.length > 0) {
+      const firstMember = linkedMemberField[0];
+      if (typeof firstMember === 'string') {
+        linkedMemberId = firstMember;
+      }
+    } else if (typeof linkedMemberField === 'string') {
+      linkedMemberId = linkedMemberField;
+    }
+  }
+
+  // eslint-disable-next-line no-console
+  console.log('Parsed Returner fields - Service:', serviceId, 'Linked Member:', linkedMemberId, 'Phone:', fields['Phone'], 'Email:', fields['Email']);
+
   return {
     recordId: record.id,
     name: fields['Name'] || '',
     phone: fields['Phone'],
     email: fields['Email'],
-    serviceId: fields['Service']?.[0],
+    serviceId,
+    linkedMemberId,
   };
 }
 
@@ -92,26 +125,47 @@ export async function processReturnerEvent(
   memberService: MemberService,
   attendanceService?: AttendanceService
 ): Promise<ReturnerHandlerResult> {
-  // Validate required fields
-  if (!event.phone && !event.email) {
-    return {
-      success: false,
-      statusUpdated: false,
-      returnerRecordLinked: false,
-      attendanceMarked: false,
-      error: 'At least one of phone or email is required',
-    };
-  }
-
   try {
-    // Step 1: Search for existing member by phone/email (Requirement 3.1)
-    const existingMember = await memberService.findMemberByPhoneOrEmail(
-      event.phone,
-      event.email
-    );
+    let memberId: string | undefined;
+    let existingMember;
 
-    // Step 2: If no match, return error (Requirement 3.4)
-    if (!existingMember) {
+    // If linked member ID is provided, use it directly (most reliable)
+    if (event.linkedMemberId) {
+      // eslint-disable-next-line no-console
+      console.log(`Using linked member ID directly: ${event.linkedMemberId}`);
+      
+      try {
+        const memberRecord = await airtableClient.getRecord(
+          AIRTABLE_TABLES.MEMBERS,
+          event.linkedMemberId
+        );
+        existingMember = {
+          id: memberRecord.id,
+          status: memberRecord.fields['Status'] as MemberStatus,
+        };
+        memberId = existingMember.id;
+      } catch (err) {
+        // eslint-disable-next-line no-console
+        console.error('Error fetching linked member:', err);
+      }
+    }
+
+    // Fallback: Search for existing member by phone/email (Requirement 3.1)
+    if (!existingMember && (event.phone || event.email)) {
+      // eslint-disable-next-line no-console
+      console.log(`Searching for member by phone: ${event.phone}, email: ${event.email}`);
+      
+      existingMember = await memberService.findMemberByPhoneOrEmail(
+        event.phone,
+        event.email
+      );
+      if (existingMember) {
+        memberId = existingMember.id;
+      }
+    }
+
+    // If no match, return error (Requirement 3.4)
+    if (!existingMember || !memberId) {
       return {
         success: false,
         statusUpdated: false,
@@ -121,7 +175,6 @@ export async function processReturnerEvent(
       };
     }
 
-    const memberId = existingMember.id;
     let statusUpdated = false;
 
     // eslint-disable-next-line no-console

@@ -1,10 +1,16 @@
 import * as cdk from 'aws-cdk-lib';
 import * as lambda from 'aws-cdk-lib/aws-lambda';
+import * as lambdaNodejs from 'aws-cdk-lib/aws-lambda-nodejs';
 import * as apigateway from 'aws-cdk-lib/aws-apigateway';
 import * as dynamodb from 'aws-cdk-lib/aws-dynamodb';
 import * as cognito from 'aws-cdk-lib/aws-cognito';
 import * as iam from 'aws-cdk-lib/aws-iam';
+import * as s3 from 'aws-cdk-lib/aws-s3';
+import * as cloudfront from 'aws-cdk-lib/aws-cloudfront';
+import * as origins from 'aws-cdk-lib/aws-cloudfront-origins';
+import * as s3deploy from 'aws-cdk-lib/aws-s3-deployment';
 import { Construct } from 'constructs';
+import * as path from 'path';
 
 export interface AirtableMemberManagementStackProps extends cdk.StackProps {
   // Additional props can be added here
@@ -17,6 +23,8 @@ export class AirtableMemberManagementStack extends cdk.Stack {
   public readonly userMappingTable: dynamodb.Table;
   public readonly userPool: cognito.UserPool;
   public readonly userPoolClient: cognito.UserPoolClient;
+  public readonly websiteBucket: s3.Bucket;
+  public readonly distribution: cloudfront.Distribution;
 
   constructor(scope: Construct, id: string, props?: AirtableMemberManagementStackProps) {
     super(scope, id, props);
@@ -37,6 +45,11 @@ export class AirtableMemberManagementStack extends cdk.Stack {
 
     // Create API Gateway
     this.api = this.createApiGateway(lambdaFunctions, cognitoResources.authorizer);
+
+    // Create Frontend Hosting (S3 + CloudFront)
+    const frontendHosting = this.createFrontendHosting();
+    this.websiteBucket = frontendHosting.bucket;
+    this.distribution = frontendHosting.distribution;
 
     // Output important values
     this.createOutputs();
@@ -168,12 +181,12 @@ export class AirtableMemberManagementStack extends cdk.Stack {
       NODE_OPTIONS: '--enable-source-maps',
     };
 
-    // Common Lambda props
-    const commonProps = {
-      runtime: lambda.Runtime.NODEJS_18_X,
-      timeout: cdk.Duration.seconds(30),
-      memorySize: 256,
-      environment: commonEnv,
+    // Common bundling options for NodejsFunction
+    const commonBundling: lambdaNodejs.BundlingOptions = {
+      minify: true,
+      sourceMap: true,
+      target: 'node18',
+      externalModules: ['@aws-sdk/*'], // AWS SDK v3 is included in Lambda runtime
     };
 
     // Lambda execution role with DynamoDB access
@@ -189,63 +202,85 @@ export class AirtableMemberManagementStack extends cdk.Stack {
     this.configTable.grantReadData(lambdaRole);
     this.userMappingTable.grantReadData(lambdaRole);
 
-    // Webhook Handlers
-    const evangelismHandler = new lambda.Function(this, 'EvangelismHandler', {
-      ...commonProps,
+    // Webhook Handlers using NodejsFunction for proper bundling
+    const evangelismHandler = new lambdaNodejs.NodejsFunction(this, 'EvangelismHandler', {
       functionName: `${this.stackName}-EvangelismHandler`,
-      handler: 'handlers/evangelism.handler',
-      code: lambda.Code.fromAsset('dist/src'),
+      entry: path.join(__dirname, '../src/handlers/evangelism.ts'),
+      handler: 'handler',
+      runtime: lambda.Runtime.NODEJS_18_X,
+      timeout: cdk.Duration.seconds(30),
+      memorySize: 256,
+      environment: commonEnv,
+      bundling: commonBundling,
       description: 'Handles evangelism record creation webhooks',
       role: lambdaRole,
     });
 
-    const firstTimerHandler = new lambda.Function(this, 'FirstTimerHandler', {
-      ...commonProps,
+    const firstTimerHandler = new lambdaNodejs.NodejsFunction(this, 'FirstTimerHandler', {
       functionName: `${this.stackName}-FirstTimerHandler`,
-      handler: 'handlers/first-timer.handler',
-      code: lambda.Code.fromAsset('dist/src'),
+      entry: path.join(__dirname, '../src/handlers/first-timer.ts'),
+      handler: 'handler',
+      runtime: lambda.Runtime.NODEJS_18_X,
+      timeout: cdk.Duration.seconds(30),
+      memorySize: 256,
+      environment: commonEnv,
+      bundling: commonBundling,
       description: 'Handles first timer registration webhooks',
       role: lambdaRole,
     });
 
-    const returnerHandler = new lambda.Function(this, 'ReturnerHandler', {
-      ...commonProps,
+    const returnerHandler = new lambdaNodejs.NodejsFunction(this, 'ReturnerHandler', {
       functionName: `${this.stackName}-ReturnerHandler`,
-      handler: 'handlers/returner.handler',
-      code: lambda.Code.fromAsset('dist/src'),
+      entry: path.join(__dirname, '../src/handlers/returner.ts'),
+      handler: 'handler',
+      runtime: lambda.Runtime.NODEJS_18_X,
+      timeout: cdk.Duration.seconds(30),
+      memorySize: 256,
+      environment: commonEnv,
+      bundling: commonBundling,
       description: 'Handles returner registration webhooks',
       role: lambdaRole,
     });
 
-    const programsHandler = new lambda.Function(this, 'ProgramsHandler', {
-      ...commonProps,
+    const programsHandler = new lambdaNodejs.NodejsFunction(this, 'ProgramsHandler', {
       functionName: `${this.stackName}-ProgramsHandler`,
-      handler: 'handlers/programs.handler',
-      code: lambda.Code.fromAsset('dist/src'),
+      entry: path.join(__dirname, '../src/handlers/programs.ts'),
+      handler: 'handler',
+      runtime: lambda.Runtime.NODEJS_18_X,
+      timeout: cdk.Duration.seconds(30),
+      memorySize: 256,
+      environment: commonEnv,
+      bundling: commonBundling,
       description: 'Handles program completion webhooks',
       role: lambdaRole,
     });
 
     // Query Service Handler
-    const queryHandler = new lambda.Function(this, 'QueryHandler', {
-      ...commonProps,
+    const queryHandler = new lambdaNodejs.NodejsFunction(this, 'QueryHandler', {
       functionName: `${this.stackName}-QueryHandler`,
-      handler: 'handlers/query.handler',
-      code: lambda.Code.fromAsset('dist/src'),
+      entry: path.join(__dirname, '../src/handlers/query.ts'),
+      handler: 'handler',
+      runtime: lambda.Runtime.NODEJS_18_X,
+      timeout: cdk.Duration.seconds(60),
+      memorySize: 256,
+      environment: commonEnv,
+      bundling: commonBundling,
       description: 'Handles dashboard and query requests',
       role: lambdaRole,
-      timeout: cdk.Duration.seconds(60),
     });
 
     // Health Check Handler
-    const healthHandler = new lambda.Function(this, 'HealthHandler', {
-      ...commonProps,
+    const healthHandler = new lambdaNodejs.NodejsFunction(this, 'HealthHandler', {
       functionName: `${this.stackName}-HealthHandler`,
-      handler: 'handlers/health.handler',
-      code: lambda.Code.fromAsset('dist/src'),
+      entry: path.join(__dirname, '../src/handlers/health.ts'),
+      handler: 'handler',
+      runtime: lambda.Runtime.NODEJS_18_X,
+      timeout: cdk.Duration.seconds(10),
+      memorySize: 256,
+      environment: commonEnv,
+      bundling: commonBundling,
       description: 'Health check endpoint',
       role: lambdaRole,
-      timeout: cdk.Duration.seconds(10),
     });
 
     return {
@@ -365,6 +400,67 @@ export class AirtableMemberManagementStack extends cdk.Stack {
     return api;
   }
 
+  private createFrontendHosting(): {
+    bucket: s3.Bucket;
+    distribution: cloudfront.Distribution;
+  } {
+    // S3 bucket for frontend assets
+    const websiteBucket = new s3.Bucket(this, 'WebsiteBucket', {
+      bucketName: `${this.stackName.toLowerCase()}-frontend-${this.account}`,
+      blockPublicAccess: s3.BlockPublicAccess.BLOCK_ALL,
+      removalPolicy: cdk.RemovalPolicy.DESTROY,
+      autoDeleteObjects: true,
+      encryption: s3.BucketEncryption.S3_MANAGED,
+    });
+
+    // CloudFront Origin Access Identity
+    const originAccessIdentity = new cloudfront.OriginAccessIdentity(this, 'OAI', {
+      comment: `OAI for ${this.stackName} frontend`,
+    });
+
+    // Grant CloudFront access to S3 bucket
+    websiteBucket.grantRead(originAccessIdentity);
+
+    // CloudFront distribution
+    const distribution = new cloudfront.Distribution(this, 'Distribution', {
+      comment: `${this.stackName} Frontend Distribution`,
+      defaultBehavior: {
+        origin: new origins.S3Origin(websiteBucket, {
+          originAccessIdentity,
+        }),
+        viewerProtocolPolicy: cloudfront.ViewerProtocolPolicy.REDIRECT_TO_HTTPS,
+        cachePolicy: cloudfront.CachePolicy.CACHING_OPTIMIZED,
+        allowedMethods: cloudfront.AllowedMethods.ALLOW_GET_HEAD_OPTIONS,
+      },
+      defaultRootObject: 'index.html',
+      errorResponses: [
+        {
+          httpStatus: 403,
+          responseHttpStatus: 200,
+          responsePagePath: '/index.html',
+          ttl: cdk.Duration.minutes(5),
+        },
+        {
+          httpStatus: 404,
+          responseHttpStatus: 200,
+          responsePagePath: '/index.html',
+          ttl: cdk.Duration.minutes(5),
+        },
+      ],
+      priceClass: cloudfront.PriceClass.PRICE_CLASS_100,
+    });
+
+    // Deploy frontend assets to S3
+    new s3deploy.BucketDeployment(this, 'DeployWebsite', {
+      sources: [s3deploy.Source.asset(path.join(__dirname, '../frontend/dist'))],
+      destinationBucket: websiteBucket,
+      distribution,
+      distributionPaths: ['/*'],
+    });
+
+    return { bucket: websiteBucket, distribution };
+  }
+
   private createOutputs(): void {
     new cdk.CfnOutput(this, 'ApiEndpoint', {
       value: this.api.url,
@@ -400,6 +496,18 @@ export class AirtableMemberManagementStack extends cdk.Stack {
       value: this.userMappingTable.tableName,
       description: 'DynamoDB User Mapping Table Name',
       exportName: `${this.stackName}-UserMappingTableName`,
+    });
+
+    new cdk.CfnOutput(this, 'FrontendUrl', {
+      value: `https://${this.distribution.distributionDomainName}`,
+      description: 'Frontend CloudFront URL',
+      exportName: `${this.stackName}-FrontendUrl`,
+    });
+
+    new cdk.CfnOutput(this, 'WebsiteBucketName', {
+      value: this.websiteBucket.bucketName,
+      description: 'S3 Bucket for frontend assets',
+      exportName: `${this.stackName}-WebsiteBucketName`,
     });
   }
 }

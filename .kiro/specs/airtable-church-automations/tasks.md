@@ -6,7 +6,7 @@ This implementation plan covers the AWS Lambda automation layer and React fronte
 
 ## Tasks
 
-- [-] 1. Project Setup and Infrastructure
+- [x] 1. Project Setup and Infrastructure
   - [x] 1.1 Initialize TypeScript project with AWS CDK
     - Create package.json with dependencies (aws-cdk, aws-sdk, airtable, fast-check, jest)
     - Configure TypeScript with strict mode
@@ -79,7 +79,7 @@ This implementation plan covers the AWS Lambda automation layer and React fronte
 - [x] 4. Checkpoint - Core Services
   - Ensure all tests pass, ask the user if questions arise.
 
-- [-] 5. Evangelism Handler Implementation
+- [x] 5. Evangelism Handler Implementation
   - [x] 5.1 Implement handleEvangelismCreated Lambda handler
     - Parse webhook payload from Airtable
     - Check for existing member by phone/email
@@ -131,7 +131,7 @@ This implementation plan covers the AWS Lambda automation layer and React fronte
     - **Property 8: Attendance Marking Idempotency**
     - **Validates: Requirements 6.1, 6.2, 6.3, 7.1, 7.2, 7.3**
 
-- [-] 8. First Timer Handler Implementation
+- [x] 8. First Timer Handler Implementation
   - [x] 8.1 Implement handleFirstTimerCreated Lambda handler
     - Parse webhook payload
     - Search for existing member by phone/email
@@ -149,7 +149,7 @@ This implementation plan covers the AWS Lambda automation layer and React fronte
     - **Property 4: First Timer New Member Creation**
     - **Validates: Requirements 2.4, 2.5**
 
-- [-] 9. Returner Handler Implementation
+- [x] 9. Returner Handler Implementation
   - [x] 9.1 Implement handleReturnerCreated Lambda handler
     - Parse webhook payload
     - Search for existing member by phone/email
@@ -178,7 +178,7 @@ This implementation plan covers the AWS Lambda automation layer and React fronte
     - **Property 9: Program Completion Triggers Member Update**
     - **Validates: Requirements 10.3, 10.4**
 
-- [-] 12. Error Handling and Logging
+- [x] 12. Error Handling and Logging
   - [x] 12.1 Implement centralized error handling
     - Create AppError class with error codes
     - Implement retry logic with exponential backoff
@@ -251,127 +251,127 @@ This implementation plan covers the AWS Lambda automation layer and React fronte
 - [x] 15. Checkpoint - Backend Complete
   - Ensure all tests pass, ask the user if questions arise.
 
-- [ ] 16. Authentication Service Implementation
-  - [ ] 16.1 Implement AuthService with Cognito integration
+- [x] 16. Authentication Service Implementation
+  - [x] 16.1 Implement AuthService with Cognito integration
     - Implement validateToken to verify JWT
     - Implement getUserRole from Cognito groups
     - _Requirements: 20.1, 20.2, 20.3_
 
-  - [ ] 16.2 Implement role-based data filtering
+  - [x] 16.2 Implement role-based data filtering
     - Filter queries based on user role
     - Follow-up team: only assigned members
     - Department lead: only department members
     - _Requirements: 20.4, 20.5, 20.6, 20.7_
 
-  - [ ] 16.3 Write property test for Role-Based Data Filtering
+  - [x] 16.3 Write property test for Role-Based Data Filtering
     - **Property 14: Role-Based Data Filtering**
     - **Validates: Requirements 20.4, 20.5, 20.6**
 
-- [ ] 17. Frontend Setup
-  - [ ] 17.1 Initialize React application with TypeScript
+- [x] 17. Frontend Setup
+  - [x] 17.1 Initialize React application with TypeScript
     - Create React app with Vite
     - Configure TypeScript, ESLint, Prettier
     - Set up routing with React Router
     - _Requirements: 15.1, 16.1, 17.1, 18.1, 19.1_
 
-  - [ ] 17.2 Set up authentication with AWS Amplify
+  - [x] 17.2 Set up authentication with AWS Amplify
     - Configure Amplify with Cognito
     - Implement login/logout flow
     - Create AuthContext for role-based rendering
     - _Requirements: 20.1, 20.2, 20.3_
 
-  - [ ] 17.3 Create API client for backend communication
+  - [x] 17.3 Create API client for backend communication
     - Implement fetch wrapper with auth headers
     - Add error handling and retry logic
     - Implement cache-aware requests with refresh support
     - _Requirements: 21.3, 21.4_
 
-- [ ] 18. Pastor Dashboard Interface
-  - [ ] 18.1 Create KPI tiles component
+- [x] 18. Pastor Dashboard Interface
+  - [x] 18.1 Create KPI tiles component
     - Display total attendance, first timers, returners
     - Implement service selector
     - _Requirements: 15.1, 15.7_
 
-  - [ ] 18.2 Create evangelism stats component with toggle
+  - [x] 18.2 Create evangelism stats component with toggle
     - Week/month toggle (Sunday-Saturday week)
     - Display contact count
     - _Requirements: 15.1, 15.2, 15.3_
 
-  - [ ] 18.3 Create attendance breakdown chart
+  - [x] 18.3 Create attendance breakdown chart
     - Chart showing First Timers, Returners, Departments, Evangelism Contacts
     - _Requirements: 15.4_
 
-  - [ ] 18.4 Create follow-up tables
+  - [x] 18.4 Create follow-up tables
     - Souls assigned to individuals grouped by Follow-up Owner
     - Consolidated follow-up comments with date filter
     - _Requirements: 15.5, 15.6_
 
-- [ ] 19. Service Attendance Explorer Interface
-  - [ ] 19.1 Create service selector component
+- [x] 19. Service Attendance Explorer Interface
+  - [x] 19.1 Create service selector component
     - Record picker for service selection
     - _Requirements: 16.1_
 
-  - [ ] 19.2 Create attendees list component
+  - [x] 19.2 Create attendees list component
     - Display all attendees for selected service
     - _Requirements: 16.2_
 
-  - [ ] 19.3 Create department breakdown component
+  - [x] 19.3 Create department breakdown component
     - Show attendance by department with percentages
     - Highlight departments below 50% threshold
     - _Requirements: 16.3, 16.4, 16.5, 16.6_
 
-- [ ] 20. Missing Members List Interface
-  - [ ] 20.1 Create dual service selector
+- [x] 20. Missing Members List Interface
+  - [x] 20.1 Create dual service selector
     - Two service pickers for comparison
     - _Requirements: 17.1_
 
-  - [ ] 20.2 Create bidirectional comparison display
+  - [x] 20.2 Create bidirectional comparison display
     - Show members in A missing from B
     - Show members in B missing from A
     - Display member details and export option
     - _Requirements: 17.2, 17.3, 17.4, 17.5, 17.6_
 
-- [ ] 21. Member Journey Interface
-  - [ ] 21.1 Create member profile component
+- [x] 21. Member Journey Interface
+  - [x] 21.1 Create member profile component
     - Display all member details
     - _Requirements: 18.1_
 
-  - [ ] 21.2 Create timeline component
+  - [x] 21.2 Create timeline component
     - Chronological event display
     - Include all event types (evangelism, attendance, visits, programs, milestones)
     - _Requirements: 18.2, 18.3, 18.4_
 
-  - [ ] 21.3 Create journey summary component
+  - [x] 21.3 Create journey summary component
     - Display key dates and metrics
     - _Requirements: 18.5_
 
-  - [ ] 21.4 Create member search and navigation
+  - [x] 21.4 Create member search and navigation
     - Search by name, phone, email
     - Navigate between profiles
     - _Requirements: 18.6, 18.7_
 
-- [ ] 22. Admin Quick Views Interface
-  - [ ] 22.1 Create quick view components
+- [x] 22. Admin Quick Views Interface
+  - [x] 22.1 Create quick view components
     - Today's Follow-ups Due
     - New First Timers (last 1 month)
     - Evangelism Contacts (Incomplete data)
     - No Follow-up Owner Assigned
     - _Requirements: 19.1, 19.2, 19.3, 19.4_
 
-  - [ ] 22.2 Create additional admin views
+  - [x] 22.2 Create additional admin views
     - Visited members + last visited date
     - Department membership lists
     - Attendance by Service grouped by Department
     - _Requirements: 19.5, 19.6, 19.7_
 
-- [ ] 23. Data Refresh UI
-  - [ ] 23.1 Implement refresh controls
+- [x] 23. Data Refresh UI
+  - [x] 23.1 Implement refresh controls
     - Add "Last Updated" timestamp to all views
     - Add "Refresh Now" button
     - Implement Live Mode toggle (30-second polling)
     - _Requirements: 21.2, 21.3, 21.4, 21.5, 21.6_
 
-- [ ] 24. Final Checkpoint
+- [x] 24. Final Checkpoint
   - Ensure all tests pass, ask the user if questions arise.
   - Verify all interfaces render correctly
   - Test role-based access control

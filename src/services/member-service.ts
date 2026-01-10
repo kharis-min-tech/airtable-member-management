@@ -453,7 +453,7 @@ export class MemberService {
       phone: (fields['Phone'] as string) || '',
       email: (fields['Email'] as string) || undefined,
       status: (fields['Status'] as MemberStatus) || 'Evangelism Contact',
-      source: (fields['Source'] as MemberSource) || 'Other',
+      source: (fields['Source'] as MemberSource) || 'Evangelism',
       dateFirstCaptured: this.parseDate(fields['Date First Captured'] as string) || new Date(),
       followUpOwner: this.extractLinkedRecordId(fields['Follow-up Owner']),
       followUpStatus: (fields['Follow-up Status'] as FollowUpStatus) || 'Not Started',

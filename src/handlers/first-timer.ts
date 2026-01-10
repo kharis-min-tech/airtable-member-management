@@ -2,17 +2,17 @@
  * First Timer Handler
  * Handles first timer registration webhooks from Airtable
  * Creates or merges member records and marks attendance
- * 
+ *
  * Requirements: 2.1, 2.2, 2.3, 2.4, 2.5, 2.6, 6.1, 6.2
  */
 
-import { APIGatewayProxyEvent, APIGatewayProxyResult } from 'aws-lambda';
-import { AirtableClient, AIRTABLE_TABLES } from '../services/airtable-client';
-import { MemberService } from '../services/member-service';
-import { FollowUpService } from '../services/follow-up-service';
-import { AttendanceService } from '../services/attendance-service';
-import { ConfigService } from '../services/config-service';
-import { AirtableConfig, MemberStatus } from '../types';
+import { APIGatewayProxyEvent, APIGatewayProxyResult } from "aws-lambda";
+import { AirtableClient, AIRTABLE_TABLES } from "../services/airtable-client";
+import { MemberService } from "../services/member-service";
+import { FollowUpService } from "../services/follow-up-service";
+import { AttendanceService } from "../services/attendance-service";
+import { ConfigService } from "../services/config-service";
+import { AirtableConfig, MemberStatus } from "../types";
 
 /**
  * First Timer event parsed from webhook payload
@@ -29,29 +29,42 @@ export interface FirstTimerEvent {
 }
 
 /**
- * Webhook payload structure from Airtable
+ * Webhook payload structure from Airtable (standard format)
  */
 export interface FirstTimerWebhookPayload {
-  base: {
+  base?: {
     id: string;
   };
-  webhook: {
+  webhook?: {
     id: string;
   };
-  timestamp: string;
-  record: {
+  timestamp?: string;
+  record?: {
     id: string;
     fields: {
-      'First Name'?: string;
-      'Last Name'?: string;
-      'Phone'?: string;
-      'Email'?: string;
-      'Address'?: string;
-      'GhanaPost Code'?: string;
-      'Service'?: string[];
-      'Linked Member'?: string[];
+      "First Name"?: string;
+      "Last Name"?: string;
+      Phone?: string;
+      Email?: string;
+      Address?: string;
+      "GhanaPost Code"?: string;
+      Service?: string[];
+      "Linked Member"?: string[];
     };
   };
+  // Alternative flat format - fields at top level
+  fields?: {
+    "First Name"?: string;
+    "Last Name"?: string;
+    Phone?: string;
+    Email?: string;
+    Address?: string;
+    "GhanaPost Code"?: string;
+    Service?: string[];
+    "Linked Member"?: string[];
+  };
+  // Record ID can be at top level in flat format
+  recordId?: string;
 }
 
 /**
@@ -69,29 +82,62 @@ export interface FirstTimerHandlerResult {
   error?: string;
 }
 
-
 /**
  * Parse webhook payload from Airtable into FirstTimerEvent
+ * Supports both nested format (record.fields) and flat format (fields at top level)
  */
-export function parseFirstTimerWebhook(payload: FirstTimerWebhookPayload): FirstTimerEvent {
-  const { record } = payload;
-  const fields = record.fields;
+export function parseFirstTimerWebhook(
+  payload: FirstTimerWebhookPayload
+): FirstTimerEvent {
+  // Support both nested (record.fields) and flat (fields) formats
+  const fields = payload.record?.fields || payload.fields || {};
+  const recordId = payload.record?.id || payload.recordId || '';
+
+  // eslint-disable-next-line no-console
+  console.log('Parsing webhook payload format:', payload.record ? 'nested (record.fields)' : 'flat (fields)');
+  // eslint-disable-next-line no-console
+  console.log('Record ID:', recordId);
+  // eslint-disable-next-line no-console
+  console.log('Fields:', JSON.stringify(fields));
+
+  // Log the raw Service field for debugging
+  const serviceField = fields["Service"];
+  // eslint-disable-next-line no-console
+  console.log('Raw Service field value:', JSON.stringify(serviceField));
+
+  // Extract Service ID from the field
+  let serviceId: string | undefined;
+  if (serviceField) {
+    if (Array.isArray(serviceField) && serviceField.length > 0) {
+      const firstService = serviceField[0];
+      if (typeof firstService === 'string') {
+        serviceId = firstService;
+        // eslint-disable-next-line no-console
+        console.log('Extracted Service ID:', serviceId);
+      }
+    } else if (typeof serviceField === 'string') {
+      // Handle case where it's sent as a string instead of array
+      serviceId = serviceField;
+      // eslint-disable-next-line no-console
+      console.log('Service field was string, using directly:', serviceId);
+    }
+  }
 
   return {
-    recordId: record.id,
-    firstName: fields['First Name'] || '',
-    lastName: fields['Last Name'] || '',
-    phone: fields['Phone'],
-    email: fields['Email'],
-    address: fields['Address'],
-    ghanaPostCode: fields['GhanaPost Code'],
-    serviceId: fields['Service']?.[0],
+    recordId,
+    firstName: fields["First Name"] || "",
+    lastName: fields["Last Name"] || "",
+    phone: fields["Phone"],
+    email: fields["Email"],
+    address: fields["Address"],
+    ghanaPostCode: fields["GhanaPost Code"],
+    serviceId,
   };
 }
 
 /**
  * Process first timer event - core business logic
- * 
+ *
  * Requirements:
  * 2.1 - Search for existing member by phone/email
  * 2.2 - If match with "Evangelism Contact": update status to "First Timer", don't change Source
@@ -118,7 +164,7 @@ export async function processFirstTimerEvent(
       attendanceMarked: false,
       reassignmentOccurred: false,
       firstServiceAttendedUpdated: false,
-      error: 'First name and last name are required',
+      error: "First name and last name are required",
     };
   }
 
@@ -131,7 +177,7 @@ export async function processFirstTimerEvent(
       attendanceMarked: false,
       reassignmentOccurred: false,
       firstServiceAttendedUpdated: false,
-      error: 'At least one of phone or email is required',
+      error: "At least one of phone or email is required",
     };
   }
 
@@ -151,16 +197,18 @@ export async function processFirstTimerEvent(
     if (existingMember) {
       // Existing member found
       memberId = existingMember.id;
-      
+
       // eslint-disable-next-line no-console
-      console.log(`Found existing member ${memberId} for first timer record ${event.recordId}`);
+      console.log(
+        `Found existing member ${memberId} for first timer record ${event.recordId}`
+      );
 
       // Check if status is "Evangelism Contact" (Requirement 2.2)
-      if (existingMember.status === 'Evangelism Contact') {
+      if (existingMember.status === "Evangelism Contact") {
         // Update status to "First Timer" but don't change Source (Requirement 2.2)
         // Merge missing fields without overwriting (Requirement 2.3)
         await memberService.mergeFieldsIntoMember(memberId, {
-          status: 'First Timer' as MemberStatus,
+          status: "First Timer" as MemberStatus,
           address: event.address,
           ghanaPostCode: event.ghanaPostCode,
           email: event.email,
@@ -171,17 +219,23 @@ export async function processFirstTimerEvent(
         firstServiceAttendedUpdated = true;
 
         // eslint-disable-next-line no-console
-        console.log(`Updated member ${memberId} status from Evangelism Contact to First Timer`);
+        console.log(
+          `Updated member ${memberId} status from Evangelism Contact to First Timer`
+        );
 
         // Check for follow-up reassignment based on capacity (Requirement 5.1, 5.2, 5.3, 5.4)
         if (followUpService && existingMember.followUpOwner) {
           try {
-            const reassignmentResult = await followUpService.processCapacityReassignment(
-              memberId,
-              existingMember.followUpOwner
-            );
+            const reassignmentResult =
+              await followUpService.processCapacityReassignment(
+                memberId,
+                existingMember.followUpOwner
+              );
 
-            if (reassignmentResult.reassigned && reassignmentResult.newOwnerId) {
+            if (
+              reassignmentResult.reassigned &&
+              reassignmentResult.newOwnerId
+            ) {
               // Update member's follow-up owner
               await memberService.updateMember(memberId, {
                 followUpOwner: reassignmentResult.newOwnerId,
@@ -189,23 +243,32 @@ export async function processFirstTimerEvent(
               reassignmentOccurred = true;
 
               // eslint-disable-next-line no-console
-              console.log(`Reassigned member ${memberId} to new follow-up owner ${reassignmentResult.newOwnerId}`);
+              console.log(
+                `Reassigned member ${memberId} to new follow-up owner ${reassignmentResult.newOwnerId}`
+              );
             } else if (reassignmentResult.warning) {
               // eslint-disable-next-line no-console
-              console.warn(`Reassignment warning for member ${memberId}: ${reassignmentResult.warning}`);
+              console.warn(
+                `Reassignment warning for member ${memberId}: ${reassignmentResult.warning}`
+              );
             }
           } catch (reassignError) {
             // Log error but don't fail the entire operation
             // eslint-disable-next-line no-console
-            console.error('Error checking reassignment:', reassignError);
+            console.error("Error checking reassignment:", reassignError);
           }
         }
       } else {
         // Member exists but not as Evangelism Contact - just merge missing fields
         // Update First Service Attended if empty (Requirement 2.6)
-        const currentRecord = await airtableClient.getRecord(AIRTABLE_TABLES.MEMBERS, memberId);
-        const currentFirstService = currentRecord.fields['First Service Attended'] as string[] | undefined;
-        
+        const currentRecord = await airtableClient.getRecord(
+          AIRTABLE_TABLES.MEMBERS,
+          memberId
+        );
+        const currentFirstService = currentRecord.fields[
+          "First Service Attended"
+        ] as string[] | undefined;
+
         if (!currentFirstService || currentFirstService.length === 0) {
           if (event.serviceId) {
             await memberService.updateMember(memberId, {
@@ -220,12 +283,12 @@ export async function processFirstTimerEvent(
       const newMember = await memberService.createMember({
         firstName: event.firstName,
         lastName: event.lastName,
-        phone: event.phone || '',
+        phone: event.phone || "",
         email: event.email,
         address: event.address,
         ghanaPostCode: event.ghanaPostCode,
-        status: 'First Timer',
-        source: 'First Timer Form',
+        status: "First Timer",
+        source: "First Timer Form",
         dateFirstCaptured: new Date(),
       });
 
@@ -233,14 +296,27 @@ export async function processFirstTimerEvent(
       memberCreated = true;
 
       // eslint-disable-next-line no-console
-      console.log(`Created new member ${memberId} for first timer record ${event.recordId}`);
+      console.log(
+        `Created new member ${memberId} for first timer record ${event.recordId}`
+      );
 
       // Set First Service Attended for new member (Requirement 2.6)
       if (event.serviceId) {
-        await memberService.updateMember(memberId, {
-          firstServiceAttended: event.serviceId,
-        });
+        // eslint-disable-next-line no-console
+        console.log(`Setting First Service Attended for new member ${memberId} to service ${event.serviceId}`);
+        
+        await airtableClient.updateRecord(
+          AIRTABLE_TABLES.MEMBERS,
+          memberId,
+          { "First Service Attended": [event.serviceId] }
+        );
         firstServiceAttendedUpdated = true;
+        
+        // eslint-disable-next-line no-console
+        console.log(`Successfully set First Service Attended for member ${memberId}`);
+      } else {
+        // eslint-disable-next-line no-console
+        console.log(`No serviceId provided, skipping First Service Attended update for member ${memberId}`);
       }
     }
 
@@ -248,26 +324,43 @@ export async function processFirstTimerEvent(
     await airtableClient.updateRecord(
       AIRTABLE_TABLES.FIRST_TIMERS_REGISTER,
       event.recordId,
-      { 'Linked Member': [memberId] }
+      { "Linked Member": [memberId] }
     );
 
     // eslint-disable-next-line no-console
-    console.log(`Linked first timer record ${event.recordId} to member ${memberId}`);
+    console.log(
+      `Linked first timer record ${event.recordId} to member ${memberId}`
+    );
 
     // Step 3: Mark attendance for the service (Requirements 6.1, 6.2)
     let attendanceMarked = false;
+    // eslint-disable-next-line no-console
+    console.log(`Checking attendance marking: serviceId=${event.serviceId}, attendanceService=${!!attendanceService}`);
+    
     if (event.serviceId && attendanceService) {
       try {
-        await attendanceService.markPresent(memberId, event.serviceId, 'First Timer');
+        // eslint-disable-next-line no-console
+        console.log(`Attempting to mark attendance for member ${memberId} at service ${event.serviceId}`);
+        
+        const attendanceResult = await attendanceService.markPresent(
+          memberId,
+          event.serviceId,
+          "First Timer"
+        );
         attendanceMarked = true;
 
         // eslint-disable-next-line no-console
-        console.log(`Marked attendance for member ${memberId} at service ${event.serviceId}`);
+        console.log(
+          `Marked attendance for member ${memberId} at service ${event.serviceId}. Created: ${attendanceResult.created}, Updated: ${attendanceResult.updated}`
+        );
       } catch (attendanceError) {
         // Log error but don't fail the entire operation
         // eslint-disable-next-line no-console
-        console.error('Error marking attendance:', attendanceError);
+        console.error("Error marking attendance:", attendanceError);
       }
+    } else {
+      // eslint-disable-next-line no-console
+      console.log(`Skipping attendance marking: serviceId=${event.serviceId}, hasAttendanceService=${!!attendanceService}`);
     }
 
     return {
@@ -282,7 +375,7 @@ export async function processFirstTimerEvent(
     };
   } catch (error) {
     // eslint-disable-next-line no-console
-    console.error('Error processing first timer event:', error);
+    console.error("Error processing first timer event:", error);
     return {
       success: false,
       memberCreated: false,
@@ -291,47 +384,53 @@ export async function processFirstTimerEvent(
       attendanceMarked: false,
       reassignmentOccurred: false,
       firstServiceAttendedUpdated: false,
-      error: error instanceof Error ? error.message : 'Unknown error',
+      error: error instanceof Error ? error.message : "Unknown error",
     };
   }
 }
 
-
 /**
  * Lambda handler for first timer webhook
  */
-export const handler = async (event: APIGatewayProxyEvent): Promise<APIGatewayProxyResult> => {
+export const handler = async (
+  event: APIGatewayProxyEvent
+): Promise<APIGatewayProxyResult> => {
   // eslint-disable-next-line no-console
-  console.log('Received first timer webhook:', JSON.stringify(event, null, 2));
+  console.log("Received first timer webhook:", JSON.stringify(event, null, 2));
 
   try {
     // Parse request body
     if (!event.body) {
       return {
         statusCode: 400,
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ error: 'Missing request body' }),
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ error: "Missing request body" }),
       };
     }
 
-    const payload: FirstTimerWebhookPayload = JSON.parse(event.body) as FirstTimerWebhookPayload;
-    
+    const payload: FirstTimerWebhookPayload = JSON.parse(
+      event.body
+    ) as FirstTimerWebhookPayload;
+
     // Parse webhook into event
     const firstTimerEvent = parseFirstTimerWebhook(payload);
-    
+
     // eslint-disable-next-line no-console
-    console.log('Parsed first timer event:', JSON.stringify(firstTimerEvent, null, 2));
+    console.log(
+      "Parsed first timer event:",
+      JSON.stringify(firstTimerEvent, null, 2)
+    );
 
     // Initialize services
     const configService = new ConfigService();
     const config = await configService.getAirtableConfig();
-    
+
     const airtableConfig: AirtableConfig = {
       baseId: config.baseId,
       apiKey: config.apiKey,
       rateLimitPerSecond: 5,
     };
-    
+
     const airtableClient = new AirtableClient(airtableConfig);
     const memberService = new MemberService(airtableClient);
     const followUpService = new FollowUpService(airtableClient);
@@ -348,12 +447,12 @@ export const handler = async (event: APIGatewayProxyEvent): Promise<APIGatewayPr
 
     if (!result.success) {
       // eslint-disable-next-line no-console
-      console.error('First timer processing failed:', result.error);
+      console.error("First timer processing failed:", result.error);
       return {
         statusCode: 400,
-        headers: { 'Content-Type': 'application/json' },
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          error: 'Processing failed',
+          error: "Processing failed",
           message: result.error,
         }),
       };
@@ -361,9 +460,9 @@ export const handler = async (event: APIGatewayProxyEvent): Promise<APIGatewayPr
 
     return {
       statusCode: 200,
-      headers: { 'Content-Type': 'application/json' },
+      headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
-        message: 'First timer webhook processed successfully',
+        message: "First timer webhook processed successfully",
         memberId: result.memberId,
         memberCreated: result.memberCreated,
         memberMerged: result.memberMerged,
@@ -375,13 +474,13 @@ export const handler = async (event: APIGatewayProxyEvent): Promise<APIGatewayPr
     };
   } catch (error) {
     // eslint-disable-next-line no-console
-    console.error('Error processing first timer webhook:', error);
+    console.error("Error processing first timer webhook:", error);
     return {
       statusCode: 500,
-      headers: { 'Content-Type': 'application/json' },
+      headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
-        error: 'Internal server error',
-        message: error instanceof Error ? error.message : 'Unknown error',
+        error: "Internal server error",
+        message: error instanceof Error ? error.message : "Unknown error",
       }),
     };
   }

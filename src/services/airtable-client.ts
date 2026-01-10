@@ -1,12 +1,14 @@
 /**
  * Airtable Service Client
  * Provides rate-limited, retry-capable access to Airtable API
+ * Uses native fetch instead of airtable npm package for Lambda compatibility
  * 
  * Requirements: 14.1, 14.2, 14.3, 14.4
  */
 
-import Airtable from 'airtable';
 import { AirtableConfig, AirtableRecord } from '../types';
+
+const AIRTABLE_API_BASE = 'https://api.airtable.com/v0';
 
 /**
  * Error codes for Airtable operations
@@ -55,7 +57,7 @@ class RateLimiter {
   private tokens: number;
   private lastRefill: number;
   private readonly maxTokens: number;
-  private readonly refillRate: number; // tokens per second
+  private readonly refillRate: number;
 
   constructor(requestsPerSecond: number) {
     this.maxTokens = requestsPerSecond;
@@ -64,9 +66,6 @@ class RateLimiter {
     this.lastRefill = Date.now();
   }
 
-  /**
-   * Acquire a token, waiting if necessary
-   */
   async acquire(): Promise<void> {
     this.refill();
 
@@ -75,7 +74,6 @@ class RateLimiter {
       return;
     }
 
-    // Calculate wait time for next token
     const waitTime = Math.ceil((1 - this.tokens) / this.refillRate * 1000);
     await this.sleep(waitTime);
     this.refill();
@@ -95,21 +93,46 @@ class RateLimiter {
 }
 
 /**
+ * Airtable API response types
+ */
+interface AirtableApiRecord {
+  id: string;
+  fields: Record<string, unknown>;
+  createdTime: string;
+}
+
+interface AirtableListResponse {
+  records: AirtableApiRecord[];
+  offset?: string;
+}
+
+/**
  * AirtableClient - Main client for Airtable API operations
- * Implements rate limiting (5 req/sec) and exponential backoff retry
+ * Uses native fetch for Lambda compatibility
  */
 export class AirtableClient {
-  private readonly base: Airtable.Base;
+  private readonly baseId: string;
+  private readonly apiKey: string;
   private readonly rateLimiter: RateLimiter;
   private readonly retryConfig: RetryConfig;
 
   constructor(config: AirtableConfig, retryConfig?: Partial<RetryConfig>) {
-    Airtable.configure({
-      apiKey: config.apiKey,
-    });
-    this.base = Airtable.base(config.baseId);
+    this.baseId = config.baseId;
+    this.apiKey = config.apiKey;
     this.rateLimiter = new RateLimiter(config.rateLimitPerSecond || 5);
     this.retryConfig = { ...DEFAULT_RETRY_CONFIG, ...retryConfig };
+  }
+
+  private get headers(): Record<string, string> {
+    return {
+      'Authorization': `Bearer ${this.apiKey}`,
+      'Content-Type': 'application/json',
+    };
+  }
+
+  private buildUrl(tableId: string, recordId?: string): string {
+    const base = `${AIRTABLE_API_BASE}/${this.baseId}/${encodeURIComponent(tableId)}`;
+    return recordId ? `${base}/${recordId}` : base;
   }
 
   /**
@@ -118,8 +141,18 @@ export class AirtableClient {
   async getRecord(tableId: string, recordId: string): Promise<AirtableRecord> {
     return this.executeWithRetry(async () => {
       await this.rateLimiter.acquire();
-      const record = await this.base(tableId).find(recordId);
-      return this.mapRecord(record);
+      
+      const response = await fetch(this.buildUrl(tableId, recordId), {
+        method: 'GET',
+        headers: this.headers,
+      });
+
+      if (!response.ok) {
+        throw await this.handleErrorResponse(response);
+      }
+
+      const data = await response.json() as AirtableApiRecord;
+      return this.mapRecord(data);
     });
   }
 
@@ -132,8 +165,19 @@ export class AirtableClient {
   ): Promise<AirtableRecord> {
     return this.executeWithRetry(async () => {
       await this.rateLimiter.acquire();
-      const record = await this.base(tableId).create(fields as Airtable.FieldSet);
-      return this.mapRecord(record);
+      
+      const response = await fetch(this.buildUrl(tableId), {
+        method: 'POST',
+        headers: this.headers,
+        body: JSON.stringify({ fields }),
+      });
+
+      if (!response.ok) {
+        throw await this.handleErrorResponse(response);
+      }
+
+      const data = await response.json() as AirtableApiRecord;
+      return this.mapRecord(data);
     });
   }
 
@@ -147,8 +191,19 @@ export class AirtableClient {
   ): Promise<AirtableRecord> {
     return this.executeWithRetry(async () => {
       await this.rateLimiter.acquire();
-      const record = await this.base(tableId).update(recordId, fields as Airtable.FieldSet);
-      return this.mapRecord(record);
+      
+      const response = await fetch(this.buildUrl(tableId, recordId), {
+        method: 'PATCH',
+        headers: this.headers,
+        body: JSON.stringify({ fields }),
+      });
+
+      if (!response.ok) {
+        throw await this.handleErrorResponse(response);
+      }
+
+      const data = await response.json() as AirtableApiRecord;
+      return this.mapRecord(data);
     });
   }
 
@@ -163,31 +218,36 @@ export class AirtableClient {
     return this.executeWithRetry(async () => {
       await this.rateLimiter.acquire();
       
-      const queryOptions: Airtable.SelectOptions<Airtable.FieldSet> = {
-        filterByFormula: filterFormula,
-      };
-
+      const params = new URLSearchParams();
+      params.append('filterByFormula', filterFormula);
+      
       if (options?.maxRecords) {
-        queryOptions.maxRecords = options.maxRecords;
+        params.append('maxRecords', options.maxRecords.toString());
       }
-
+      
       if (options?.sort) {
-        queryOptions.sort = options.sort;
+        options.sort.forEach((s, i) => {
+          params.append(`sort[${i}][field]`, s.field);
+          params.append(`sort[${i}][direction]`, s.direction);
+        });
       }
 
-      const records = await this.base(tableId)
-        .select(queryOptions)
-        .all();
+      const response = await fetch(`${this.buildUrl(tableId)}?${params.toString()}`, {
+        method: 'GET',
+        headers: this.headers,
+      });
 
-      return records.map((record) => this.mapRecord(record));
+      if (!response.ok) {
+        throw await this.handleErrorResponse(response);
+      }
+
+      const data = await response.json() as AirtableListResponse;
+      return data.records.map((record) => this.mapRecord(record));
     });
   }
 
-
   /**
    * Find a member by unique key (phone or email)
-   * Implements phone normalization and case-insensitive email matching
-   * Requirements: 11.1, 2.1, 3.1
    */
   async findByUniqueKey(
     tableId: string,
@@ -202,17 +262,14 @@ export class AirtableClient {
 
     if (phone) {
       const normalizedPhone = this.normalizePhone(phone);
-      // Search with normalized phone - Airtable formula for phone matching
       conditions.push(`{Phone} = '${normalizedPhone}'`);
     }
 
     if (email) {
-      // Case-insensitive email matching using LOWER()
       const normalizedEmail = email.toLowerCase().trim();
       conditions.push(`LOWER({Email}) = '${normalizedEmail}'`);
     }
 
-    // Combine conditions with OR
     const filterFormula = conditions.length > 1
       ? `OR(${conditions.join(', ')})`
       : conditions[0] || '';
@@ -222,7 +279,7 @@ export class AirtableClient {
   }
 
   /**
-   * Batch create multiple records (up to 10 at a time per Airtable limit)
+   * Batch create multiple records (up to 10 at a time)
    */
   async batchCreate(
     tableId: string,
@@ -234,10 +291,21 @@ export class AirtableClient {
     for (const batch of batches) {
       const batchResults = await this.executeWithRetry(async () => {
         await this.rateLimiter.acquire();
-        const created = await this.base(tableId).create(
-          batch.map((fields) => ({ fields: fields as Airtable.FieldSet }))
-        );
-        return created.map((record) => this.mapRecord(record));
+        
+        const response = await fetch(this.buildUrl(tableId), {
+          method: 'POST',
+          headers: this.headers,
+          body: JSON.stringify({
+            records: batch.map((fields) => ({ fields })),
+          }),
+        });
+
+        if (!response.ok) {
+          throw await this.handleErrorResponse(response);
+        }
+
+        const data = await response.json() as AirtableListResponse;
+        return data.records.map((record) => this.mapRecord(record));
       });
       results.push(...batchResults);
     }
@@ -246,7 +314,7 @@ export class AirtableClient {
   }
 
   /**
-   * Batch update multiple records (up to 10 at a time per Airtable limit)
+   * Batch update multiple records (up to 10 at a time)
    */
   async batchUpdate(
     tableId: string,
@@ -258,13 +326,24 @@ export class AirtableClient {
     for (const batch of batches) {
       const batchResults = await this.executeWithRetry(async () => {
         await this.rateLimiter.acquire();
-        const updated = await this.base(tableId).update(
-          batch.map((update) => ({
-            id: update.id,
-            fields: update.fields as Airtable.FieldSet,
-          }))
-        );
-        return updated.map((record) => this.mapRecord(record));
+        
+        const response = await fetch(this.buildUrl(tableId), {
+          method: 'PATCH',
+          headers: this.headers,
+          body: JSON.stringify({
+            records: batch.map((update) => ({
+              id: update.id,
+              fields: update.fields,
+            })),
+          }),
+        });
+
+        if (!response.ok) {
+          throw await this.handleErrorResponse(response);
+        }
+
+        const data = await response.json() as AirtableListResponse;
+        return data.records.map((record) => this.mapRecord(record));
       });
       results.push(...batchResults);
     }
@@ -274,23 +353,43 @@ export class AirtableClient {
 
   /**
    * Normalize phone number for consistent matching
-   * Removes all non-digit characters except leading +
    */
   normalizePhone(phone: string): string {
     if (!phone) return '';
-    
-    // Preserve leading + for international numbers
     const hasPlus = phone.startsWith('+');
-    
-    // Remove all non-digit characters
     const digits = phone.replace(/\D/g, '');
-    
     return hasPlus ? `+${digits}` : digits;
   }
 
-  /**
-   * Execute an operation with exponential backoff retry
-   */
+  private async handleErrorResponse(response: Response): Promise<AirtableError> {
+    let errorData: { error?: { type?: string; message?: string } } = {};
+    try {
+      errorData = await response.json() as typeof errorData;
+    } catch {
+      // Ignore JSON parse errors
+    }
+
+    const message = errorData.error?.message || response.statusText || 'Unknown error';
+
+    if (response.status === 429) {
+      return new AirtableError(AirtableErrorCode.RATE_LIMITED, 'Rate limit exceeded', true);
+    }
+
+    if (response.status === 404) {
+      return new AirtableError(AirtableErrorCode.NOT_FOUND, message, false);
+    }
+
+    if (response.status === 400 || response.status === 422) {
+      return new AirtableError(AirtableErrorCode.INVALID_REQUEST, message, false);
+    }
+
+    if (response.status >= 500) {
+      return new AirtableError(AirtableErrorCode.API_ERROR, message, true);
+    }
+
+    return new AirtableError(AirtableErrorCode.API_ERROR, message, false);
+  }
+
   private async executeWithRetry<T>(operation: () => Promise<T>): Promise<T> {
     let lastError: Error | undefined;
 
@@ -299,107 +398,37 @@ export class AirtableClient {
         return await operation();
       } catch (error) {
         lastError = error as Error;
-        const airtableError = this.mapError(error);
-
-        // Only retry if the error is retryable
-        if (!airtableError.retryable || attempt === this.retryConfig.maxRetries) {
-          throw airtableError;
+        
+        if (error instanceof AirtableError && !error.retryable) {
+          throw error;
         }
 
-        // Calculate delay with exponential backoff and jitter
+        if (attempt === this.retryConfig.maxRetries) {
+          throw error;
+        }
+
         const delay = this.calculateDelay(attempt);
         await this.sleep(delay);
       }
     }
 
-    throw lastError || new AirtableError(
-      AirtableErrorCode.API_ERROR,
-      'Unknown error occurred',
-      false
-    );
+    throw lastError || new AirtableError(AirtableErrorCode.API_ERROR, 'Unknown error', false);
   }
 
-  /**
-   * Calculate delay for exponential backoff with jitter
-   */
   private calculateDelay(attempt: number): number {
     const exponentialDelay = this.retryConfig.baseDelayMs * Math.pow(2, attempt);
     const jitter = Math.random() * 1000;
     return Math.min(exponentialDelay + jitter, this.retryConfig.maxDelayMs);
   }
 
-  /**
-   * Map Airtable SDK record to our interface
-   */
-  private mapRecord(record: Airtable.Record<Airtable.FieldSet>): AirtableRecord {
+  private mapRecord(record: AirtableApiRecord): AirtableRecord {
     return {
       id: record.id,
-      fields: record.fields as Record<string, unknown>,
-      createdTime: record._rawJson?.createdTime || new Date().toISOString(),
+      fields: record.fields,
+      createdTime: record.createdTime,
     };
   }
 
-  /**
-   * Map errors to our error types
-   */
-  private mapError(error: unknown): AirtableError {
-    if (error instanceof AirtableError) {
-      return error;
-    }
-
-    const err = error as { statusCode?: number; message?: string; error?: string };
-    
-    // Rate limit error (429)
-    if (err.statusCode === 429) {
-      return new AirtableError(
-        AirtableErrorCode.RATE_LIMITED,
-        'Airtable rate limit exceeded',
-        true,
-        { originalError: err.message }
-      );
-    }
-
-    // Not found error (404)
-    if (err.statusCode === 404) {
-      return new AirtableError(
-        AirtableErrorCode.NOT_FOUND,
-        err.message || 'Record not found',
-        false
-      );
-    }
-
-    // Invalid request (400, 422)
-    if (err.statusCode === 400 || err.statusCode === 422) {
-      return new AirtableError(
-        AirtableErrorCode.INVALID_REQUEST,
-        err.message || 'Invalid request',
-        false,
-        { originalError: err.error }
-      );
-    }
-
-    // Server errors (5xx) are retryable
-    if (err.statusCode && err.statusCode >= 500) {
-      return new AirtableError(
-        AirtableErrorCode.API_ERROR,
-        err.message || 'Airtable server error',
-        true,
-        { statusCode: err.statusCode }
-      );
-    }
-
-    // Default to non-retryable API error
-    return new AirtableError(
-      AirtableErrorCode.API_ERROR,
-      err.message || 'Unknown Airtable error',
-      false,
-      { originalError: error }
-    );
-  }
-
-  /**
-   * Split array into chunks of specified size
-   */
   private chunkArray<T>(array: T[], size: number): T[][] {
     const chunks: T[][] = [];
     for (let i = 0; i < array.length; i += size) {
@@ -408,9 +437,6 @@ export class AirtableClient {
     return chunks;
   }
 
-  /**
-   * Sleep for specified milliseconds
-   */
   private sleep(ms: number): Promise<void> {
     return new Promise((resolve) => setTimeout(resolve, ms));
   }

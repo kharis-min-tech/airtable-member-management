@@ -148,11 +148,15 @@ export interface AttendanceSummary {
   attendancePercentage: number;
 }
 
+/**
+ * Service comparison - unidirectional
+ * Only returns members present in reference service (A) but missing from comparison service (B)
+ * Requirements: 5.2, 5.3
+ */
 export interface ServiceComparison {
   serviceA: { id: string; name: string };
   serviceB: { id: string; name: string };
   presentInAMissingInB: Member[];
-  presentInBMissingInA: Member[];
 }
 
 // Airtable Record Interface
@@ -197,7 +201,10 @@ export interface EvangelismEvent {
   email?: string;
   ghanaPostCode?: string;
   date: string; // ISO date string from Airtable
-  capturedBy?: string; // Volunteer record ID
+  capturedBy?: string; // Volunteer record ID (Soul Winner)
+  notes?: string;
+  soulType?: string;
+  evangelismType?: string;
 }
 
 export interface EvangelismWebhookPayload {
@@ -217,7 +224,10 @@ export interface EvangelismWebhookPayload {
       'Email'?: string;
       'GhanaPost Code'?: string;
       'Date'?: string;
-      'Captured By'?: string[];
+      'Soul Winner'?: string[];
+      'Notes / Prayer Points'?: string;
+      'Soul Type'?: string;
+      'Evangelism Type'?: string;
       'Linked Member'?: string[];
     };
   };
