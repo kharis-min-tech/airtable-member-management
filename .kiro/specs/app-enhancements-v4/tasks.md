@@ -1,16 +1,16 @@
 # Implementation Plan
 
-- [ ] 1. Set up custom domain infrastructure
+- [x] 1. Set up custom domain infrastructure
   - Extend CDK stack to support custom domain configuration with Cloudflare
   - Add Certificate Manager and Route 53 integration
   - Configure CloudFront distribution with custom domain aliases
   - _Requirements: 1.1, 1.2, 1.3, 1.4_
 
-- [ ] 1.1 Write property test for custom domain HTTPS accessibility
+- [x] 1.1 Write property test for custom domain HTTPS accessibility
   - **Property 1: Custom domain HTTPS accessibility**
   - **Validates: Requirements 1.1, 1.2, 1.3**
 
-- [ ] 1.2 Write property test for DNS resolution correctness
+- [x] 1.2 Write property test for DNS resolution correctness
   - **Property 2: DNS resolution correctness**
   - **Validates: Requirements 1.4**
 

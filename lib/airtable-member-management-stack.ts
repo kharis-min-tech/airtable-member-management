@@ -9,11 +9,28 @@ import * as s3 from 'aws-cdk-lib/aws-s3';
 import * as cloudfront from 'aws-cdk-lib/aws-cloudfront';
 import * as origins from 'aws-cdk-lib/aws-cloudfront-origins';
 import * as s3deploy from 'aws-cdk-lib/aws-s3-deployment';
+import * as route53 from 'aws-cdk-lib/aws-route53';
+import * as route53Targets from 'aws-cdk-lib/aws-route53-targets';
+import * as acm from 'aws-cdk-lib/aws-certificatemanager';
 import { Construct } from 'constructs';
 import * as path from 'path';
 
+/**
+ * Configuration for custom domain setup with Cloudflare
+ * Validates: Requirements 1.1, 1.2, 1.3, 1.4
+ */
+export interface DomainConfig {
+  /** Custom domain name (e.g., 'app.mychurch.com') */
+  domainName: string;
+  /** ARN of the ACM certificate for SSL (must be in us-east-1 for CloudFront) */
+  certificateArn: string;
+  /** Route 53 hosted zone ID for DNS records */
+  hostedZoneId: string;
+}
+
 export interface AirtableMemberManagementStackProps extends cdk.StackProps {
-  // Additional props can be added here
+  /** Optional custom domain configuration */
+  domainConfig?: DomainConfig;
 }
 
 export class AirtableMemberManagementStack extends cdk.Stack {
@@ -25,9 +42,13 @@ export class AirtableMemberManagementStack extends cdk.Stack {
   public readonly userPoolClient: cognito.UserPoolClient;
   public readonly websiteBucket: s3.Bucket;
   public readonly distribution: cloudfront.Distribution;
+  public readonly domainConfig?: DomainConfig;
 
   constructor(scope: Construct, id: string, props?: AirtableMemberManagementStackProps) {
     super(scope, id, props);
+
+    // Store domain config for use in frontend hosting
+    this.domainConfig = props?.domainConfig;
 
     // Create DynamoDB tables
     const tables = this.createDynamoDBTables();
@@ -421,8 +442,8 @@ export class AirtableMemberManagementStack extends cdk.Stack {
     // Grant CloudFront access to S3 bucket
     websiteBucket.grantRead(originAccessIdentity);
 
-    // CloudFront distribution
-    const distribution = new cloudfront.Distribution(this, 'Distribution', {
+    // Build CloudFront distribution configuration
+    const distributionProps: cloudfront.DistributionProps = {
       comment: `${this.stackName} Frontend Distribution`,
       defaultBehavior: {
         origin: new origins.S3Origin(websiteBucket, {
@@ -448,7 +469,54 @@ export class AirtableMemberManagementStack extends cdk.Stack {
         },
       ],
       priceClass: cloudfront.PriceClass.PRICE_CLASS_100,
-    });
+    };
+
+    // Add custom domain configuration if provided
+    // Validates: Requirements 1.1, 1.2, 1.3
+    if (this.domainConfig) {
+      const certificate = acm.Certificate.fromCertificateArn(
+        this,
+        'DomainCertificate',
+        this.domainConfig.certificateArn
+      );
+
+      Object.assign(distributionProps, {
+        domainNames: [this.domainConfig.domainName],
+        certificate,
+        minimumProtocolVersion: cloudfront.SecurityPolicyProtocol.TLS_V1_2_2021,
+        sslSupportMethod: cloudfront.SSLMethod.SNI,
+      });
+    }
+
+    // CloudFront distribution
+    const distribution = new cloudfront.Distribution(this, 'Distribution', distributionProps);
+
+    // Create Route 53 DNS record if domain config is provided
+    // Validates: Requirements 1.4
+    if (this.domainConfig) {
+      const hostedZone = route53.HostedZone.fromHostedZoneAttributes(this, 'HostedZone', {
+        hostedZoneId: this.domainConfig.hostedZoneId,
+        zoneName: this.domainConfig.domainName.split('.').slice(-2).join('.'),
+      });
+
+      new route53.ARecord(this, 'DomainARecord', {
+        zone: hostedZone,
+        recordName: this.domainConfig.domainName,
+        target: route53.RecordTarget.fromAlias(
+          new route53Targets.CloudFrontTarget(distribution)
+        ),
+        comment: `A record for ${this.domainConfig.domainName} pointing to CloudFront`,
+      });
+
+      new route53.AaaaRecord(this, 'DomainAAAARecord', {
+        zone: hostedZone,
+        recordName: this.domainConfig.domainName,
+        target: route53.RecordTarget.fromAlias(
+          new route53Targets.CloudFrontTarget(distribution)
+        ),
+        comment: `AAAA record for ${this.domainConfig.domainName} pointing to CloudFront`,
+      });
+    }
 
     // Deploy frontend assets to S3
     new s3deploy.BucketDeployment(this, 'DeployWebsite', {
@@ -498,11 +566,32 @@ export class AirtableMemberManagementStack extends cdk.Stack {
       exportName: `${this.stackName}-UserMappingTableName`,
     });
 
-    new cdk.CfnOutput(this, 'FrontendUrl', {
-      value: `https://${this.distribution.distributionDomainName}`,
-      description: 'Frontend CloudFront URL',
-      exportName: `${this.stackName}-FrontendUrl`,
-    });
+    // Output custom domain URL if configured, otherwise CloudFront URL
+    if (this.domainConfig) {
+      new cdk.CfnOutput(this, 'FrontendUrl', {
+        value: `https://${this.domainConfig.domainName}`,
+        description: 'Frontend Custom Domain URL',
+        exportName: `${this.stackName}-FrontendUrl`,
+      });
+
+      new cdk.CfnOutput(this, 'CloudFrontUrl', {
+        value: `https://${this.distribution.distributionDomainName}`,
+        description: 'Frontend CloudFront URL (fallback)',
+        exportName: `${this.stackName}-CloudFrontUrl`,
+      });
+
+      new cdk.CfnOutput(this, 'CustomDomain', {
+        value: this.domainConfig.domainName,
+        description: 'Custom domain name',
+        exportName: `${this.stackName}-CustomDomain`,
+      });
+    } else {
+      new cdk.CfnOutput(this, 'FrontendUrl', {
+        value: `https://${this.distribution.distributionDomainName}`,
+        description: 'Frontend CloudFront URL',
+        exportName: `${this.stackName}-FrontendUrl`,
+      });
+    }
 
     new cdk.CfnOutput(this, 'WebsiteBucketName', {
       value: this.websiteBucket.bucketName,
