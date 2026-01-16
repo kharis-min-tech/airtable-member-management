@@ -1,6 +1,6 @@
 import { useState } from 'react';
-import { Outlet, NavLink, useNavigate } from 'react-router-dom';
-import { Menu, X, LogOut } from 'lucide-react';
+import { Outlet, NavLink, useNavigate, Link } from 'react-router-dom';
+import { Menu, X, LogOut, ExternalLink, ChevronDown } from 'lucide-react';
 import { useAuth } from '../hooks/useAuth';
 import { ThemeToggle } from '../components/common/ThemeToggle';
 import { KharisLogo } from '../assets/KharisLogo';
@@ -15,6 +15,7 @@ interface NavTab {
   label: string;
   mobileLabel: string;
   requiresRole?: UserRole[];
+  isExternal?: boolean;
 }
 
 const navigationTabs: NavTab[] = [
@@ -25,10 +26,20 @@ const navigationTabs: NavTab[] = [
   { to: '/admin', label: 'Admin', mobileLabel: 'Admin', requiresRole: ['pastor', 'admin'] },
 ];
 
+/**
+ * Quick links to public pages accessible from authenticated view
+ */
+const quickLinks: NavTab[] = [
+  { to: '/forms', label: 'Forms', mobileLabel: 'Forms', isExternal: true },
+  { to: '/contacts', label: 'Contacts', mobileLabel: 'Contacts', isExternal: true },
+  { to: '/followup', label: 'Follow Up', mobileLabel: 'Follow Up', isExternal: true },
+];
+
 function MainLayout() {
   const { user, logout, hasRole } = useAuth();
   const navigate = useNavigate();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const [isQuickLinksOpen, setIsQuickLinksOpen] = useState(false);
 
   const handleLogout = async () => {
     try {
@@ -87,7 +98,7 @@ function MainLayout() {
             <div className="flex items-center gap-3 flex-shrink-0">
               <KharisLogo className="h-8 w-8" />
               <h1 className="text-xl font-bold text-primary dark:text-white hidden sm:block">
-                Church Member Management
+                Member Management
               </h1>
             </div>
 
@@ -106,6 +117,34 @@ function MainLayout() {
                   {tab.label}
                 </NavLink>
               ))}
+              
+              {/* Quick Links Dropdown */}
+              <div className="relative">
+                <button
+                  onClick={() => setIsQuickLinksOpen(!isQuickLinksOpen)}
+                  onBlur={() => setTimeout(() => setIsQuickLinksOpen(false), 150)}
+                  className="flex items-center gap-1 px-4 py-2 rounded-md transition-colors font-medium text-text-secondary-light dark:text-text-secondary-dark hover:bg-gray-100 dark:hover:bg-gray-800 hover:text-text-primary-light dark:hover:text-text-primary-dark"
+                >
+                  Quick Links
+                  <ChevronDown className={`h-4 w-4 transition-transform ${isQuickLinksOpen ? 'rotate-180' : ''}`} />
+                </button>
+                
+                {isQuickLinksOpen && (
+                  <div className="absolute right-0 mt-2 w-48 bg-surface-light dark:bg-surface-dark rounded-md shadow-lg border border-gray-200 dark:border-gray-700 py-1 z-50">
+                    {quickLinks.map((link) => (
+                      <Link
+                        key={link.to}
+                        to={link.to}
+                        className="flex items-center gap-2 px-4 py-2 text-sm text-text-primary-light dark:text-text-primary-dark hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
+                        onClick={() => setIsQuickLinksOpen(false)}
+                      >
+                        {link.label}
+                        <ExternalLink className="h-3 w-3 text-text-secondary-light dark:text-text-secondary-dark" />
+                      </Link>
+                    ))}
+                  </div>
+                )}
+              </div>
             </nav>
 
             {/* Right side: Theme toggle, user info, logout - Requirements: 6.4, 6.5, 6.6 */}
@@ -177,7 +216,7 @@ function MainLayout() {
                 </div>
 
                 {/* Mobile navigation links */}
-                <nav className="flex-1 p-4 space-y-2" role="navigation" aria-label="Mobile navigation">
+                <nav className="flex-1 p-4 space-y-2 overflow-y-auto" role="navigation" aria-label="Mobile navigation">
                   {visibleTabs.map((tab) => (
                     <NavLink
                       key={tab.to}
@@ -188,6 +227,24 @@ function MainLayout() {
                       {tab.mobileLabel}
                     </NavLink>
                   ))}
+                  
+                  {/* Quick Links Section */}
+                  <div className="pt-4 mt-4 border-t border-gray-200 dark:border-gray-700">
+                    <p className="px-4 py-2 text-xs font-semibold text-text-secondary-light dark:text-text-secondary-dark uppercase tracking-wider">
+                      Quick Links
+                    </p>
+                    {quickLinks.map((link) => (
+                      <Link
+                        key={link.to}
+                        to={link.to}
+                        className="flex items-center gap-2 px-4 py-3 rounded-md transition-colors font-medium text-text-primary-light dark:text-text-primary-dark hover:bg-gray-100 dark:hover:bg-gray-800"
+                        onClick={closeMobileMenu}
+                      >
+                        {link.mobileLabel}
+                        <ExternalLink className="h-3 w-3 text-text-secondary-light dark:text-text-secondary-dark" />
+                      </Link>
+                    ))}
+                  </div>
                 </nav>
 
                 {/* Mobile user info and logout */}
@@ -230,7 +287,7 @@ function MainLayout() {
       <footer className="bg-surface-light dark:bg-surface-dark border-t border-gray-200 dark:border-gray-700 mt-auto">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
           <p className="text-center text-sm text-text-secondary-light dark:text-text-secondary-dark">
-            Church Member Management System
+            Member Management System
           </p>
         </div>
       </footer>
@@ -239,6 +296,6 @@ function MainLayout() {
 }
 
 // Export navigation tabs for testing purposes
-export { navigationTabs };
+export { navigationTabs, quickLinks };
 export type { NavTab };
 export default MainLayout;

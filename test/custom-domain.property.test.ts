@@ -1,18 +1,18 @@
 /**
- * Property-Based Tests for Custom Domain Infrastructure
+ * Property-Based Tests for Custom Domain Infrastructure with Cloudflare DNS
  * 
  * Property 1: Custom domain HTTPS accessibility
  * Validates: Requirements 1.1, 1.2, 1.3
  * 
- * For any valid request to the custom Cloudflare domain, the Church_Management_System 
+ * For any valid request to the custom domain, the Church_Management_System 
  * should serve the application content over HTTPS with proper SSL termination 
- * and HTTP-to-HTTPS redirection
+ * and HTTP-to-HTTPS redirection via CloudFront
  * 
- * Property 2: DNS resolution correctness
+ * Property 2: CloudFront configuration correctness
  * Validates: Requirements 1.4
  * 
- * For any DNS lookup of the Cloudflare domain, the resolution should point to 
- * the correct AWS CloudFront infrastructure
+ * For any custom domain configuration, CloudFront should be properly configured
+ * to serve the domain with appropriate outputs for Cloudflare DNS setup
  */
 
 import * as cdk from 'aws-cdk-lib';
@@ -24,17 +24,14 @@ const testDomainConfigs: DomainConfig[] = [
   {
     domainName: 'app.mychurch.com',
     certificateArn: 'arn:aws:acm:us-east-1:123456789012:certificate/12345678-1234-1234-1234-123456789012',
-    hostedZoneId: 'Z1234567890ABC',
   },
   {
     domainName: 'dashboard.ministry.org',
     certificateArn: 'arn:aws:acm:us-east-1:987654321098:certificate/abcdefgh-abcd-abcd-abcd-abcdefghijkl',
-    hostedZoneId: 'ZABCDEFGHIJKL',
   },
   {
     domainName: 'members.grace.church',
     certificateArn: 'arn:aws:acm:us-east-1:111222333444:certificate/11112222-3333-4444-5555-666677778888',
-    hostedZoneId: 'Z0987654321XYZ',
   },
 ];
 
@@ -172,17 +169,17 @@ describe('Property 1: Custom domain HTTPS accessibility', () => {
 });
 
 
-describe('Property 2: DNS resolution correctness', () => {
+describe('Property 2: CloudFront configuration and outputs', () => {
   /**
-   * Property 2.1: Route 53 A record SHALL point to CloudFront distribution
+   * Property 2.1: CloudFront domain output SHALL be available for Cloudflare DNS
    * 
-   * For any custom domain configuration, a Route 53 A record SHALL be created
-   * that points to the CloudFront distribution
+   * For any custom domain configuration, the stack SHALL output the CloudFront
+   * distribution domain name for use in Cloudflare DNS CNAME records
    * 
    * Validates: Requirements 1.4
    */
   it.each(testDomainConfigs)(
-    'should create Route 53 A record pointing to CloudFront for domain: $domainName',
+    'should output CloudFront domain for Cloudflare DNS setup for domain: $domainName',
     (domainConfig) => {
       const app = new cdk.App();
       
@@ -193,25 +190,23 @@ describe('Property 2: DNS resolution correctness', () => {
       
       const template = Template.fromStack(stack);
       
-      // Verify Route 53 A record is created
-      template.hasResourceProperties('AWS::Route53::RecordSet', {
-        Name: `${domainConfig.domainName}.`,
-        Type: 'A',
-        HostedZoneId: domainConfig.hostedZoneId,
+      // Verify CloudFront domain output is created for Cloudflare DNS
+      template.hasOutput('CloudFrontDomainForDNS', {
+        Description: 'CloudFront domain name for Cloudflare DNS CNAME record',
       });
     }
   );
 
   /**
-   * Property 2.2: Route 53 AAAA record SHALL point to CloudFront distribution
+   * Property 2.2: Custom domain output SHALL match configured domain
    * 
-   * For any custom domain configuration, a Route 53 AAAA record SHALL be created
-   * for IPv6 support pointing to the CloudFront distribution
+   * For any custom domain configuration, the stack SHALL output the
+   * configured custom domain name
    * 
-   * Validates: Requirements 1.4
+   * Validates: Requirements 1.1
    */
   it.each(testDomainConfigs)(
-    'should create Route 53 AAAA record for IPv6 support for domain: $domainName',
+    'should output custom domain name for domain: $domainName',
     (domainConfig) => {
       const app = new cdk.App();
       
@@ -222,23 +217,83 @@ describe('Property 2: DNS resolution correctness', () => {
       
       const template = Template.fromStack(stack);
       
-      // Verify Route 53 AAAA record is created
-      template.hasResourceProperties('AWS::Route53::RecordSet', {
-        Name: `${domainConfig.domainName}.`,
-        Type: 'AAAA',
-        HostedZoneId: domainConfig.hostedZoneId,
+      // Verify custom domain output matches configuration
+      template.hasOutput('CustomDomain', {
+        Value: domainConfig.domainName,
+        Description: 'Custom domain name',
       });
     }
   );
 
   /**
-   * Property 2.3: No DNS records SHALL be created without domain config
+   * Property 2.3: No Route 53 resources SHALL be created
    * 
-   * When no custom domain is configured, no Route 53 records SHALL be created
+   * With Cloudflare DNS migration, no Route 53 records SHALL be created
+   * in the CloudFormation stack
+   * 
+   * Validates: Cloudflare DNS migration
+   */
+  it.each(testDomainConfigs)(
+    'should not create Route 53 records with Cloudflare DNS for domain: $domainName',
+    (domainConfig) => {
+      const app = new cdk.App();
+      
+      const stack = new AirtableMemberManagementStack(app, 'TestStack', {
+        domainConfig,
+        env: { account: '123456789012', region: 'us-east-1' },
+      });
+      
+      const template = Template.fromStack(stack);
+      
+      // Verify no Route 53 records are created (managed by Cloudflare)
+      template.resourceCountIs('AWS::Route53::RecordSet', 0);
+      template.resourceCountIs('AWS::Route53::HostedZone', 0);
+    }
+  );
+
+  /**
+   * Property 2.4: CloudFront distribution SHALL use Origin Access Control
+   * 
+   * For any domain configuration, CloudFront SHALL use modern Origin Access Control
+   * instead of deprecated Origin Access Identity
+   * 
+   * Validates: Security best practices
+   */
+  it.each(testDomainConfigs)(
+    'should use Origin Access Control for S3 access for domain: $domainName',
+    (domainConfig) => {
+      const app = new cdk.App();
+      
+      const stack = new AirtableMemberManagementStack(app, 'TestStack', {
+        domainConfig,
+        env: { account: '123456789012', region: 'us-east-1' },
+      });
+      
+      const template = Template.fromStack(stack);
+      
+      // Verify Origin Access Control is created (not deprecated OAI)
+      template.hasResourceProperties('AWS::CloudFront::OriginAccessControl', {
+        OriginAccessControlConfig: {
+          Description: Match.stringLikeRegexp('.*frontend.*'),
+          OriginAccessControlOriginType: 's3',
+          SigningBehavior: 'always',
+          SigningProtocol: 'sigv4',
+        },
+      });
+      
+      // Verify no deprecated Origin Access Identity is created
+      template.resourceCountIs('AWS::CloudFront::CloudFrontOriginAccessIdentity', 0);
+    }
+  );
+
+  /**
+   * Property 2.5: Stack without domain config SHALL not output domain-specific values
+   * 
+   * When no custom domain is configured, domain-specific outputs SHALL not be created
    * 
    * Validates: Backward compatibility
    */
-  it('should not create DNS records when no custom domain is configured', () => {
+  it('should not create domain-specific outputs when no custom domain is configured', () => {
     const app = new cdk.App();
     
     // Create stack without domain config
@@ -246,40 +301,12 @@ describe('Property 2: DNS resolution correctness', () => {
     
     const template = Template.fromStack(stack);
     
-    // Verify no Route 53 records are created
-    template.resourceCountIs('AWS::Route53::RecordSet', 0);
+    // Verify domain-specific outputs are not created
+    const outputs = template.toJSON().Outputs || {};
+    expect(outputs.CustomDomain).toBeUndefined();
+    expect(outputs.CloudFrontDomainForDNS).toBeUndefined();
+    
+    // But CloudFront URL should still be available
+    expect(outputs.FrontendUrl).toBeDefined();
   });
-
-  /**
-   * Property 2.4: DNS records SHALL use alias target for CloudFront
-   * 
-   * For any custom domain configuration, the DNS records SHALL use
-   * CloudFront alias targets (not direct IP addresses)
-   * 
-   * Validates: Requirements 1.4
-   */
-  it.each(testDomainConfigs)(
-    'should use CloudFront alias target for DNS records for domain: $domainName',
-    (domainConfig) => {
-      const app = new cdk.App();
-      
-      const stack = new AirtableMemberManagementStack(app, 'TestStack', {
-        domainConfig,
-        env: { account: '123456789012', region: 'us-east-1' },
-      });
-      
-      const template = Template.fromStack(stack);
-      
-      // Verify A record uses alias target with CloudFront distribution
-      // CDK uses Fn::FindInMap to dynamically resolve the CloudFront hosted zone ID
-      template.hasResourceProperties('AWS::Route53::RecordSet', {
-        Type: 'A',
-        AliasTarget: Match.objectLike({
-          DNSName: Match.anyValue(),
-          // HostedZoneId is resolved via Fn::FindInMap for CloudFront distributions
-          HostedZoneId: Match.anyValue(),
-        }),
-      });
-    }
-  );
 });

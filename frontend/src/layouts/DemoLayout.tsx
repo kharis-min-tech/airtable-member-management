@@ -42,7 +42,7 @@ function DemoLayout() {
             <div className="flex items-center gap-3 flex-shrink-0">
               <KharisLogo className="h-8 w-8 text-primary dark:text-white" />
               <h1 className="text-xl font-bold text-primary dark:text-white hidden sm:block">
-                Church Member Management
+                Member Management
               </h1>
               <span className="px-2 py-1 bg-warning/20 text-warning text-xs font-medium rounded">
                 DEMO
@@ -120,7 +120,7 @@ function DemoLayout() {
       <footer className="bg-surface-light dark:bg-surface-dark border-t border-gray-200 dark:border-gray-700 mt-auto">
         <div className="max-w-7xl mx-auto w-full px-4 sm:px-6 lg:px-8 py-4">
           <p className="text-center text-sm text-text-secondary-light dark:text-text-secondary-dark">
-            Church Member Management System - Demo Mode
+            Member Management System - Demo Mode
           </p>
         </div>
       </footer>

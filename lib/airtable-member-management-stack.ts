@@ -9,23 +9,19 @@ import * as s3 from 'aws-cdk-lib/aws-s3';
 import * as cloudfront from 'aws-cdk-lib/aws-cloudfront';
 import * as origins from 'aws-cdk-lib/aws-cloudfront-origins';
 import * as s3deploy from 'aws-cdk-lib/aws-s3-deployment';
-import * as route53 from 'aws-cdk-lib/aws-route53';
-import * as route53Targets from 'aws-cdk-lib/aws-route53-targets';
 import * as acm from 'aws-cdk-lib/aws-certificatemanager';
 import { Construct } from 'constructs';
 import * as path from 'path';
 
 /**
- * Configuration for custom domain setup with Cloudflare
- * Validates: Requirements 1.1, 1.2, 1.3, 1.4
+ * Configuration for custom domain setup with Cloudflare DNS
+ * Validates: Requirements 1.1, 1.2, 1.3
  */
 export interface DomainConfig {
   /** Custom domain name (e.g., 'app.mychurch.com') */
   domainName: string;
   /** ARN of the ACM certificate for SSL (must be in us-east-1 for CloudFront) */
   certificateArn: string;
-  /** Route 53 hosted zone ID for DNS records */
-  hostedZoneId: string;
 }
 
 export interface AirtableMemberManagementStackProps extends cdk.StackProps {
@@ -434,20 +430,32 @@ export class AirtableMemberManagementStack extends cdk.Stack {
       encryption: s3.BucketEncryption.S3_MANAGED,
     });
 
-    // CloudFront Origin Access Identity
-    const originAccessIdentity = new cloudfront.OriginAccessIdentity(this, 'OAI', {
-      comment: `OAI for ${this.stackName} frontend`,
+    // CloudFront Origin Access Control (OAC) - replaces deprecated OAI
+    const originAccessControl = new cloudfront.S3OriginAccessControl(this, 'OAC', {
+      description: `OAC for ${this.stackName} frontend`,
     });
 
-    // Grant CloudFront access to S3 bucket
-    websiteBucket.grantRead(originAccessIdentity);
+    // Create bucket policy to allow CloudFront access
+    const bucketPolicyStatement = new iam.PolicyStatement({
+      effect: iam.Effect.ALLOW,
+      principals: [new iam.ServicePrincipal('cloudfront.amazonaws.com')],
+      actions: ['s3:GetObject'],
+      resources: [`${websiteBucket.bucketArn}/*`],
+      conditions: {
+        StringEquals: {
+          'AWS:SourceArn': `arn:aws:cloudfront::${this.account}:distribution/*`,
+        },
+      },
+    });
+
+    websiteBucket.addToResourcePolicy(bucketPolicyStatement);
 
     // Build CloudFront distribution configuration
     const distributionProps: cloudfront.DistributionProps = {
       comment: `${this.stackName} Frontend Distribution`,
       defaultBehavior: {
-        origin: new origins.S3Origin(websiteBucket, {
-          originAccessIdentity,
+        origin: origins.S3BucketOrigin.withOriginAccessControl(websiteBucket, {
+          originAccessControl,
         }),
         viewerProtocolPolicy: cloudfront.ViewerProtocolPolicy.REDIRECT_TO_HTTPS,
         cachePolicy: cloudfront.CachePolicy.CACHING_OPTIMIZED,
@@ -490,33 +498,6 @@ export class AirtableMemberManagementStack extends cdk.Stack {
 
     // CloudFront distribution
     const distribution = new cloudfront.Distribution(this, 'Distribution', distributionProps);
-
-    // Create Route 53 DNS record if domain config is provided
-    // Validates: Requirements 1.4
-    if (this.domainConfig) {
-      const hostedZone = route53.HostedZone.fromHostedZoneAttributes(this, 'HostedZone', {
-        hostedZoneId: this.domainConfig.hostedZoneId,
-        zoneName: this.domainConfig.domainName.split('.').slice(-2).join('.'),
-      });
-
-      new route53.ARecord(this, 'DomainARecord', {
-        zone: hostedZone,
-        recordName: this.domainConfig.domainName,
-        target: route53.RecordTarget.fromAlias(
-          new route53Targets.CloudFrontTarget(distribution)
-        ),
-        comment: `A record for ${this.domainConfig.domainName} pointing to CloudFront`,
-      });
-
-      new route53.AaaaRecord(this, 'DomainAAAARecord', {
-        zone: hostedZone,
-        recordName: this.domainConfig.domainName,
-        target: route53.RecordTarget.fromAlias(
-          new route53Targets.CloudFrontTarget(distribution)
-        ),
-        comment: `AAAA record for ${this.domainConfig.domainName} pointing to CloudFront`,
-      });
-    }
 
     // Deploy frontend assets to S3
     new s3deploy.BucketDeployment(this, 'DeployWebsite', {
@@ -578,6 +559,12 @@ export class AirtableMemberManagementStack extends cdk.Stack {
         value: `https://${this.distribution.distributionDomainName}`,
         description: 'Frontend CloudFront URL (fallback)',
         exportName: `${this.stackName}-CloudFrontUrl`,
+      });
+
+      new cdk.CfnOutput(this, 'CloudFrontDomainForDNS', {
+        value: this.distribution.distributionDomainName,
+        description: 'CloudFront domain name for Cloudflare DNS CNAME record',
+        exportName: `${this.stackName}-CloudFrontDomainForDNS`,
       });
 
       new cdk.CfnOutput(this, 'CustomDomain', {

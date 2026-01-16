@@ -4,7 +4,7 @@
  * Shows Attendance grouped first by Service then by Department
  */
 
-import { useMemo, useState, useCallback } from 'react';
+import { useMemo, useState, useCallback, useEffect } from 'react';
 import { useApi } from '../../hooks/useApi';
 import { churchApi } from '../../services/church-api';
 import { Select } from '../tailus-ui/Select';
@@ -23,17 +23,27 @@ function AttendanceByServiceView({ services, isLoadingServices = false }: Attend
   const [expandedDepartments, setExpandedDepartments] = useState<Set<string>>(new Set());
 
   const attendanceData = useApi<AttendanceByDepartment>(
-    useCallback(() => churchApi.admin.getAttendanceByDepartment(selectedServiceId), [selectedServiceId]),
+    useCallback(() => {
+      if (selectedServiceId) {
+        return churchApi.admin.getAttendanceByDepartment(selectedServiceId);
+      }
+      return Promise.reject(new Error('No service selected'));
+    }, [selectedServiceId]),
     { immediate: false }
   );
 
   const handleServiceChange = (serviceId: string) => {
     setSelectedServiceId(serviceId);
     setExpandedDepartments(new Set());
-    if (serviceId) {
+    // Use useEffect to trigger the API call when selectedServiceId changes
+  };
+
+  // Effect to trigger API call when selectedServiceId changes
+  useEffect(() => {
+    if (selectedServiceId) {
       attendanceData.execute();
     }
-  };
+  }, [selectedServiceId]); // Remove attendanceData from dependencies to avoid infinite loop
 
   const toggleDepartment = (departmentId: string) => {
     setExpandedDepartments((prev) => {
