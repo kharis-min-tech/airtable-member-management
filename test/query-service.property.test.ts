@@ -103,7 +103,7 @@ describe('Property 11: Attendance Percentage Calculation', () => {
           const serviceRecord: AirtableRecord = {
             id: serviceId,
             fields: { 
-              'Service Name + Date': 'Test Service',
+              'Service Code': 'Test Service',
               'Attendance': attendanceRecords.map(a => a.id),
             },
             createdTime: new Date().toISOString(),
@@ -193,7 +193,7 @@ describe('Property 11: Attendance Percentage Calculation', () => {
           const serviceRecord: AirtableRecord = {
             id: serviceId,
             fields: { 
-              'Service Name + Date': 'Test Service',
+              'Service Code': 'Test Service',
               'Attendance': [],
             },
             createdTime: new Date().toISOString(),
@@ -271,7 +271,7 @@ describe('Property 11: Attendance Percentage Calculation', () => {
           const serviceRecord: AirtableRecord = {
             id: serviceId,
             fields: { 
-              'Service Name + Date': 'Test Service',
+              'Service Code': 'Test Service',
               'Attendance': [],
             },
             createdTime: new Date().toISOString(),
@@ -353,7 +353,7 @@ describe('Property 11: Attendance Percentage Calculation', () => {
           const serviceRecord: AirtableRecord = {
             id: serviceId,
             fields: { 
-              'Service Name + Date': 'Test Service',
+              'Service Code': 'Test Service',
               'Attendance': attendanceRecords.map(a => a.id),
             },
             createdTime: new Date().toISOString(),
@@ -415,7 +415,7 @@ describe('Property 11: Attendance Percentage Calculation', () => {
           const serviceRecord: AirtableRecord = {
             id: serviceId,
             fields: { 
-              'Service Name + Date': 'Test Service',
+              'Service Code': 'Test Service',
               'Attendance': [],
             },
             createdTime: new Date().toISOString(),
@@ -504,7 +504,7 @@ describe('Property 11: Attendance Percentage Calculation', () => {
           const serviceRecord: AirtableRecord = {
             id: serviceId,
             fields: { 
-              'Service Name + Date': 'Test Service',
+              'Service Code': 'Test Service',
               'Attendance': attendanceRecords.map(a => a.id),
             },
             createdTime: new Date().toISOString(),
@@ -617,7 +617,7 @@ describe('Property 12: Service Comparison Unidirectional Correctness', () => {
           const serviceARecord: AirtableRecord = {
             id: serviceAId,
             fields: { 
-              'Service Name + Date': 'Service A',
+              'Service Code': 'Service A',
               'Attendance': attendanceA.map(a => a.id),
             },
             createdTime: new Date().toISOString(),
@@ -625,7 +625,7 @@ describe('Property 12: Service Comparison Unidirectional Correctness', () => {
           const serviceBRecord: AirtableRecord = {
             id: serviceBId,
             fields: { 
-              'Service Name + Date': 'Service B',
+              'Service Code': 'Service B',
               'Attendance': attendanceB.map(a => a.id),
             },
             createdTime: new Date().toISOString(),
@@ -716,7 +716,7 @@ describe('Property 12: Service Comparison Unidirectional Correctness', () => {
           const serviceARecord: AirtableRecord = {
             id: serviceAId,
             fields: { 
-              'Service Name + Date': 'Service A',
+              'Service Code': 'Service A',
               'Attendance': attendanceA.map(a => a.id),
             },
             createdTime: new Date().toISOString(),
@@ -724,7 +724,7 @@ describe('Property 12: Service Comparison Unidirectional Correctness', () => {
           const serviceBRecord: AirtableRecord = {
             id: serviceBId,
             fields: { 
-              'Service Name + Date': 'Service B',
+              'Service Code': 'Service B',
               'Attendance': [], // Service B is empty
             },
             createdTime: new Date().toISOString(),
@@ -809,7 +809,7 @@ describe('Property 12: Service Comparison Unidirectional Correctness', () => {
           const serviceARecord: AirtableRecord = {
             id: serviceAId,
             fields: { 
-              'Service Name + Date': 'Service A',
+              'Service Code': 'Service A',
               'Attendance': [], // Service A is empty
             },
             createdTime: new Date().toISOString(),
@@ -817,7 +817,7 @@ describe('Property 12: Service Comparison Unidirectional Correctness', () => {
           const serviceBRecord: AirtableRecord = {
             id: serviceBId,
             fields: { 
-              'Service Name + Date': 'Service B',
+              'Service Code': 'Service B',
               'Attendance': attendanceB.map(a => a.id),
             },
             createdTime: new Date().toISOString(),
@@ -1242,7 +1242,7 @@ describe('Additional QueryService Methods', () => {
       const serviceRecord: AirtableRecord = {
         id: serviceId,
         fields: {
-          'Service Name + Date': 'Sunday Service - 2024-01-07',
+          'Service Code': 'Sunday Service - 2024-01-07',
           'Service Date': '2024-01-07',
           'Service Type': 'Sunday Service',
         },
@@ -1277,12 +1277,12 @@ describe('Additional QueryService Methods', () => {
       const serviceRecords: AirtableRecord[] = [
         {
           id: 'recService001',
-          fields: { 'Service Name + Date': 'Service 1', 'Service Date': '2024-01-14', 'Service Type': 'Sunday' },
+          fields: { 'Service Code': 'Service 1', 'Service Date': '2024-01-14', 'Service Type': 'Sunday' },
           createdTime: new Date().toISOString(),
         },
         {
           id: 'recService002',
-          fields: { 'Service Name + Date': 'Service 2', 'Service Date': '2024-01-07', 'Service Type': 'Sunday' },
+          fields: { 'Service Code': 'Service 2', 'Service Date': '2024-01-07', 'Service Type': 'Sunday' },
           createdTime: new Date().toISOString(),
         },
       ];
@@ -1318,7 +1318,7 @@ describe('Additional QueryService Methods', () => {
       const serviceRecord: AirtableRecord = {
         id: serviceId,
         fields: { 
-          'Service Name + Date': 'Test Service',
+          'Service Code': 'Test Service',
           'Attendance': attendanceRecords.map(a => a.id),
         },
         createdTime: new Date().toISOString(),
@@ -1552,7 +1552,7 @@ describe('Property 5: Services Sorted by Date Descending', () => {
           const mockRecords: AirtableRecord[] = services.map(s => ({
             id: s.id,
             fields: {
-              'Service Name + Date': s.serviceName,
+              'Service Code': s.serviceName,
               'Service Date': s.serviceDate.toISOString().split('T')[0],
               'Service Type': s.serviceCode,
             },
@@ -1608,7 +1608,7 @@ describe('Property 5: Services Sorted by Date Descending', () => {
           const mockRecords: AirtableRecord[] = services.map(s => ({
             id: s.id,
             fields: {
-              'Service Name + Date': s.serviceName,
+              'Service Code': s.serviceName,
               'Service Date': s.serviceDate.toISOString().split('T')[0],
               'Service Type': s.serviceCode,
             },
@@ -1675,7 +1675,7 @@ describe('Property 5: Services Sorted by Date Descending', () => {
           const mockRecords: AirtableRecord[] = servicesInRange.map(s => ({
             id: s.id,
             fields: {
-              'Service Name + Date': s.serviceName,
+              'Service Code': s.serviceName,
               'Service Date': s.serviceDate.toISOString().split('T')[0],
               'Service Type': s.serviceCode,
             },
@@ -1732,7 +1732,7 @@ describe('Property 5: Services Sorted by Date Descending', () => {
           const mockRecords: AirtableRecord[] = services.map(s => ({
             id: s.id,
             fields: {
-              'Service Name + Date': s.serviceName,
+              'Service Code': s.serviceName,
               'Service Date': s.serviceDate.toISOString().split('T')[0],
               'Service Type': s.serviceCode,
             },
@@ -1834,7 +1834,7 @@ describe('Property 3: Service Date Range Filter Correctness', () => {
           const mockRecords: AirtableRecord[] = servicesInRange.map(s => ({
             id: s.id,
             fields: {
-              'Service Name + Date': s.serviceName,
+              'Service Code': s.serviceName,
               'Service Date': s.serviceDate.toISOString().split('T')[0],
               'Service Type': s.serviceCode,
             },
@@ -1913,7 +1913,7 @@ describe('Property 3: Service Date Range Filter Correctness', () => {
           const mockRecords: AirtableRecord[] = servicesInRange.map(s => ({
             id: s.id,
             fields: {
-              'Service Name + Date': s.serviceName,
+              'Service Code': s.serviceName,
               'Service Date': s.serviceDate.toISOString().split('T')[0],
               'Service Type': s.serviceCode,
             },
@@ -2057,7 +2057,7 @@ describe('Property 7: Drill-Down Member Details Complete', () => {
           const serviceRecord: AirtableRecord = {
             id: serviceId,
             fields: {
-              'Service Name + Date': 'Test Service',
+              'Service Code': 'Test Service',
               'Attendance': [attendanceRecord.id],
             },
             createdTime: new Date().toISOString(),
@@ -2140,7 +2140,7 @@ describe('Property 7: Drill-Down Member Details Complete', () => {
           const serviceRecord: AirtableRecord = {
             id: serviceId,
             fields: {
-              'Service Name + Date': 'Test Service',
+              'Service Code': 'Test Service',
               'Attendance': [attendanceRecord.id],
             },
             createdTime: new Date().toISOString(),
@@ -2218,7 +2218,7 @@ describe('Property 7: Drill-Down Member Details Complete', () => {
           const serviceRecord: AirtableRecord = {
             id: serviceId,
             fields: {
-              'Service Name + Date': 'Test Service',
+              'Service Code': 'Test Service',
               'Attendance': [attendanceRecord.id],
             },
             createdTime: new Date().toISOString(),
@@ -2295,7 +2295,7 @@ describe('Property 7: Drill-Down Member Details Complete', () => {
           const serviceRecord: AirtableRecord = {
             id: serviceId,
             fields: {
-              'Service Name + Date': 'Test Service',
+              'Service Code': 'Test Service',
               'Attendance': [attendanceRecord.id],
             },
             createdTime: new Date().toISOString(),
@@ -2382,7 +2382,7 @@ describe('Property 7: Drill-Down Member Details Complete', () => {
           const serviceRecord: AirtableRecord = {
             id: serviceId,
             fields: {
-              'Service Name + Date': 'Test Service',
+              'Service Code': 'Test Service',
               'Attendance': [attendanceRecord.id],
             },
             createdTime: new Date().toISOString(),
@@ -2492,7 +2492,7 @@ describe('Property 9: Unidirectional Missing Members Comparison', () => {
           const refServiceRecord: AirtableRecord = {
             id: referenceServiceId,
             fields: { 
-              'Service Name + Date': 'Reference Service',
+              'Service Code': 'Reference Service',
               'Attendance': attendanceRef.map(a => a.id),
             },
             createdTime: new Date().toISOString(),
@@ -2500,7 +2500,7 @@ describe('Property 9: Unidirectional Missing Members Comparison', () => {
           const compServiceRecord: AirtableRecord = {
             id: comparisonServiceId,
             fields: { 
-              'Service Name + Date': 'Comparison Service',
+              'Service Code': 'Comparison Service',
               'Attendance': attendanceComp.map(a => a.id),
             },
             createdTime: new Date().toISOString(),
@@ -2595,7 +2595,7 @@ describe('Property 9: Unidirectional Missing Members Comparison', () => {
           const refServiceRecord: AirtableRecord = {
             id: referenceServiceId,
             fields: { 
-              'Service Name + Date': 'Reference Service',
+              'Service Code': 'Reference Service',
               'Attendance': [], // Empty - no one attended reference service
             },
             createdTime: new Date().toISOString(),
@@ -2603,7 +2603,7 @@ describe('Property 9: Unidirectional Missing Members Comparison', () => {
           const compServiceRecord: AirtableRecord = {
             id: comparisonServiceId,
             fields: { 
-              'Service Name + Date': 'Comparison Service',
+              'Service Code': 'Comparison Service',
               'Attendance': attendanceComp.map(a => a.id),
             },
             createdTime: new Date().toISOString(),
@@ -2691,7 +2691,7 @@ describe('Property 9: Unidirectional Missing Members Comparison', () => {
           const refServiceRecord: AirtableRecord = {
             id: referenceServiceId,
             fields: { 
-              'Service Name + Date': refServiceName,
+              'Service Code': refServiceName,
               'Attendance': [],
             },
             createdTime: new Date().toISOString(),
@@ -2699,7 +2699,7 @@ describe('Property 9: Unidirectional Missing Members Comparison', () => {
           const compServiceRecord: AirtableRecord = {
             id: comparisonServiceId,
             fields: { 
-              'Service Name + Date': compServiceName,
+              'Service Code': compServiceName,
               'Attendance': [],
             },
             createdTime: new Date().toISOString(),
@@ -2771,7 +2771,7 @@ describe('Property 9: Unidirectional Missing Members Comparison', () => {
           const refServiceRecord: AirtableRecord = {
             id: referenceServiceId,
             fields: { 
-              'Service Name + Date': 'Reference Service',
+              'Service Code': 'Reference Service',
               'Attendance': attendanceRef.map(a => a.id),
             },
             createdTime: new Date().toISOString(),
@@ -2779,7 +2779,7 @@ describe('Property 9: Unidirectional Missing Members Comparison', () => {
           const compServiceRecord: AirtableRecord = {
             id: comparisonServiceId,
             fields: { 
-              'Service Name + Date': 'Comparison Service',
+              'Service Code': 'Comparison Service',
               'Attendance': attendanceComp.map(a => a.id),
             },
             createdTime: new Date().toISOString(),

@@ -3,7 +3,7 @@
  */
 
 // Member Status Types
-export type MemberStatus = 'Member' | 'First Timer' | 'Returner' | 'Evangelism Contact';
+export type MemberStatus = 'Member' | 'First Timer' | 'Returner' | 'Evangelism Contact' | 'Visitor';
 export type MemberSource = 'First Timer Form' | 'Returner Form' | 'Evangelism' | 'Other';
 export type FollowUpStatus = 'Not Started' | 'In Progress' | 'Contacted' | 'Visiting' | 'Integrated' | 'Established';
 
@@ -57,6 +57,8 @@ export interface CreateMemberInput {
   status: MemberStatus;
   source: MemberSource;
   dateFirstCaptured: Date;
+  ageBracket?: string;
+  visitor?: boolean;
 }
 
 export interface UpdateMemberInput {

@@ -171,6 +171,7 @@ export class QueryService {
     // Categorize by status
     let firstTimersCount = 0;
     let returnersCount = 0;
+    // Map to track department IDs to their counts
     const departmentCounts: Map<string, number> = new Map();
 
     for (const member of memberRecords) {
@@ -182,11 +183,21 @@ export class QueryService {
         returnersCount++;
       }
 
-      // Count department memberships
-      const departments = member.fields['Member Departments'] as string[] | undefined;
-      if (departments) {
-        for (const deptId of departments) {
-          departmentCounts.set(deptId, (departmentCounts.get(deptId) || 0) + 1);
+      // Count department memberships - Member Departments field contains junction table record IDs
+      // We need to look up each junction record to get the actual Department ID
+      const memberDeptJunctionIds = member.fields['Member Departments'] as string[] | undefined;
+      if (memberDeptJunctionIds) {
+        for (const junctionId of memberDeptJunctionIds) {
+          try {
+            // Get the junction record to find the actual department ID
+            const junctionRecord = await this.airtableClient.getRecord(AIRTABLE_TABLES.MEMBER_DEPARTMENTS, junctionId);
+            const deptId = this.extractLinkedRecordId(junctionRecord.fields['Department']);
+            if (deptId) {
+              departmentCounts.set(deptId, (departmentCounts.get(deptId) || 0) + 1);
+            }
+          } catch {
+            // Skip if junction record not found
+          }
         }
       }
     }
@@ -396,7 +407,7 @@ export class QueryService {
     let attendanceIds: string[] = [];
     try {
       const serviceRecord = await this.airtableClient.getRecord(AIRTABLE_TABLES.SERVICES, serviceId);
-      serviceName = (serviceRecord.fields['Service Name + Date'] as string) || serviceId;
+      serviceName = (serviceRecord.fields['Service Code'] as string) || serviceId;
       attendanceIds = (serviceRecord.fields['Attendance'] as string[]) || [];
     } catch { /* use ID */ }
 
@@ -432,19 +443,27 @@ export class QueryService {
       else if (status === 'Returner') returners++;
       else if (status === 'Evangelism Contact') evangelismContacts++;
 
-      // Get department memberships
-      const memberDepts = member.fields['Member Departments'] as string[] | undefined;
-      if (memberDepts) {
-        for (const deptId of memberDepts) {
-          if (!departmentCounts.has(deptId)) {
-            let deptName = deptId;
-            try {
-              const deptRecord = await this.airtableClient.getRecord(AIRTABLE_TABLES.DEPARTMENTS, deptId);
-              deptName = (deptRecord.fields['Department Name'] as string) || deptId;
-            } catch { /* use ID */ }
-            departmentCounts.set(deptId, { id: deptId, name: deptName, count: 0 });
-          }
-          departmentCounts.get(deptId)!.count++;
+      // Get department memberships - Member Departments field contains junction table record IDs
+      // We need to look up each junction record to get the actual Department ID
+      const memberDeptJunctionIds = member.fields['Member Departments'] as string[] | undefined;
+      if (memberDeptJunctionIds) {
+        for (const junctionId of memberDeptJunctionIds) {
+          try {
+            // Get the junction record to find the actual department ID
+            const junctionRecord = await this.airtableClient.getRecord(AIRTABLE_TABLES.MEMBER_DEPARTMENTS, junctionId);
+            const deptId = this.extractLinkedRecordId(junctionRecord.fields['Department']);
+            if (deptId && !departmentCounts.has(deptId)) {
+              let deptName = deptId;
+              try {
+                const deptRecord = await this.airtableClient.getRecord(AIRTABLE_TABLES.DEPARTMENTS, deptId);
+                deptName = (deptRecord.fields['Department Name'] as string) || deptId;
+              } catch { /* use ID */ }
+              departmentCounts.set(deptId, { id: deptId, name: deptName, count: 0 });
+            }
+            if (deptId) {
+              departmentCounts.get(deptId)!.count++;
+            }
+          } catch { /* skip if junction record not found */ }
         }
       }
     }
@@ -593,30 +612,34 @@ export class QueryService {
       'TRUE()'
     );
 
+    // Get all active member department records
+    const allActiveMemberDepts = await this.airtableClient.findRecords(
+      AIRTABLE_TABLES.MEMBER_DEPARTMENTS,
+      `{Active} = TRUE()`
+    );
+
+    // Group member IDs by department
+    const deptMemberMap: Map<string, string[]> = new Map();
+    for (const md of allActiveMemberDepts) {
+      const deptId = this.extractLinkedRecordId(md.fields['Department']);
+      const memberId = this.extractLinkedRecordId(md.fields['Member']);
+      
+      if (deptId && memberId) {
+        if (!deptMemberMap.has(deptId)) {
+          deptMemberMap.set(deptId, []);
+        }
+        deptMemberMap.get(deptId)!.push(memberId);
+      }
+    }
+
     const results: DepartmentAttendance[] = [];
 
     for (const dept of departments) {
       const deptId = dept.id;
       const deptName = (dept.fields['Department Name'] as string) || (dept.fields['Name'] as string) || deptId;
 
-      // Get active members in this department via Member Departments junction table
-      const activeMemberDepts = await this.airtableClient.findRecords(
-        AIRTABLE_TABLES.MEMBER_DEPARTMENTS,
-        `{Active} = TRUE()`
-      );
-
-      // Filter to only those in this department
-      const deptMemberDepts = activeMemberDepts.filter(md => {
-        const deptIds = md.fields['Department'] as string[] | undefined;
-        return deptIds && deptIds.includes(deptId);
-      });
-
-      const activeMemberCount = deptMemberDepts.length;
-
-      // Get members who attended this service from this department
-      const activeMemberIds = deptMemberDepts
-        .map(md => this.extractLinkedRecordId(md.fields['Member']))
-        .filter((id): id is string => !!id);
+      const activeMemberIds = deptMemberMap.get(deptId) || [];
+      const activeMemberCount = activeMemberIds.length;
 
       // Count how many of these members attended
       let presentCount = 0;
@@ -666,12 +689,12 @@ export class QueryService {
 
     const serviceA = {
       id: referenceServiceId,
-      name: (referenceServiceRecord.fields['Service Name + Date'] as string) || referenceServiceId,
+      name: (referenceServiceRecord.fields['Service Code'] as string) || referenceServiceId,
     };
 
     const serviceB = {
       id: comparisonServiceId,
-      name: (comparisonServiceRecord.fields['Service Name + Date'] as string) || comparisonServiceId,
+      name: (comparisonServiceRecord.fields['Service Code'] as string) || comparisonServiceId,
     };
 
     // Get attendance IDs from service records
@@ -843,7 +866,7 @@ export class QueryService {
             try {
               const serviceRecord = await this.airtableClient.getRecord(AIRTABLE_TABLES.SERVICES, serviceId);
               const serviceDate = this.parseDate(serviceRecord.fields['Service Date'] as string);
-              const serviceName = (serviceRecord.fields['Service Name + Date'] as string) || 'Service';
+              const serviceName = (serviceRecord.fields['Service Code'] as string) || 'Service';
 
               if (serviceDate) {
                 timeline.push({
@@ -1184,27 +1207,46 @@ export class QueryService {
    * Requirements: 19.6
    */
   async getDepartmentRosters(): Promise<{ departmentId: string; departmentName: string; members: Member[] }[]> {
-    // Get all departments
+    // Get all departments first
     const departments = await this.airtableClient.findRecords(
       AIRTABLE_TABLES.DEPARTMENTS,
       'TRUE()'
     );
 
+    // Create a map of department ID to name
+    const deptNameMap: Map<string, string> = new Map();
+    for (const dept of departments) {
+      deptNameMap.set(dept.id, (dept.fields['Department Name'] as string) || dept.id);
+    }
+
+    // Get all active member department records
+    const allMemberDepts = await this.airtableClient.findRecords(
+      AIRTABLE_TABLES.MEMBER_DEPARTMENTS,
+      `{Active} = TRUE()`
+    );
+
+    // Group member IDs by department
+    const deptMemberMap: Map<string, string[]> = new Map();
+    
+    for (const md of allMemberDepts) {
+      const deptId = this.extractLinkedRecordId(md.fields['Department']);
+      const memberId = this.extractLinkedRecordId(md.fields['Member']);
+      
+      if (deptId && memberId) {
+        if (!deptMemberMap.has(deptId)) {
+          deptMemberMap.set(deptId, []);
+        }
+        deptMemberMap.get(deptId)!.push(memberId);
+      }
+    }
+
+    // Build rosters for all departments (including those with 0 members)
     const rosters: { departmentId: string; departmentName: string; members: Member[] }[] = [];
 
     for (const dept of departments) {
       const deptId = dept.id;
-      const deptName = (dept.fields['Department Name'] as string) || deptId;
-
-      // Get active members in this department
-      const memberDepts = await this.airtableClient.findRecords(
-        AIRTABLE_TABLES.MEMBER_DEPARTMENTS,
-        `AND(FIND('${deptId}', ARRAYJOIN({Department})), {Active} = TRUE())`
-      );
-
-      const memberIds = memberDepts
-        .map(md => this.extractLinkedRecordId(md.fields['Member']))
-        .filter((id): id is string => !!id);
+      const deptName = deptNameMap.get(deptId) || deptId;
+      const memberIds = deptMemberMap.get(deptId) || [];
 
       const memberRecords = await this.getMembersByIds(memberIds);
       const members = memberRecords.map(r => this.mapRecordToMember(r));
@@ -1228,15 +1270,22 @@ export class QueryService {
       throw new Error('Department ID is required');
     }
 
-    // Get active members in this department
-    const memberDepts = await this.airtableClient.findRecords(
+    // Get all active member department records and filter by department
+    const allMemberDepts = await this.airtableClient.findRecords(
       AIRTABLE_TABLES.MEMBER_DEPARTMENTS,
-      `AND(FIND('${departmentId}', ARRAYJOIN({Department})), {Active} = TRUE())`
+      `{Active} = TRUE()`
     );
 
-    const memberIds = memberDepts
-      .map(md => this.extractLinkedRecordId(md.fields['Member']))
-      .filter((id): id is string => !!id);
+    // Filter to only those in this department
+    const memberIds: string[] = [];
+    for (const md of allMemberDepts) {
+      const deptId = this.extractLinkedRecordId(md.fields['Department']);
+      const memberId = this.extractLinkedRecordId(md.fields['Member']);
+      
+      if (deptId === departmentId && memberId) {
+        memberIds.push(memberId);
+      }
+    }
 
     const memberRecords = await this.getMembersByIds(memberIds);
     return memberRecords.map(r => this.mapRecordToMember(r));
@@ -1259,7 +1308,7 @@ export class QueryService {
       const record = await this.airtableClient.getRecord(AIRTABLE_TABLES.SERVICES, serviceId);
       return {
         id: record.id,
-        serviceName: (record.fields['Service Name + Date'] as string) || '',
+        serviceName: (record.fields['Service Code'] as string) || '',
         serviceDate: this.parseDate(record.fields['Service Date'] as string),
         serviceCode: (record.fields['Service Type'] as string) || '',
       };
@@ -1295,7 +1344,7 @@ export class QueryService {
 
     return records.map(record => ({
       id: record.id,
-      serviceName: (record.fields['Service Name + Date'] as string) || '',
+      serviceName: (record.fields['Service Code'] as string) || '',
       serviceDate: this.parseDate(record.fields['Service Date'] as string),
       serviceCode: (record.fields['Service Type'] as string) || '',
     }));
@@ -1340,7 +1389,7 @@ export class QueryService {
 
     return records.map(record => ({
       id: record.id,
-      serviceName: (record.fields['Service Name + Date'] as string) || '',
+      serviceName: (record.fields['Service Code'] as string) || '',
       serviceDate: this.parseDate(record.fields['Service Date'] as string),
       serviceCode: (record.fields['Service Type'] as string) || '',
     }));
@@ -1365,7 +1414,7 @@ export class QueryService {
 
     // Search by service name or date
     const filterFormula = `OR(
-      FIND('${searchTerm}', LOWER({Service Name + Date})),
+      FIND('${searchTerm}', LOWER({Service Code})),
       FIND('${searchTerm}', {Service Date})
     )`;
 
@@ -1377,7 +1426,7 @@ export class QueryService {
 
     return records.map(record => ({
       id: record.id,
-      serviceName: (record.fields['Service Name + Date'] as string) || '',
+      serviceName: (record.fields['Service Code'] as string) || '',
       serviceDate: this.parseDate(record.fields['Service Date'] as string),
       serviceCode: (record.fields['Service Type'] as string) || '',
     }));
@@ -1555,7 +1604,7 @@ export class QueryService {
     let attendanceIds: string[] = [];
     try {
       const serviceRecord = await this.airtableClient.getRecord(AIRTABLE_TABLES.SERVICES, serviceId);
-      serviceName = (serviceRecord.fields['Service Name + Date'] as string) || serviceId;
+      serviceName = (serviceRecord.fields['Service Code'] as string) || serviceId;
       attendanceIds = (serviceRecord.fields['Attendance'] as string[]) || [];
     } catch { /* use ID */ }
 
@@ -1579,23 +1628,31 @@ export class QueryService {
     const uniqueMemberIds = [...new Set(memberIds)];
     const memberRecords = await this.getMembersByIds(uniqueMemberIds);
 
-    // Group by department
+    // Group by department - Member Departments field contains junction table record IDs
     const departmentMap: Map<string, { id: string; name: string; members: AirtableRecord[] }> = new Map();
 
     for (const member of memberRecords) {
-      const memberDepts = member.fields['Member Departments'] as string[] | undefined;
+      const memberDeptJunctionIds = member.fields['Member Departments'] as string[] | undefined;
 
-      if (memberDepts && memberDepts.length > 0) {
-        for (const deptId of memberDepts) {
-          if (!departmentMap.has(deptId)) {
-            let deptName = deptId;
-            try {
-              const deptRecord = await this.airtableClient.getRecord(AIRTABLE_TABLES.DEPARTMENTS, deptId);
-              deptName = (deptRecord.fields['Department Name'] as string) || deptId;
-            } catch { /* use ID */ }
-            departmentMap.set(deptId, { id: deptId, name: deptName, members: [] });
-          }
-          departmentMap.get(deptId)!.members.push(member);
+      if (memberDeptJunctionIds && memberDeptJunctionIds.length > 0) {
+        for (const junctionId of memberDeptJunctionIds) {
+          try {
+            // Get the junction record to find the actual department ID
+            const junctionRecord = await this.airtableClient.getRecord(AIRTABLE_TABLES.MEMBER_DEPARTMENTS, junctionId);
+            const deptId = this.extractLinkedRecordId(junctionRecord.fields['Department']);
+            
+            if (deptId) {
+              if (!departmentMap.has(deptId)) {
+                let deptName = deptId;
+                try {
+                  const deptRecord = await this.airtableClient.getRecord(AIRTABLE_TABLES.DEPARTMENTS, deptId);
+                  deptName = (deptRecord.fields['Department Name'] as string) || deptId;
+                } catch { /* use ID */ }
+                departmentMap.set(deptId, { id: deptId, name: deptName, members: [] });
+              }
+              departmentMap.get(deptId)!.members.push(member);
+            }
+          } catch { /* skip if junction record not found */ }
         }
       }
     }

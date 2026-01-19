@@ -95,7 +95,7 @@ function MainLayout() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center h-16">
             {/* Logo and Title - Requirements: 11.2, 11.3 */}
-            <div className="flex items-center gap-3 flex-shrink-0">
+            <div className="flex items-center gap-3 flex-shrink-0 mr-8">
               <KharisLogo className="h-8 w-8" />
               <h1 className="text-xl font-bold text-primary dark:text-white hidden sm:block">
                 Member Management
@@ -104,7 +104,7 @@ function MainLayout() {
 
             {/* Desktop Navigation - Requirements: 6.1, 6.2, 6.7 */}
             <nav 
-              className="hidden lg:flex items-center space-x-2"
+              className="hidden lg:flex items-center space-x-2 ml-4"
               role="navigation"
               aria-label="Main navigation"
             >
