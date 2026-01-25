@@ -13,8 +13,8 @@ export type AssignmentStatus = 'Assigned' | 'In Progress' | 'Completed' | 'Reass
 // Source Form Types
 export type SourceForm = 'First Timer' | 'Returner' | 'Evangelism' | 'Manual';
 
-// Volunteer Role Types
-export type VolunteerRole = 'Pastor' | 'Admin' | 'Follow-up' | 'Department Lead' | 'Evangelism';
+// Member Role Types (for follow-up and ministry assignments)
+export type MemberRole = 'Pastor' | 'Admin' | 'Follow-up' | 'Department Lead' | 'Evangelism';
 
 // User Role Types (for authentication)
 export type UserRole = 'pastor' | 'admin' | 'follow_up' | 'department_lead';
@@ -92,10 +92,10 @@ export interface FollowUpAssignment {
   status: AssignmentStatus;
 }
 
-export interface Volunteer {
+export interface FollowUpMember {
   id: string;
   name: string;
-  role: VolunteerRole;
+  role: MemberRole;
   phone: string;
   email?: string;
   active: boolean;
@@ -103,8 +103,8 @@ export interface Volunteer {
 }
 
 export interface CapacityInfo {
-  volunteerId: string;
-  volunteerName: string;
+  memberId: string;
+  memberName: string;
   capacity: number;
   currentAssignments: number;
   availableSlots: number;
@@ -138,6 +138,10 @@ export interface ServiceKPIs {
   totalAttendance: number;
   firstTimersCount: number;
   returnersCount: number;
+  membersCount: number;
+  childrenCount: number;
+  evangelismContactsCount: number;
+  visitorsCount: number;
   departmentBreakdown: { department: string; count: number }[];
 }
 
@@ -173,7 +177,7 @@ export interface UserContext {
   userId: string;
   email: string;
   role: UserRole;
-  volunteerId?: string;
+  followUpMemberId?: string;
   departmentIds?: string[];
 }
 
@@ -190,7 +194,7 @@ export interface ChurchConfig {
   airtableBaseId: string;
   airtableApiKey: string;
   defaultFollowUpDueDays: number;
-  volunteerCapacityLimit: number;
+  memberCapacityLimit: number;
   adminEmails: string[];
 }
 
@@ -203,7 +207,7 @@ export interface EvangelismEvent {
   email?: string;
   ghanaPostCode?: string;
   date: string; // ISO date string from Airtable
-  capturedBy?: string; // Volunteer record ID (Soul Winner)
+  capturedBy?: string; // Member record ID (Soul Winner)
   notes?: string;
   soulType?: string;
   evangelismType?: string;

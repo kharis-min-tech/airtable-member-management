@@ -51,7 +51,7 @@ export function parseEvangelismWebhook(payload: EvangelismWebhookPayload): Evang
  * 1.2 - Copy all fields from evangelism record
  * 1.3 - Link evangelism record to member
  * 1.4 - Set Date First Captured from evangelism Date
- * 4.1 - Create follow-up assignment to Captured By volunteer
+ * 4.1 - Create follow-up assignment to Captured By member
  * 4.2 - Set Assigned Date to current date and Status to "Assigned"
  * 4.3 - Set Due Date to 3 days from Assigned Date
  * 4.4 - Update member's Follow-up Owner field
@@ -136,7 +136,7 @@ export async function processEvangelismEvent(
     // eslint-disable-next-line no-console
     console.log(`Linked evangelism record ${event.recordId} to member ${memberId}`);
 
-    // Step 4: Create follow-up assignment if capturedBy volunteer is provided (Requirements 4.1, 4.2, 4.3)
+    // Step 4: Create follow-up assignment if capturedBy member is provided (Requirements 4.1, 4.2, 4.3)
     let followUpAssignmentId: string | undefined;
     let followUpAssignmentCreated = false;
     let followUpOwnerUpdated = false;

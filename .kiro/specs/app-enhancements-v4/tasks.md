@@ -14,17 +14,17 @@
   - **Property 2: DNS resolution correctness**
   - **Validates: Requirements 1.4**
 
-- [ ] 2. Implement member terminology unification
+- [x] 2. Implement member terminology unification
   - Update all API responses to use Member terminology instead of Volunteer
   - Modify frontend components to remove volunteer references
   - Update type definitions and interfaces
   - _Requirements: 2.1, 2.2, 2.3_
 
-- [ ] 2.1 Write property test for member terminology consistency
+- [x] 2.1 Write property test for member terminology consistency
   - **Property 3: Member terminology consistency**
   - **Validates: Requirements 2.1, 2.2, 2.3**
 
-- [ ] 2.2 Write property test for data preservation during migration
+- [x] 2.2 Write property test for data preservation during migration
   - **Property 4: Data preservation during migration**
   - **Validates: Requirements 2.4**
 

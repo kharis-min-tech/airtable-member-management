@@ -71,7 +71,7 @@ function TodaysFollowUpsView({ data, isLoading = false }: TodaysFollowUpsViewPro
         <div className="flex-1">
           <Input
             type="text"
-            placeholder="Search by member or volunteer name..."
+            placeholder="Search by member or follow-up member name..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
           />

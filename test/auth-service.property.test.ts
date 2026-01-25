@@ -5,7 +5,7 @@
  * Validates: Requirements 20.4, 20.5, 20.6
  * 
  * For any user with role "Follow-up Team":
- * - Member queries SHALL only return Members where Follow-up Owner matches the user's volunteer ID
+ * - Member queries SHALL only return Members where Follow-up Owner matches the user's follow-up member ID
  * 
  * For any user with role "Department Lead":
  * - Member queries SHALL only return Members who have an active Member Departments record 
@@ -46,7 +46,7 @@ describe('Property 14: Role-Based Data Filtering', () => {
    */
   const userIdArb = fc.stringMatching(/^user-[a-zA-Z0-9]{8,16}$/);
   const emailArb = fc.emailAddress();
-  const volunteerIdArb = fc.stringMatching(/^rec[a-zA-Z0-9]{14}$/);
+  const followUpMemberIdArb = fc.stringMatching(/^rec[a-zA-Z0-9]{14}$/);
   const departmentIdArb = fc.stringMatching(/^rec[a-zA-Z0-9]{14}$/);
   const memberIdArb = fc.stringMatching(/^rec[a-zA-Z0-9]{14}$/);
 
@@ -62,7 +62,7 @@ describe('Property 14: Role-Based Data Filtering', () => {
     status: fc.constantFrom<MemberStatus>('Member', 'First Timer', 'Returner', 'Evangelism Contact'),
     source: fc.constantFrom<MemberSource>('First Timer Form', 'Returner Form', 'Evangelism', 'Other'),
     dateFirstCaptured: fc.date({ min: new Date('2020-01-01'), max: new Date('2026-12-31') }),
-    followUpOwner: fc.option(volunteerIdArb, { nil: undefined }),
+    followUpOwner: fc.option(followUpMemberIdArb, { nil: undefined }),
     followUpStatus: fc.constantFrom<FollowUpStatus>('Not Started', 'In Progress', 'Contacted', 'Visiting', 'Integrated', 'Established'),
   });
 
@@ -70,7 +70,7 @@ describe('Property 14: Role-Based Data Filtering', () => {
     userId: userIdArb,
     email: emailArb,
     role: fc.constant(role),
-    volunteerId: role === 'follow_up' ? volunteerIdArb : fc.option(volunteerIdArb, { nil: undefined }),
+    followUpMemberId: role === 'follow_up' ? followUpMemberIdArb : fc.option(followUpMemberIdArb, { nil: undefined }),
     departmentIds: role === 'department_lead' 
       ? fc.array(departmentIdArb, { minLength: 1, maxLength: 5 })
       : fc.option(fc.array(departmentIdArb, { minLength: 0, maxLength: 3 }), { nil: undefined }),
@@ -119,26 +119,26 @@ describe('Property 14: Role-Based Data Filtering', () => {
         userContextArb('follow_up'),
         fc.array(memberArb, { minLength: 1, maxLength: 30 }),
         (user, members) => {
-          // Ensure user has a volunteerId
-          if (!user.volunteerId) {
-            user.volunteerId = 'recTestVolunteer01';
+          // Ensure user has a followUpMemberId
+          if (!user.followUpMemberId) {
+            user.followUpMemberId = 'recTestVolunteer01';
           }
 
-          // Assign some members to this volunteer
+          // Assign some members to this follow-up member
           const assignedMembers = members.map((m, i) => ({
             ...m,
-            followUpOwner: i % 3 === 0 ? user.volunteerId : m.followUpOwner,
+            followUpOwner: i % 3 === 0 ? user.followUpMemberId : m.followUpOwner,
           }));
 
           const filtered = authService.filterMembersByScope(assignedMembers, user);
 
-          // All filtered members should have this volunteer as follow-up owner
+          // All filtered members should have this follow-up member as follow-up owner
           for (const member of filtered) {
-            expect(member.followUpOwner).toBe(user.volunteerId);
+            expect(member.followUpOwner).toBe(user.followUpMemberId);
           }
 
           // Count expected members
-          const expectedCount = assignedMembers.filter(m => m.followUpOwner === user.volunteerId).length;
+          const expectedCount = assignedMembers.filter(m => m.followUpOwner === user.followUpMemberId).length;
           expect(filtered).toHaveLength(expectedCount);
         }
       ),
@@ -147,11 +147,11 @@ describe('Property 14: Role-Based Data Filtering', () => {
   });
 
   /**
-   * Property 14.3: Follow-up team without volunteerId SHALL see no members
+   * Property 14.3: Follow-up team without followUpMemberId SHALL see no members
    * 
    * Validates: Requirements 20.4
    */
-  it('should return empty array for follow_up role without volunteerId', () => {
+  it('should return empty array for follow_up role without followUpMemberId', () => {
     fc.assert(
       fc.property(
         userIdArb,
@@ -162,7 +162,7 @@ describe('Property 14: Role-Based Data Filtering', () => {
             userId,
             email,
             role: 'follow_up',
-            volunteerId: undefined, // No volunteer ID
+            followUpMemberId: undefined, // No follow-up member ID
           };
 
           const filtered = authService.filterMembersByScope(members, user);
@@ -337,17 +337,17 @@ describe('Property 14: Role-Based Data Filtering', () => {
         roleArb,
         userIdArb,
         emailArb,
-        volunteerIdArb,
+        followUpMemberIdArb,
         fc.array(departmentIdArb, { minLength: 1, maxLength: 5 }),
         memberIdArb,
-        fc.option(volunteerIdArb, { nil: undefined }),
+        fc.option(followUpMemberIdArb, { nil: undefined }),
         fc.array(departmentIdArb, { minLength: 0, maxLength: 3 }),
-        (role, userId, email, volunteerId, userDepts, memberId, memberFollowUp, memberDepts) => {
+        (role, userId, email, followUpMemberId, userDepts, memberId, memberFollowUp, memberDepts) => {
           const user: UserContext = {
             userId,
             email,
             role,
-            volunteerId: role === 'follow_up' ? volunteerId : undefined,
+            followUpMemberId: role === 'follow_up' ? followUpMemberId : undefined,
             departmentIds: role === 'department_lead' ? userDepts : undefined,
           };
 
@@ -366,8 +366,8 @@ describe('Property 14: Role-Based Data Filtering', () => {
               break;
 
             case 'follow_up':
-              // Only if member's follow-up owner matches user's volunteer ID
-              expect(canAccess).toBe(memberFollowUp === volunteerId);
+              // Only if member's follow-up owner matches user's follow-up member ID
+              expect(canAccess).toBe(memberFollowUp === followUpMemberId);
               break;
 
             case 'department_lead':
@@ -393,15 +393,15 @@ describe('Property 14: Role-Based Data Filtering', () => {
         roleArb,
         userIdArb,
         emailArb,
-        volunteerIdArb,
+        followUpMemberIdArb,
         fc.array(departmentIdArb, { minLength: 1, maxLength: 5 }),
         fc.option(fc.string({ minLength: 1, maxLength: 50 }), { nil: undefined }),
-        (role, userId, email, volunteerId, userDepts, baseFormula) => {
+        (role, userId, email, followUpMemberId, userDepts, baseFormula) => {
           const user: UserContext = {
             userId,
             email,
             role,
-            volunteerId: role === 'follow_up' ? volunteerId : undefined,
+            followUpMemberId: role === 'follow_up' ? followUpMemberId : undefined,
             departmentIds: role === 'department_lead' ? userDepts : undefined,
           };
 
@@ -425,7 +425,7 @@ describe('Property 14: Role-Based Data Filtering', () => {
             case 'follow_up':
               // Should contain FIND for follow-up owner
               expect(formula).toContain('Follow-up Owner');
-              expect(formula).toContain(volunteerId);
+              expect(formula).toContain(followUpMemberId);
               break;
 
             case 'department_lead':
@@ -453,14 +453,14 @@ describe('Property 14: Role-Based Data Filtering', () => {
         roleArb,
         userIdArb,
         emailArb,
-        volunteerIdArb,
+        followUpMemberIdArb,
         fc.array(departmentIdArb, { minLength: 1, maxLength: 5 }),
-        (role, userId, email, volunteerId, userDepts) => {
+        (role, userId, email, followUpMemberId, userDepts) => {
           const user: UserContext = {
             userId,
             email,
             role,
-            volunteerId: role === 'follow_up' ? volunteerId : undefined,
+            followUpMemberId: role === 'follow_up' ? followUpMemberId : undefined,
             departmentIds: role === 'department_lead' ? userDepts : undefined,
           };
 
@@ -475,7 +475,7 @@ describe('Property 14: Role-Based Data Filtering', () => {
             case 'follow_up':
               expect(scope.type).toBe('assigned');
               if (scope.type === 'assigned') {
-                expect(scope.volunteerId).toBe(volunteerId);
+                expect(scope.followUpMemberId).toBe(followUpMemberId);
               }
               break;
 
@@ -486,6 +486,126 @@ describe('Property 14: Role-Based Data Filtering', () => {
               }
               break;
           }
+        }
+      ),
+      { numRuns: 100 }
+    );
+  });
+
+  /**
+   * Property 4: Data Scope Filtering Correctness
+   * 
+   * Feature: member-terminology-update, Property 4: Data Scope Filtering Correctness
+   * Validates: Requirements 3.3
+   * 
+   * For any user with an "assigned" data scope, the scope object should contain a 
+   * followUpMemberId property (not volunteerId), and filtering operations should 
+   * correctly use this property to restrict data access.
+   */
+  it('should use followUpMemberId in assigned scope and filter correctly', () => {
+    fc.assert(
+      fc.property(
+        userIdArb,
+        emailArb,
+        followUpMemberIdArb,
+        fc.array(memberArb, { minLength: 1, maxLength: 30 }),
+        (userId, email, followUpMemberId, members) => {
+          const user: UserContext = {
+            userId,
+            email,
+            role: 'follow_up',
+            followUpMemberId,
+          };
+
+          // Get data scope
+          const scope = authService.getDataScope(user);
+
+          // Property: Scope should be "assigned" type
+          expect(scope.type).toBe('assigned');
+
+          // Property: Scope should have followUpMemberId property (not volunteerId)
+          if (scope.type === 'assigned') {
+            expect(scope).toHaveProperty('followUpMemberId');
+            expect(scope.followUpMemberId).toBe(followUpMemberId);
+            // Ensure no volunteerId property exists
+            expect(scope).not.toHaveProperty('volunteerId');
+          }
+
+          // Assign some members to this follow-up member
+          const assignedMembers = members.map((m, i) => ({
+            ...m,
+            followUpOwner: i % 2 === 0 ? followUpMemberId : 'recOtherMember01',
+          }));
+
+          // Filter members
+          const filtered = authService.filterMembersByScope(assignedMembers, user);
+
+          // Property: All filtered members should have followUpOwner matching followUpMemberId
+          for (const member of filtered) {
+            expect(member.followUpOwner).toBe(followUpMemberId);
+          }
+
+          // Property: No members with different followUpOwner should be included
+          const expectedCount = assignedMembers.filter(m => m.followUpOwner === followUpMemberId).length;
+          expect(filtered).toHaveLength(expectedCount);
+        }
+      ),
+      { numRuns: 100 }
+    );
+  });
+
+  /**
+   * Property 5: Filter Formula Construction
+   * 
+   * Feature: member-terminology-update, Property 5: Filter Formula Construction
+   * Validates: Requirements 3.4
+   * 
+   * For any Airtable filter formula constructed for role-based access control, 
+   * the formula should correctly reference the "Follow-up Owner" field in Airtable 
+   * while using followUpMemberId in the code variables.
+   */
+  it('should construct filter formulas using followUpMemberId while preserving Airtable field names', () => {
+    fc.assert(
+      fc.property(
+        userIdArb,
+        emailArb,
+        followUpMemberIdArb,
+        fc.option(fc.string({ minLength: 5, maxLength: 50 }), { nil: undefined }),
+        (userId, email, followUpMemberId, baseFormula) => {
+          const user: UserContext = {
+            userId,
+            email,
+            role: 'follow_up',
+            followUpMemberId,
+          };
+
+          // Build filter formula
+          const formula = authService.buildMemberFilterFormula(user, baseFormula || undefined);
+
+          // Property: Formula should be a non-empty string
+          expect(typeof formula).toBe('string');
+          expect(formula.length).toBeGreaterThan(0);
+
+          // Property: Formula should reference Airtable field name "Follow-up Owner"
+          expect(formula).toContain('Follow-up Owner');
+
+          // Property: Formula should contain the followUpMemberId value
+          expect(formula).toContain(followUpMemberId);
+
+          // Property: Formula should use FIND function for Airtable lookup
+          expect(formula).toContain('FIND');
+
+          // Property: If base formula provided, it should be combined with AND
+          if (baseFormula && baseFormula !== 'TRUE()') {
+            expect(formula).toContain('AND');
+            expect(formula).toContain(baseFormula);
+          }
+
+          // Property: Formula should NOT contain the word "volunteer" (code uses followUpMemberId)
+          // Note: "Follow-up Owner" is the Airtable field name and is allowed
+          const formulaLower = formula.toLowerCase();
+          const hasVolunteerWord = formulaLower.includes('volunteer') && !formulaLower.includes('follow-up');
+          expect(hasVolunteerWord).toBe(false);
         }
       ),
       { numRuns: 100 }

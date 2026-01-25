@@ -48,7 +48,7 @@ export class ConfigService {
         airtableBaseId: result.Item.airtableBaseId as string,
         airtableApiKey: result.Item.airtableApiKey as string,
         defaultFollowUpDueDays: (result.Item.defaultFollowUpDueDays as number) || 3,
-        volunteerCapacityLimit: (result.Item.volunteerCapacityLimit as number) || 20,
+        memberCapacityLimit: (result.Item.memberCapacityLimit as number) || 20,
         adminEmails: (result.Item.adminEmails as string[]) || [],
       };
     } catch (error) {
@@ -127,13 +127,13 @@ export class ConfigService {
   }
 
   /**
-   * Get user mapping (Cognito user to Airtable volunteer)
+   * Get user mapping (Cognito user to Airtable follow-up member)
    */
   async getUserMapping(
     cognitoUserId: string,
     churchId: string
   ): Promise<{
-    volunteerId: string;
+    followUpMemberId: string;
     role: UserRole;
     departmentIds: string[];
   } | null> {
@@ -153,7 +153,7 @@ export class ConfigService {
       }
 
       return {
-        volunteerId: result.Item.volunteerId as string,
+        followUpMemberId: result.Item.followUpMemberId as string,
         role: result.Item.role as UserRole,
         departmentIds: (result.Item.departmentIds as string[]) || [],
       };
@@ -170,7 +170,7 @@ export class ConfigService {
     cognitoUserId: string,
     churchId: string,
     mapping: {
-      volunteerId: string;
+      followUpMemberId: string;
       role: UserRole;
       departmentIds?: string[];
     }
@@ -182,7 +182,7 @@ export class ConfigService {
           Item: {
             pk: `USER#${cognitoUserId}`,
             sk: `CHURCH#${churchId}`,
-            volunteerId: mapping.volunteerId,
+            followUpMemberId: mapping.followUpMemberId,
             role: mapping.role,
             departmentIds: mapping.departmentIds || [],
             createdAt: new Date().toISOString(),

@@ -1,22 +1,22 @@
 import { useMemo, useState } from 'react';
 import { Card } from '../tailus-ui';
-import type { SoulsAssignedByVolunteer } from '../../types';
+import type { SoulsAssignedByMember } from '../../types';
 
 interface SoulsAssignedTableProps {
-  data: SoulsAssignedByVolunteer[] | null;
+  data: SoulsAssignedByMember[] | null;
   isLoading?: boolean;
 }
 
 function SoulsAssignedTable({ data, isLoading = false }: SoulsAssignedTableProps) {
-  const [expandedVolunteers, setExpandedVolunteers] = useState<Set<string>>(new Set());
+  const [expandedMembers, setExpandedMembers] = useState<Set<string>>(new Set());
 
-  const toggleVolunteer = (volunteerId: string) => {
-    setExpandedVolunteers((prev) => {
+  const toggleMember = (memberId: string) => {
+    setExpandedMembers((prev) => {
       const next = new Set(prev);
-      if (next.has(volunteerId)) {
-        next.delete(volunteerId);
+      if (next.has(memberId)) {
+        next.delete(memberId);
       } else {
-        next.add(volunteerId);
+        next.add(memberId);
       }
       return next;
     });
@@ -24,7 +24,7 @@ function SoulsAssignedTable({ data, isLoading = false }: SoulsAssignedTableProps
 
   const totalSouls = useMemo(() => {
     if (!data) return 0;
-    return data.reduce((sum, volunteer) => sum + (volunteer.members?.length ?? 0), 0);
+    return data.reduce((sum, member) => sum + (member.members?.length ?? 0), 0);
   }, [data]);
 
   const formatDate = (date: Date | string) => {
@@ -77,27 +77,27 @@ function SoulsAssignedTable({ data, isLoading = false }: SoulsAssignedTableProps
       </div>
 
       <div className="space-y-2">
-        {data.map((volunteer) => (
-          <div key={volunteer.volunteerId} className="border border-gray-200 dark:border-gray-700 rounded-lg">
+        {data.map((followUpMember) => (
+          <div key={followUpMember.followUpMemberId} className="border border-gray-200 dark:border-gray-700 rounded-lg">
             <button
-              onClick={() => toggleVolunteer(volunteer.volunteerId)}
+              onClick={() => toggleMember(followUpMember.followUpMemberId)}
               className="w-full flex items-center justify-between p-4 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
             >
               <div className="flex items-center gap-3">
                 <div className="w-8 h-8 bg-primary/10 dark:bg-primary-dark/20 rounded-full flex items-center justify-center">
                   <span className="text-primary dark:text-primary-dark font-semibold text-sm">
-                    {volunteer.volunteerName.charAt(0).toUpperCase()}
+                    {followUpMember.followUpMemberName ? String(followUpMember.followUpMemberName).charAt(0).toUpperCase() : '?'}
                   </span>
                 </div>
-                <span className="font-medium text-text-primary-light dark:text-text-primary-dark">{volunteer.volunteerName}</span>
+                <span className="font-medium text-text-primary-light dark:text-text-primary-dark">{followUpMember.followUpMemberName || 'Unknown'}</span>
               </div>
               <div className="flex items-center gap-3">
                 <span className="bg-primary/10 dark:bg-primary-dark/20 text-primary dark:text-primary-dark text-sm font-medium px-2.5 py-0.5 rounded">
-                  {volunteer.members?.length ?? 0} souls
+                  {followUpMember.members?.length ?? 0} souls
                 </span>
                 <svg
                   className={`w-5 h-5 text-text-secondary-light dark:text-text-secondary-dark transition-transform ${
-                    expandedVolunteers.has(volunteer.volunteerId) ? 'rotate-180' : ''
+                    expandedMembers.has(followUpMember.followUpMemberId) ? 'rotate-180' : ''
                   }`}
                   fill="none"
                   stroke="currentColor"
@@ -113,7 +113,7 @@ function SoulsAssignedTable({ data, isLoading = false }: SoulsAssignedTableProps
               </div>
             </button>
 
-            {expandedVolunteers.has(volunteer.volunteerId) && (
+            {expandedMembers.has(followUpMember.followUpMemberId) && (
               <div className="border-t border-gray-200 dark:border-gray-700">
                 <table className="w-full">
                   <thead className="bg-gray-50 dark:bg-gray-800">
@@ -133,7 +133,7 @@ function SoulsAssignedTable({ data, isLoading = false }: SoulsAssignedTableProps
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
-                    {(volunteer.members ?? []).map((member) => (
+                    {(followUpMember.members ?? []).map((member) => (
                       <tr key={member.id} className="hover:bg-gray-50 dark:hover:bg-gray-800">
                         <td className="px-4 py-3 text-sm text-text-primary-light dark:text-text-primary-dark">{member.name}</td>
                         <td className="px-4 py-3">

@@ -38,6 +38,10 @@ describe('Property 15: Cache Invalidation on Refresh', () => {
       totalAttendance: fc.integer({ min: 0, max: 1000 }),
       firstTimersCount: fc.integer({ min: 0, max: 100 }),
       returnersCount: fc.integer({ min: 0, max: 100 }),
+      membersCount: fc.integer({ min: 0, max: 500 }),
+      childrenCount: fc.integer({ min: 0, max: 100 }),
+      evangelismContactsCount: fc.integer({ min: 0, max: 50 }),
+      visitorsCount: fc.integer({ min: 0, max: 200 }),
     }),
     fc.record({
       memberId: fc.stringMatching(/^rec[a-zA-Z0-9]{14}$/),

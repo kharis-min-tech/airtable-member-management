@@ -86,12 +86,12 @@ function PastorDashboard() {
     { immediate: true }
   );
 
-  // Fetch souls assigned by volunteer
+  // Fetch souls assigned by follow-up member
   const {
     data: soulsAssigned,
     isLoading: isLoadingSouls,
     execute: refreshSouls,
-  } = useApi(() => churchApi.followUp.getSoulsAssignedByVolunteer(), { immediate: true });
+  } = useApi(() => churchApi.followUp.getSoulsAssignedByMember(), { immediate: true });
 
   // Fetch follow-up interactions
   const {
@@ -109,6 +109,15 @@ function PastorDashboard() {
     ),
     { immediate: true }
   );
+
+  // Debug logging for followUpComments
+  console.log('PastorDashboard: followUpComments state', {
+    followUpComments,
+    type: typeof followUpComments,
+    isArray: Array.isArray(followUpComments),
+    isNull: followUpComments === null,
+    isUndefined: followUpComments === undefined,
+  });
 
   // Refresh all data
   const refreshAll = useCallback(async () => {

@@ -1,6 +1,6 @@
 /**
  * Follow-up Service
- * Handles follow-up assignments and volunteer capacity management
+ * Handles follow-up assignments and member capacity management
  * 
  * Requirements: 4.1, 4.2, 4.3, 4.4, 5.1, 5.2, 5.3, 5.4
  */
@@ -8,10 +8,10 @@
 import { AirtableClient, AIRTABLE_TABLES } from './airtable-client';
 import {
   FollowUpAssignment,
-  Volunteer,
+  FollowUpMember,
   CapacityInfo,
   AssignmentStatus,
-  VolunteerRole,
+  MemberRole,
   AirtableRecord,
 } from '../types';
 
@@ -19,15 +19,15 @@ import {
  * Default configuration values
  */
 const DEFAULT_FOLLOW_UP_DUE_DAYS = 3;
-const DEFAULT_VOLUNTEER_CAPACITY = 20;
+const DEFAULT_MEMBER_CAPACITY = 20;
 
 /**
  * Error codes for Follow-up operations
  */
 export enum FollowUpErrorCode {
   ASSIGNMENT_NOT_FOUND = 'ASSIGNMENT_NOT_FOUND',
-  VOLUNTEER_NOT_FOUND = 'VOLUNTEER_NOT_FOUND',
-  NO_AVAILABLE_VOLUNTEER = 'NO_AVAILABLE_VOLUNTEER',
+  FOLLOW_UP_MEMBER_NOT_FOUND = 'FOLLOW_UP_MEMBER_NOT_FOUND',
+  NO_AVAILABLE_FOLLOW_UP_MEMBER = 'NO_AVAILABLE_FOLLOW_UP_MEMBER',
   INVALID_INPUT = 'INVALID_INPUT',
   MEMBER_NOT_FOUND = 'MEMBER_NOT_FOUND',
 }
@@ -54,7 +54,7 @@ export class FollowUpService {
     private readonly airtableClient: AirtableClient,
     private readonly config: {
       defaultFollowUpDueDays?: number;
-      volunteerCapacityLimit?: number;
+      memberCapacityLimit?: number;
     } = {}
   ) {}
 
@@ -66,10 +66,10 @@ export class FollowUpService {
   }
 
   /**
-   * Get the configured volunteer capacity limit
+   * Get the configured member capacity limit
    */
-  private get volunteerCapacityLimit(): number {
-    return this.config.volunteerCapacityLimit ?? DEFAULT_VOLUNTEER_CAPACITY;
+  private get memberCapacityLimit(): number {
+    return this.config.memberCapacityLimit ?? DEFAULT_MEMBER_CAPACITY;
   }
 
 
@@ -78,13 +78,13 @@ export class FollowUpService {
    * Requirements: 4.1, 4.2, 4.3
    * 
    * @param memberId - The member to assign follow-up for
-   * @param volunteerId - The volunteer to assign to
+   * @param followUpMemberId - The follow-up member to assign to
    * @param dueInDays - Number of days until due (default: 3)
    * @returns The created follow-up assignment
    */
   async createAssignment(
     memberId: string,
-    volunteerId: string,
+    followUpMemberId: string,
     dueInDays?: number
   ): Promise<FollowUpAssignment> {
     if (!memberId) {
@@ -94,10 +94,10 @@ export class FollowUpService {
       );
     }
 
-    if (!volunteerId) {
+    if (!followUpMemberId) {
       throw new FollowUpError(
         FollowUpErrorCode.INVALID_INPUT,
-        'Volunteer ID is required'
+        'Follow-up member ID is required'
       );
     }
 
@@ -108,7 +108,7 @@ export class FollowUpService {
 
     const fields: Record<string, unknown> = {
       'Member': [memberId],
-      'Assigned To': [volunteerId],
+      'Assigned To': [followUpMemberId],
       'Assigned Date': this.formatDate(assignedDate),
       'Due Date': this.formatDate(dueDate),
       'Status': 'Assigned' as AssignmentStatus,
@@ -123,34 +123,34 @@ export class FollowUpService {
   }
 
   /**
-   * Get the capacity information for a volunteer
+   * Get the capacity information for a follow-up member
    * Requirements: 5.2
    * 
-   * @param volunteerId - The volunteer to check capacity for
+   * @param followUpMemberId - The follow-up member to check capacity for
    * @returns Capacity information including current assignments and available slots
    */
-  async getVolunteerCapacity(volunteerId: string): Promise<CapacityInfo> {
-    if (!volunteerId) {
+  async getFollowUpMemberCapacity(followUpMemberId: string): Promise<CapacityInfo> {
+    if (!followUpMemberId) {
       throw new FollowUpError(
         FollowUpErrorCode.INVALID_INPUT,
-        'Volunteer ID is required'
+        'Follow-up member ID is required'
       );
     }
 
-    // Get volunteer record to get their name and configured capacity
-    const volunteerRecord = await this.airtableClient.getRecord(
-      AIRTABLE_TABLES.VOLUNTEERS,
-      volunteerId
+    // Get follow-up member record to get their name and configured capacity
+    const followUpMemberRecord = await this.airtableClient.getRecord(
+      AIRTABLE_TABLES.MEMBERS,
+      followUpMemberId
     );
 
-    const volunteerName = (volunteerRecord.fields['Name'] as string) || 'Unknown';
-    const configuredCapacity = (volunteerRecord.fields['Capacity'] as number) || this.volunteerCapacityLimit;
+    const memberName = (followUpMemberRecord.fields['Full Name'] as string) || 'Unknown';
+    const configuredCapacity = (followUpMemberRecord.fields['Capacity'] as number) || this.memberCapacityLimit;
 
     // Count active assignments (not Completed or Reassigned)
     const activeAssignments = await this.airtableClient.findRecords(
       AIRTABLE_TABLES.FOLLOW_UP_ASSIGNMENTS,
       `AND(
-        FIND('${volunteerId}', ARRAYJOIN({Assigned To})),
+        FIND('${followUpMemberId}', ARRAYJOIN({Assigned To})),
         OR({Status} = 'Assigned', {Status} = 'In Progress')
       )`
     );
@@ -159,8 +159,8 @@ export class FollowUpService {
     const availableSlots = Math.max(0, configuredCapacity - currentAssignments);
 
     return {
-      volunteerId,
-      volunteerName,
+      memberId: followUpMemberId,
+      memberName,
       capacity: configuredCapacity,
       currentAssignments,
       availableSlots,
@@ -169,28 +169,28 @@ export class FollowUpService {
   }
 
   /**
-   * Find an available volunteer with capacity
+   * Find an available follow-up member with capacity
    * Requirements: 5.2
    * 
-   * @param role - The role to filter volunteers by (default: 'Follow-up')
-   * @returns An available volunteer or null if none found
+   * @param role - The role to filter members by (default: 'Follow-up')
+   * @returns An available follow-up member or null if none found
    */
-  async findAvailableVolunteer(role?: VolunteerRole): Promise<Volunteer | null> {
+  async findAvailableFollowUpMember(role?: MemberRole): Promise<FollowUpMember | null> {
     const filterRole = role || 'Follow-up';
     
-    // Find active volunteers with the specified role
-    const volunteers = await this.airtableClient.findRecords(
-      AIRTABLE_TABLES.VOLUNTEERS,
+    // Find active members with the specified role
+    const followUpMembers = await this.airtableClient.findRecords(
+      AIRTABLE_TABLES.MEMBERS,
       `AND({Active} = TRUE(), {Role} = '${filterRole}')`
     );
 
-    // Check each volunteer's capacity
-    for (const volunteerRecord of volunteers) {
-      const volunteer = this.mapRecordToVolunteer(volunteerRecord);
-      const capacityInfo = await this.getVolunteerCapacity(volunteer.id);
+    // Check each follow-up member's capacity
+    for (const followUpMemberRecord of followUpMembers) {
+      const followUpMember = this.mapRecordToFollowUpMember(followUpMemberRecord);
+      const capacityInfo = await this.getFollowUpMemberCapacity(followUpMember.id);
       
       if (capacityInfo.hasCapacity) {
-        return volunteer;
+        return followUpMember;
       }
     }
 
@@ -199,17 +199,17 @@ export class FollowUpService {
 
 
   /**
-   * Reassign a member to a new volunteer
+   * Reassign a member to a new follow-up member
    * Requirements: 5.3
    * 
    * @param memberId - The member to reassign
-   * @param newVolunteerId - The new volunteer to assign to
+   * @param newFollowUpMemberId - The new follow-up member to assign to
    * @param _reason - The reason for reassignment (for logging/audit purposes)
    * @returns The new follow-up assignment
    */
   async reassignMember(
     memberId: string,
-    newVolunteerId: string,
+    newFollowUpMemberId: string,
     _reason: string
   ): Promise<FollowUpAssignment> {
     if (!memberId) {
@@ -219,10 +219,10 @@ export class FollowUpService {
       );
     }
 
-    if (!newVolunteerId) {
+    if (!newFollowUpMemberId) {
       throw new FollowUpError(
         FollowUpErrorCode.INVALID_INPUT,
-        'New volunteer ID is required'
+        'New follow-up member ID is required'
       );
     }
 
@@ -248,28 +248,28 @@ export class FollowUpService {
     }
 
     // Create new assignment
-    const newAssignment = await this.createAssignment(memberId, newVolunteerId);
+    const newAssignment = await this.createAssignment(memberId, newFollowUpMemberId);
 
     return newAssignment;
   }
 
   /**
-   * Get all assignments for a volunteer
+   * Get all assignments for a follow-up member
    * 
-   * @param volunteerId - The volunteer to get assignments for
+   * @param followUpMemberId - The follow-up member to get assignments for
    * @returns List of follow-up assignments
    */
-  async getAssignmentsByVolunteer(volunteerId: string): Promise<FollowUpAssignment[]> {
-    if (!volunteerId) {
+  async getAssignmentsByFollowUpMember(followUpMemberId: string): Promise<FollowUpAssignment[]> {
+    if (!followUpMemberId) {
       throw new FollowUpError(
         FollowUpErrorCode.INVALID_INPUT,
-        'Volunteer ID is required'
+        'Follow-up member ID is required'
       );
     }
 
     const records = await this.airtableClient.findRecords(
       AIRTABLE_TABLES.FOLLOW_UP_ASSIGNMENTS,
-      `FIND('${volunteerId}', ARRAYJOIN({Assigned To}))`
+      `FIND('${followUpMemberId}', ARRAYJOIN({Assigned To}))`
     );
 
     return records.map(record => this.mapRecordToAssignment(record));
@@ -310,41 +310,41 @@ export class FollowUpService {
   }
 
   /**
-   * Check if reassignment is needed based on volunteer capacity
+   * Check if reassignment is needed based on follow-up member capacity
    * Requirements: 5.1, 5.2
    * 
-   * @param currentVolunteerId - The current volunteer's ID
-   * @returns Object indicating if reassignment is needed and available volunteer
+   * @param currentFollowUpMemberId - The current follow-up member's ID
+   * @returns Object indicating if reassignment is needed and available follow-up member
    */
-  async checkReassignmentNeeded(currentVolunteerId: string): Promise<{
+  async checkReassignmentNeeded(currentFollowUpMemberId: string): Promise<{
     needsReassignment: boolean;
-    availableVolunteer: Volunteer | null;
+    availableFollowUpMember: FollowUpMember | null;
     reason?: string;
   }> {
-    const capacityInfo = await this.getVolunteerCapacity(currentVolunteerId);
+    const capacityInfo = await this.getFollowUpMemberCapacity(currentFollowUpMemberId);
 
     if (capacityInfo.hasCapacity) {
       return {
         needsReassignment: false,
-        availableVolunteer: null,
+        availableFollowUpMember: null,
       };
     }
 
-    // Current volunteer is at capacity, find an available one
-    const availableVolunteer = await this.findAvailableVolunteer('Follow-up');
+    // Current follow-up member is at capacity, find an available one
+    const availableFollowUpMember = await this.findAvailableFollowUpMember('Follow-up');
 
-    if (!availableVolunteer) {
+    if (!availableFollowUpMember) {
       return {
         needsReassignment: true,
-        availableVolunteer: null,
-        reason: `Volunteer ${capacityInfo.volunteerName} has reached capacity (${capacityInfo.currentAssignments}/${capacityInfo.capacity}) but no other volunteers are available`,
+        availableFollowUpMember: null,
+        reason: `Follow-up member ${capacityInfo.memberName} has reached capacity (${capacityInfo.currentAssignments}/${capacityInfo.capacity}) but no other members are available`,
       };
     }
 
     return {
       needsReassignment: true,
-      availableVolunteer,
-      reason: `Volunteer ${capacityInfo.volunteerName} has reached capacity (${capacityInfo.currentAssignments}/${capacityInfo.capacity})`,
+      availableFollowUpMember,
+      reason: `Follow-up member ${capacityInfo.memberName} has reached capacity (${capacityInfo.currentAssignments}/${capacityInfo.capacity})`,
     };
   }
 
@@ -366,19 +366,19 @@ export class FollowUpService {
   }
 
   /**
-   * Map Airtable record to Volunteer interface
+   * Map Airtable record to FollowUpMember interface
    */
-  private mapRecordToVolunteer(record: AirtableRecord): Volunteer {
+  private mapRecordToFollowUpMember(record: AirtableRecord): FollowUpMember {
     const fields = record.fields;
 
     return {
       id: record.id,
-      name: (fields['Name'] as string) || '',
-      role: (fields['Role'] as VolunteerRole) || 'Follow-up',
+      name: (fields['Full Name'] as string) || '',
+      role: (fields['Role'] as MemberRole) || 'Follow-up',
       phone: (fields['Phone'] as string) || '',
       email: (fields['Email'] as string) || undefined,
       active: (fields['Active'] as boolean) || false,
-      capacity: (fields['Capacity'] as number) || this.volunteerCapacityLimit,
+      capacity: (fields['Capacity'] as number) || this.memberCapacityLimit,
     };
   }
 
@@ -413,21 +413,21 @@ export class FollowUpService {
    * Requirements: 4.1, 5.1, 5.2, 5.3, 5.4
    * 
    * This method:
-   * 1. Checks if the target volunteer has capacity
-   * 2. If at capacity (>= 20 assignments), finds an available volunteer
-   * 3. Creates assignment to available volunteer or logs warning if none available
+   * 1. Checks if the target follow-up member has capacity
+   * 2. If at capacity (>= 20 assignments), finds an available follow-up member
+   * 3. Creates assignment to available follow-up member or logs warning if none available
    * 4. Marks old assignment as "Reassigned" if reassigning
    * 
    * @param memberId - The member to assign follow-up for
-   * @param preferredVolunteerId - The preferred volunteer (e.g., soul winner)
+   * @param preferredFollowUpMemberId - The preferred follow-up member (e.g., soul winner)
    * @returns Result of the assignment operation
    */
   async assignWithCapacityCheck(
     memberId: string,
-    preferredVolunteerId: string
+    preferredFollowUpMemberId: string
   ): Promise<{
     assignment: FollowUpAssignment | null;
-    assignedVolunteerId: string | null;
+    assignedFollowUpMemberId: string | null;
     wasReassigned: boolean;
     warning?: string;
   }> {
@@ -438,63 +438,63 @@ export class FollowUpService {
       );
     }
 
-    if (!preferredVolunteerId) {
+    if (!preferredFollowUpMemberId) {
       throw new FollowUpError(
         FollowUpErrorCode.INVALID_INPUT,
-        'Preferred volunteer ID is required'
+        'Preferred follow-up member ID is required'
       );
     }
 
-    // Check if preferred volunteer has capacity
-    const reassignmentCheck = await this.checkReassignmentNeeded(preferredVolunteerId);
+    // Check if preferred follow-up member has capacity
+    const reassignmentCheck = await this.checkReassignmentNeeded(preferredFollowUpMemberId);
 
     if (!reassignmentCheck.needsReassignment) {
-      // Preferred volunteer has capacity - assign directly
-      const assignment = await this.createAssignment(memberId, preferredVolunteerId);
+      // Preferred follow-up member has capacity - assign directly
+      const assignment = await this.createAssignment(memberId, preferredFollowUpMemberId);
       return {
         assignment,
-        assignedVolunteerId: preferredVolunteerId,
+        assignedFollowUpMemberId: preferredFollowUpMemberId,
         wasReassigned: false,
       };
     }
 
-    // Preferred volunteer is at capacity
-    if (reassignmentCheck.availableVolunteer) {
-      // Found an available volunteer - reassign
+    // Preferred follow-up member is at capacity
+    if (reassignmentCheck.availableFollowUpMember) {
+      // Found an available follow-up member - reassign
       const assignment = await this.createAssignment(
         memberId,
-        reassignmentCheck.availableVolunteer.id
+        reassignmentCheck.availableFollowUpMember.id
       );
 
       // eslint-disable-next-line no-console
       console.log(
-        `Reassigned member ${memberId} from volunteer ${preferredVolunteerId} ` +
-        `to ${reassignmentCheck.availableVolunteer.id} due to capacity: ${reassignmentCheck.reason}`
+        `Reassigned member ${memberId} from follow-up member ${preferredFollowUpMemberId} ` +
+        `to ${reassignmentCheck.availableFollowUpMember.id} due to capacity: ${reassignmentCheck.reason}`
       );
 
       return {
         assignment,
-        assignedVolunteerId: reassignmentCheck.availableVolunteer.id,
+        assignedFollowUpMemberId: reassignmentCheck.availableFollowUpMember.id,
         wasReassigned: true,
         warning: reassignmentCheck.reason,
       };
     }
 
-    // No available volunteer - log warning and assign anyway (Requirement 5.4)
+    // No available follow-up member - log warning and assign anyway (Requirement 5.4)
     const warningMessage = reassignmentCheck.reason || 
-      'No available volunteer found for reassignment';
+      'No available follow-up member found for reassignment';
     
     // eslint-disable-next-line no-console
     console.warn(
-      `WARNING: ${warningMessage}. Assigning to preferred volunteer ${preferredVolunteerId} anyway.`
+      `WARNING: ${warningMessage}. Assigning to preferred follow-up member ${preferredFollowUpMemberId} anyway.`
     );
 
-    // Still create the assignment to the preferred volunteer
-    const assignment = await this.createAssignment(memberId, preferredVolunteerId);
+    // Still create the assignment to the preferred follow-up member
+    const assignment = await this.createAssignment(memberId, preferredFollowUpMemberId);
 
     return {
       assignment,
-      assignedVolunteerId: preferredVolunteerId,
+      assignedFollowUpMemberId: preferredFollowUpMemberId,
       wasReassigned: false,
       warning: warningMessage,
     };
@@ -532,7 +532,7 @@ export class FollowUpService {
     }
 
     // Check if current owner has capacity
-    const capacityInfo = await this.getVolunteerCapacity(currentOwnerId);
+    const capacityInfo = await this.getFollowUpMemberCapacity(currentOwnerId);
 
     // Requirement 5.1: Check if current owner has >= 20 assignments
     if (capacityInfo.hasCapacity) {
@@ -542,14 +542,14 @@ export class FollowUpService {
       };
     }
 
-    // Requirement 5.2: Find available volunteer
-    const availableVolunteer = await this.findAvailableVolunteer('Follow-up');
+    // Requirement 5.2: Find available follow-up member
+    const availableFollowUpMember = await this.findAvailableFollowUpMember('Follow-up');
 
-    if (!availableVolunteer) {
-      // Requirement 5.4: Log warning if no volunteer available
-      const warning = `Volunteer ${capacityInfo.volunteerName} has reached capacity ` +
+    if (!availableFollowUpMember) {
+      // Requirement 5.4: Log warning if no follow-up member available
+      const warning = `Follow-up member ${capacityInfo.memberName} has reached capacity ` +
         `(${capacityInfo.currentAssignments}/${capacityInfo.capacity}) ` +
-        `but no other volunteers are available for reassignment`;
+        `but no other members are available for reassignment`;
       
       // eslint-disable-next-line no-console
       console.warn(`WARNING: ${warning}`);
@@ -561,24 +561,24 @@ export class FollowUpService {
     }
 
     // Requirement 5.3: Create new assignment and mark old as "Reassigned"
-    const reason = `Capacity overflow: ${capacityInfo.volunteerName} has ` +
+    const reason = `Capacity overflow: ${capacityInfo.memberName} has ` +
       `${capacityInfo.currentAssignments}/${capacityInfo.capacity} assignments`;
     
     const newAssignment = await this.reassignMember(
       memberId,
-      availableVolunteer.id,
+      availableFollowUpMember.id,
       reason
     );
 
     // eslint-disable-next-line no-console
     console.log(
-      `Reassigned member ${memberId} from ${currentOwnerId} to ${availableVolunteer.id}: ${reason}`
+      `Reassigned member ${memberId} from ${currentOwnerId} to ${availableFollowUpMember.id}: ${reason}`
     );
 
     return {
       reassigned: true,
       newAssignment,
-      newOwnerId: availableVolunteer.id,
+      newOwnerId: availableFollowUpMember.id,
     };
   }
 }

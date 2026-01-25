@@ -90,14 +90,14 @@ export class AuthService {
       // Get user's groups (roles) from Cognito
       const role = await this.getUserRole(userId);
 
-      // Get user mapping from DynamoDB to get volunteerId and departmentIds
+      // Get user mapping from DynamoDB to get followUpMemberId and departmentIds
       const userMapping = await this.configService.getUserMapping(userId, this.churchId);
 
       return {
         userId,
         email,
         role,
-        volunteerId: userMapping?.volunteerId,
+        followUpMemberId: userMapping?.followUpMemberId,
         departmentIds: userMapping?.departmentIds || [],
       };
     } catch (error) {
@@ -230,7 +230,7 @@ export class AuthService {
       case 'follow_up':
         return {
           type: 'assigned',
-          volunteerId: user.volunteerId,
+          followUpMemberId: user.followUpMemberId,
         };
       case 'department_lead':
         return {
@@ -266,10 +266,10 @@ export class AuthService {
 
       case 'assigned':
         // Follow-up team only sees members assigned to them
-        if (!scope.volunteerId) {
+        if (!scope.followUpMemberId) {
           return [];
         }
-        return members.filter(member => member.followUpOwner === scope.volunteerId);
+        return members.filter(member => member.followUpOwner === scope.followUpMemberId);
 
       case 'department':
         // Department lead only sees members in their departments
@@ -354,7 +354,7 @@ export class AuthService {
         return true;
 
       case 'assigned':
-        return scope.volunteerId !== undefined && memberFollowUpOwner === scope.volunteerId;
+        return scope.followUpMemberId !== undefined && memberFollowUpOwner === scope.followUpMemberId;
 
       case 'department':
         return memberDepartmentIds.some(deptId => scope.departmentIds.includes(deptId));
@@ -385,11 +385,11 @@ export class AuthService {
         break;
 
       case 'assigned':
-        // Filter by follow-up owner
-        if (!scope.volunteerId) {
+        // Filter by follow-up owner (Airtable field name remains unchanged)
+        if (!scope.followUpMemberId) {
           scopeFormula = 'FALSE()';
         } else {
-          scopeFormula = `FIND('${scope.volunteerId}', ARRAYJOIN({Follow-up Owner}))`;
+          scopeFormula = `FIND('${scope.followUpMemberId}', ARRAYJOIN({Follow-up Owner}))`;
         }
         break;
 
@@ -441,7 +441,7 @@ export class AuthService {
       resource,
       action,
       allowed,
-      volunteerId: user.volunteerId,
+      followUpMemberId: user.followUpMemberId,
       departmentIds: user.departmentIds,
       ...details,
     };
@@ -478,7 +478,7 @@ export const PERMISSIONS: Record<UserRole, string[]> = {
  */
 export type DataScope =
   | { type: 'all' }
-  | { type: 'assigned'; volunteerId?: string }
+  | { type: 'assigned'; followUpMemberId?: string }
   | { type: 'department'; departmentIds: string[] }
   | { type: 'none' };
 

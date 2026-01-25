@@ -32,12 +32,12 @@ export interface EvangelismStats {
 }
 
 /**
- * Follow-up summary grouped by volunteer
+ * Follow-up summary grouped by follow-up member
  */
 export interface FollowUpSummary {
-  byVolunteer: {
-    volunteerId: string;
-    volunteerName: string;
+  byFollowUpMember: {
+    followUpMemberId: string;
+    followUpMemberName: string;
     assignedCount: number;
     members: { memberId: string; memberName: string; status: AssignmentStatus }[];
   }[];
@@ -60,7 +60,7 @@ export interface AttendanceBreakdown {
 /**
  * Attendance category for drill-down
  */
-export type AttendanceCategory = 'firstTimers' | 'returners' | 'evangelismContacts' | 'department';
+export type AttendanceCategory = 'firstTimers' | 'returners' | 'members' | 'children' | 'evangelismContacts' | 'visitors' | 'department';
 
 /**
  * Member details for drill-down view
@@ -93,8 +93,8 @@ export interface FollowUpInteraction {
   id: string;
   memberId: string;
   memberName: string;
-  volunteerId: string;
-  volunteerName: string;
+  followUpMemberId: string;
+  followUpMemberName: string;
   date: Date;
   comment: string;
 }
@@ -165,21 +165,53 @@ export class QueryService {
     // Get unique member IDs
     const uniqueMemberIds = [...new Set(memberIds)];
 
+    // eslint-disable-next-line no-console
+    console.log(`Found ${uniqueMemberIds.length} unique member IDs from ${attendanceRecords.length} attendance records`);
+
     // Fetch member records to categorize
     const memberRecords = await this.getMembersByIds(uniqueMemberIds);
+
+    // eslint-disable-next-line no-console
+    console.log(`Successfully fetched ${memberRecords.length} member records out of ${uniqueMemberIds.length} IDs`);
+
+    // If we're missing member records, log the missing IDs
+    if (memberRecords.length < uniqueMemberIds.length) {
+      const fetchedIds = new Set(memberRecords.map(r => r.id));
+      const missingIds = uniqueMemberIds.filter(id => !fetchedIds.has(id));
+      // eslint-disable-next-line no-console
+      console.warn(`Missing ${missingIds.length} member records for IDs:`, missingIds);
+    }
 
     // Categorize by status
     let firstTimersCount = 0;
     let returnersCount = 0;
+    let membersCount = 0;
+    let childrenCount = 0;
+    let evangelismContactsCount = 0;
+    let visitorsCount = 0;
     // Map to track department IDs to their counts
     const departmentCounts: Map<string, number> = new Map();
 
     for (const member of memberRecords) {
       const status = member.fields['Status'] as MemberStatus;
+      const ageBracket = member.fields['Age Bracket'] as string | undefined;
       
-      if (status === 'First Timer') {
+      // Count children separately based on Age Bracket field
+      if (ageBracket?.toLowerCase() === 'child') {
+        childrenCount++;
+      } else if (status === 'First Timer') {
         firstTimersCount++;
       } else if (status === 'Returner') {
+        returnersCount++;
+      } else if (status === 'Member') {
+        membersCount++;
+      } else if (status === 'Evangelism Contact') {
+        evangelismContactsCount++;
+      } else if (status === 'Visitor') {
+        visitorsCount++;
+      } else {
+        // Count members with no status or unrecognized status as returners
+        // This includes pastors and staff who may not have a standard status
         returnersCount++;
       }
 
@@ -218,6 +250,10 @@ export class QueryService {
       totalAttendance: uniqueMemberIds.length,
       firstTimersCount,
       returnersCount,
+      membersCount,
+      childrenCount,
+      evangelismContactsCount,
+      visitorsCount,
       departmentBreakdown,
     };
   }
@@ -250,7 +286,7 @@ export class QueryService {
   }
 
   /**
-   * Get follow-up summary grouped by volunteer
+   * Get follow-up summary grouped by follow-up member
    * Requirements: 15.5, 15.6
    */
   async getFollowUpSummary(): Promise<FollowUpSummary> {
@@ -260,36 +296,48 @@ export class QueryService {
       `OR({Status} = 'Assigned', {Status} = 'In Progress')`
     );
 
-    // Group by volunteer
-    const byVolunteerMap: Map<string, {
-      volunteerId: string;
-      volunteerName: string;
+    // Group by follow-up member
+    const byFollowUpMemberMap: Map<string, {
+      followUpMemberId: string;
+      followUpMemberName: string;
       members: { memberId: string; memberName: string; status: AssignmentStatus }[];
     }> = new Map();
 
     for (const assignment of assignments) {
-      const volunteerId = this.extractLinkedRecordId(assignment.fields['Assigned To']);
+      const followUpMemberId = this.extractLinkedRecordId(assignment.fields['Assigned To']);
       const memberId = this.extractLinkedRecordId(assignment.fields['Member']);
       const status = (assignment.fields['Status'] as AssignmentStatus) || 'Assigned';
 
-      if (!volunteerId || !memberId) continue;
+      if (!followUpMemberId || !memberId) continue;
 
-      if (!byVolunteerMap.has(volunteerId)) {
-        // Get volunteer name
-        let volunteerName = volunteerId;
+      if (!byFollowUpMemberMap.has(followUpMemberId)) {
+        // Get follow-up member name
+        let followUpMemberName = 'Unknown';
         try {
-          const volunteerRecord = await this.airtableClient.getRecord(
-            AIRTABLE_TABLES.VOLUNTEERS,
-            volunteerId
+          const followUpMemberRecord = await this.airtableClient.getRecord(
+            AIRTABLE_TABLES.MEMBERS,
+            followUpMemberId
           );
-          volunteerName = (volunteerRecord.fields['Name'] as string) || volunteerId;
-        } catch {
-          // Use ID if name lookup fails
+          const fullName = followUpMemberRecord.fields['Full Name'] as string;
+          const firstName = followUpMemberRecord.fields['First Name'] as string;
+          const lastName = followUpMemberRecord.fields['Last Name'] as string;
+          
+          // Try Full Name first, then construct from First + Last, finally use ID
+          if (fullName && fullName.trim()) {
+            followUpMemberName = fullName.trim();
+          } else if (firstName || lastName) {
+            followUpMemberName = `${firstName || ''} ${lastName || ''}`.trim();
+          } else {
+            followUpMemberName = followUpMemberId;
+          }
+        } catch (error) {
+          console.error(`Failed to fetch follow-up member name for ${followUpMemberId}:`, error);
+          followUpMemberName = followUpMemberId;
         }
 
-        byVolunteerMap.set(volunteerId, {
-          volunteerId,
-          volunteerName,
+        byFollowUpMemberMap.set(followUpMemberId, {
+          followUpMemberId,
+          followUpMemberName,
           members: [],
         });
       }
@@ -308,20 +356,20 @@ export class QueryService {
         // Use ID if name lookup fails
       }
 
-      byVolunteerMap.get(volunteerId)!.members.push({
+      byFollowUpMemberMap.get(followUpMemberId)!.members.push({
         memberId,
         memberName,
         status,
       });
     }
 
-    const byVolunteer = Array.from(byVolunteerMap.values()).map(v => ({
+    const byFollowUpMember = Array.from(byFollowUpMemberMap.values()).map(v => ({
       ...v,
       assignedCount: v.members.length,
     }));
 
     return {
-      byVolunteer,
+      byFollowUpMember,
       totalAssigned: assignments.length,
     };
   }
@@ -350,38 +398,71 @@ export class QueryService {
       { sort: [{ field: 'Interaction Date', direction: 'desc' }] }
     );
 
-    const interactions: FollowUpInteraction[] = [];
+    // Collect all unique member IDs to batch fetch
+    const memberIds = new Set<string>();
+    const recordData: Array<{
+      record: AirtableRecord;
+      memberId: string;
+      followUpMemberId: string;
+    }> = [];
 
     for (const record of records) {
       const memberId = this.extractLinkedRecordId(record.fields['Member']);
-      const volunteerId = this.extractLinkedRecordId(record.fields['Volunteer']);
+      const followUpMemberId = this.extractLinkedRecordId(record.fields['Follow Up Assignee']);
 
       if (!memberId) continue;
 
-      // Get names
-      let memberName = memberId;
-      let volunteerName = volunteerId || 'Unknown';
-
-      try {
-        const memberRecord = await this.airtableClient.getRecord(AIRTABLE_TABLES.MEMBERS, memberId);
-        memberName = (memberRecord.fields['Full Name'] as string) || memberId;
-      } catch { /* use ID */ }
-
-      if (volunteerId) {
-        try {
-          const volunteerRecord = await this.airtableClient.getRecord(AIRTABLE_TABLES.VOLUNTEERS, volunteerId);
-          volunteerName = (volunteerRecord.fields['Name'] as string) || volunteerId;
-        } catch { /* use ID */ }
+      memberIds.add(memberId);
+      if (followUpMemberId) {
+        memberIds.add(followUpMemberId);
       }
+
+      recordData.push({ record, memberId, followUpMemberId: followUpMemberId || '' });
+    }
+
+    // Batch fetch all member names at once
+    const memberNamesMap = new Map<string, string>();
+    
+    if (memberIds.size > 0) {
+      try {
+        // Fetch all members in one query using OR formula
+        const memberIdArray = Array.from(memberIds);
+        const orConditions = memberIdArray.map(id => `RECORD_ID() = '${id}'`).join(', ');
+        const memberFormula = `OR(${orConditions})`;
+        
+        const memberRecords = await this.airtableClient.findRecords(
+          AIRTABLE_TABLES.MEMBERS,
+          memberFormula
+        );
+
+        // Build the name map
+        for (const memberRecord of memberRecords) {
+          const fullName = (memberRecord.fields['Full Name'] as string) || memberRecord.id;
+          memberNamesMap.set(memberRecord.id, fullName);
+        }
+      } catch (error) {
+        console.error('Failed to batch fetch member names:', error);
+        // Continue with IDs as fallback
+      }
+    }
+
+    // Build interactions with cached names
+    const interactions: FollowUpInteraction[] = [];
+
+    for (const { record, memberId, followUpMemberId } of recordData) {
+      const memberName = memberNamesMap.get(memberId) || memberId;
+      const followUpMemberName = followUpMemberId 
+        ? (memberNamesMap.get(followUpMemberId) || followUpMemberId)
+        : 'Unknown';
 
       interactions.push({
         id: record.id,
         memberId,
         memberName,
-        volunteerId: volunteerId || '',
-        volunteerName,
+        followUpMemberId,
+        followUpMemberName,
         date: this.parseDate(record.fields['Interaction Date'] as string) || new Date(),
-        comment: (record.fields['Comment'] as string) || '',
+        comment: (record.fields['Comments'] as string) || '',
       });
     }
 
@@ -540,9 +621,21 @@ export class QueryService {
       filteredMembers = memberRecords.filter(
         m => (m.fields['Status'] as MemberStatus) === 'Returner'
       );
+    } else if (category === 'members') {
+      filteredMembers = memberRecords.filter(
+        m => (m.fields['Status'] as MemberStatus) === 'Member'
+      );
+    } else if (category === 'children') {
+      filteredMembers = memberRecords.filter(
+        m => (m.fields['Age Bracket'] as string)?.toLowerCase() === 'child'
+      );
     } else if (category === 'evangelismContacts') {
       filteredMembers = memberRecords.filter(
         m => (m.fields['Status'] as MemberStatus) === 'Evangelism Contact'
+      );
+    } else if (category === 'visitors') {
+      filteredMembers = memberRecords.filter(
+        m => (m.fields['Status'] as MemberStatus) === 'Visitor'
       );
     } else if (category === 'department' && departmentId) {
       filteredMembers = memberRecords.filter(m => {
@@ -899,7 +992,7 @@ export class QueryService {
 
           if (visitorId) {
             try {
-              // Conducted By? field links to Members table, not Volunteers
+              // Conducted By? field links to Members table
               const visitorRecord = await this.airtableClient.getRecord(AIRTABLE_TABLES.MEMBERS, visitorId);
               visitorName = (visitorRecord.fields['Full Name'] as string) || visitorId;
             } catch { /* use default */ }
@@ -1483,27 +1576,27 @@ export class QueryService {
   }
 
   /**
-   * Get follow-ups assigned to a volunteer
+   * Get follow-ups assigned to a follow-up member
    */
-  async getFollowUpsByVolunteer(volunteerId: string): Promise<FollowUpAssignment[]> {
-    if (!volunteerId) {
-      throw new Error('Volunteer ID is required');
+  async getFollowUpsByFollowUpMember(followUpMemberId: string): Promise<FollowUpAssignment[]> {
+    if (!followUpMemberId) {
+      throw new Error('Follow-up member ID is required');
     }
 
     const records = await this.airtableClient.findRecords(
       AIRTABLE_TABLES.FOLLOW_UP_ASSIGNMENTS,
-      `FIND('${volunteerId}', ARRAYJOIN({Assigned To}))`
+      `FIND('${followUpMemberId}', ARRAYJOIN({Assigned To}))`
     );
 
     return records.map(r => this.mapRecordToAssignment(r));
   }
 
   /**
-   * Get souls assigned grouped by volunteer (evangelism contacts)
+   * Get souls assigned grouped by follow-up member (evangelism contacts)
    */
-  async getSoulsAssignedByVolunteer(): Promise<{
-    volunteerId: string;
-    volunteerName: string;
+  async getSoulsAssignedByFollowUpMember(): Promise<{
+    followUpMemberId: string;
+    followUpMemberName: string;
     members: {
       id: string;
       name: string;
@@ -1518,40 +1611,54 @@ export class QueryService {
       `{Soul Winner} != BLANK()`
     );
 
-    // Group by volunteer with member IDs and their evangelism dates
-    const byVolunteerMap: Map<string, { 
-      volunteerId: string; 
-      volunteerName: string; 
+    // Group by follow-up member with member IDs and their evangelism dates
+    const byFollowUpMemberMap: Map<string, { 
+      followUpMemberId: string; 
+      followUpMemberName: string; 
       memberData: Map<string, Date>; // memberId -> evangelism date
     }> = new Map();
 
     for (const record of evangelismRecords) {
-      const volunteerId = this.extractLinkedRecordId(record.fields['Soul Winner']);
+      const followUpMemberId = this.extractLinkedRecordId(record.fields['Soul Winner']);
       const memberId = this.extractLinkedRecordId(record.fields['Linked Member']);
       const evangelismDate = this.parseDate(record.fields['Date'] as string) || new Date();
 
-      if (!volunteerId) continue;
+      if (!followUpMemberId) continue;
 
-      if (!byVolunteerMap.has(volunteerId)) {
-        let volunteerName = volunteerId;
+      if (!byFollowUpMemberMap.has(followUpMemberId)) {
+        let followUpMemberName = 'Unknown';
         try {
-          // Soul Winner field links to Members table, not Volunteers
-          const memberRecord = await this.airtableClient.getRecord(AIRTABLE_TABLES.MEMBERS, volunteerId);
-          volunteerName = (memberRecord.fields['Full Name'] as string) || volunteerId;
-        } catch { /* use ID */ }
+          // Soul Winner field links to Members table
+          const memberRecord = await this.airtableClient.getRecord(AIRTABLE_TABLES.MEMBERS, followUpMemberId);
+          const fullName = memberRecord.fields['Full Name'] as string;
+          const firstName = memberRecord.fields['First Name'] as string;
+          const lastName = memberRecord.fields['Last Name'] as string;
+          
+          // Try Full Name first, then construct from First + Last, finally use ID
+          if (fullName && fullName.trim()) {
+            followUpMemberName = fullName.trim();
+          } else if (firstName || lastName) {
+            followUpMemberName = `${firstName || ''} ${lastName || ''}`.trim();
+          } else {
+            followUpMemberName = followUpMemberId;
+          }
+        } catch (error) {
+          console.error(`Failed to fetch soul winner name for ${followUpMemberId}:`, error);
+          followUpMemberName = followUpMemberId;
+        }
 
-        byVolunteerMap.set(volunteerId, { volunteerId, volunteerName, memberData: new Map() });
+        byFollowUpMemberMap.set(followUpMemberId, { followUpMemberId, followUpMemberName, memberData: new Map() });
       }
 
       if (memberId) {
-        byVolunteerMap.get(volunteerId)!.memberData.set(memberId, evangelismDate);
+        byFollowUpMemberMap.get(followUpMemberId)!.memberData.set(memberId, evangelismDate);
       }
     }
 
     // Fetch member details and build response
     const results: {
-      volunteerId: string;
-      volunteerName: string;
+      followUpMemberId: string;
+      followUpMemberName: string;
       members: {
         id: string;
         name: string;
@@ -1561,7 +1668,7 @@ export class QueryService {
       }[];
     }[] = [];
 
-    for (const [, data] of byVolunteerMap) {
+    for (const [, data] of byFollowUpMemberMap) {
       const memberIds = Array.from(data.memberData.keys());
       const memberRecords = await this.getMembersByIds(memberIds);
       
@@ -1577,8 +1684,8 @@ export class QueryService {
       });
 
       results.push({
-        volunteerId: data.volunteerId,
-        volunteerName: data.volunteerName,
+        followUpMemberId: data.followUpMemberId,
+        followUpMemberName: data.followUpMemberName,
         members,
       });
     }

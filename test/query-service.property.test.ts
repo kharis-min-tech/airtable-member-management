@@ -1213,7 +1213,7 @@ describe('Property 13: Timeline Chronological Ordering', () => {
 /**
  * Tests for new QueryService methods
  * Tests: getServiceById, getRecentServices, getServiceAttendees, getMemberById,
- *        getFollowUpsByVolunteer, getSoulsAssignedByVolunteer, getDepartmentRoster
+ *        getFollowUpsByFollowUpMember, getSoulsAssignedByFollowUpMember, getDepartmentRoster
  */
 describe('Additional QueryService Methods', () => {
   let mockAirtableClient: jest.Mocked<AirtableClient>;
@@ -1394,15 +1394,15 @@ describe('Additional QueryService Methods', () => {
     });
   });
 
-  describe('getFollowUpsByVolunteer', () => {
-    it('should return follow-up assignments for a volunteer', async () => {
-      const volunteerId = 'recVolunteer001';
+  describe('getFollowUpsByFollowUpMember', () => {
+    it('should return follow-up assignments for a follow-up member', async () => {
+      const followUpMemberId = 'recFollowUpMember001';
       const assignmentRecords: AirtableRecord[] = [
         {
           id: 'recAssign001',
           fields: {
             'Member': ['recMember001'],
-            'Assigned To': [volunteerId],
+            'Assigned To': [followUpMemberId],
             'Assigned Date': '2024-01-01',
             'Due Date': '2024-01-15',
             'Status': 'Assigned',
@@ -1413,31 +1413,31 @@ describe('Additional QueryService Methods', () => {
 
       mockAirtableClient.findRecords.mockResolvedValue(assignmentRecords);
 
-      const result = await queryService.getFollowUpsByVolunteer(volunteerId);
+      const result = await queryService.getFollowUpsByFollowUpMember(followUpMemberId);
 
       expect(result).toHaveLength(1);
-      expect(result[0]!.assignedTo).toBe(volunteerId);
+      expect(result[0]!.assignedTo).toBe(followUpMemberId);
     });
 
-    it('should throw error for empty volunteer ID', async () => {
-      await expect(queryService.getFollowUpsByVolunteer('')).rejects.toThrow('Volunteer ID is required');
+    it('should throw error for empty follow-up member ID', async () => {
+      await expect(queryService.getFollowUpsByFollowUpMember('')).rejects.toThrow('Follow-up member ID is required');
     });
   });
 
-  describe('getSoulsAssignedByVolunteer', () => {
-    it('should return souls grouped by volunteer', async () => {
-      const volunteerId = 'recVolunteer001';
+  describe('getSoulsAssignedByFollowUpMember', () => {
+    it('should return souls grouped by follow-up member', async () => {
+      const followUpMemberId = 'recFollowUpMember001';
       const evangelismRecords: AirtableRecord[] = [
         {
           id: 'recEvang001',
-          fields: { 'Soul Winner': [volunteerId], 'Linked Member': ['recMember001'] },
+          fields: { 'Soul Winner': [followUpMemberId], 'Linked Member': ['recMember001'], 'Date': '2024-01-01' },
           createdTime: new Date().toISOString(),
         },
       ];
 
-      const volunteerRecord: AirtableRecord = {
-        id: volunteerId,
-        fields: { 'Full Name': 'John Volunteer' },
+      const followUpMemberRecord: AirtableRecord = {
+        id: followUpMemberId,
+        fields: { 'Full Name': 'John Follow-up Member' },
         createdTime: new Date().toISOString(),
       };
 
@@ -1455,13 +1455,13 @@ describe('Additional QueryService Methods', () => {
         return [];
       });
 
-      mockAirtableClient.getRecord.mockResolvedValue(volunteerRecord);
+      mockAirtableClient.getRecord.mockResolvedValue(followUpMemberRecord);
 
-      const result = await queryService.getSoulsAssignedByVolunteer();
+      const result = await queryService.getSoulsAssignedByFollowUpMember();
 
       expect(result).toHaveLength(1);
-      expect(result[0]!.volunteerId).toBe(volunteerId);
-      expect(result[0]!.volunteerName).toBe('John Volunteer');
+      expect(result[0]!.followUpMemberId).toBe(followUpMemberId);
+      expect(result[0]!.followUpMemberName).toBe('John Follow-up Member');
       expect(result[0]!.members).toHaveLength(1);
     });
   });
@@ -2841,6 +2841,417 @@ describe('Property 9: Unidirectional Missing Members Comparison', () => {
         }
       ),
       { numRuns: 100 }
+    );
+  });
+});
+
+/**
+ * Property 8: Airtable Table and Field Usage
+ * Validates: Requirements 7.3, 7.4, 11.3, 13.4
+ * 
+ * For any database query operation, the system should:
+ * - Query the "Members" table (not "Volunteers" table) when retrieving follow-up member data
+ * - Use existing Airtable field names like "Assigned To" in the "Follow-up Assignments" table
+ * - Correctly map Airtable records to application types with followUpMemberId properties
+ */
+describe('Property 8: Airtable Table and Field Usage', () => {
+  let mockAirtableClient: jest.Mocked<AirtableClient>;
+  let queryService: QueryService;
+
+  beforeEach(() => {
+    mockAirtableClient = {
+      createRecord: jest.fn(),
+      updateRecord: jest.fn(),
+      getRecord: jest.fn(),
+      findRecords: jest.fn(),
+      batchCreate: jest.fn(),
+      batchUpdate: jest.fn(),
+    } as unknown as jest.Mocked<AirtableClient>;
+
+    queryService = new QueryService(mockAirtableClient);
+  });
+
+  afterEach(() => {
+    jest.clearAllMocks();
+  });
+
+  /**
+   * Property 8.1: Follow-up summary queries Members table for follow-up member data
+   * 
+   * Validates that getFollowUpSummary uses MEMBERS table (not VOLUNTEERS)
+   * when looking up follow-up member names
+   * 
+   * Validates: Requirements 7.3, 13.4
+   */
+  it('should query Members table for follow-up member data in getFollowUpSummary', async () => {
+    await fc.assert(
+      fc.asyncProperty(
+        fc.uniqueArray(airtableIdArb, { minLength: 1, maxLength: 5 }), // followUpMemberIds
+        fc.uniqueArray(airtableIdArb, { minLength: 1, maxLength: 10 }), // memberIds
+        async (followUpMemberIds, memberIds) => {
+          // Create assignment records
+          const assignments: AirtableRecord[] = [];
+          let assignmentIndex = 0;
+          
+          for (const followUpMemberId of followUpMemberIds) {
+            // Each follow-up member gets 1-3 assignments
+            const numAssignments = Math.min(3, memberIds.length - assignmentIndex);
+            for (let i = 0; i < numAssignments && assignmentIndex < memberIds.length; i++) {
+              assignments.push({
+                id: `recAssign${assignmentIndex.toString().padStart(10, '0')}`,
+                fields: {
+                  'Assigned To': [followUpMemberId],
+                  'Member': [memberIds[assignmentIndex]],
+                  'Status': 'Assigned',
+                  'Assigned Date': '2024-01-01',
+                  'Due Date': '2024-01-15',
+                },
+                createdTime: new Date().toISOString(),
+              });
+              assignmentIndex++;
+            }
+          }
+
+          // Create follow-up member records (in Members table)
+          const followUpMemberRecords: AirtableRecord[] = followUpMemberIds.map((id, i) => ({
+            id,
+            fields: {
+              'Name': `Follow-up Member ${i}`,
+              'Full Name': `Follow-up Member ${i}`,
+              'First Name': `Follow-up`,
+              'Last Name': `Member ${i}`,
+              'Phone': `+123456789${i}`,
+              'Status': 'Member',
+              'Source': 'Other',
+              'Date First Captured': '2024-01-01',
+              'Follow-up Status': 'Not Started',
+            },
+            createdTime: new Date().toISOString(),
+          }));
+
+          // Create member records
+          const memberRecords: AirtableRecord[] = memberIds.map((id, i) => ({
+            id,
+            fields: {
+              'First Name': `First${i}`,
+              'Last Name': `Last${i}`,
+              'Full Name': `First${i} Last${i}`,
+              'Phone': `+987654321${i}`,
+              'Status': 'First Timer',
+              'Source': 'Other',
+              'Date First Captured': '2024-01-01',
+              'Follow-up Status': 'Not Started',
+            },
+            createdTime: new Date().toISOString(),
+          }));
+
+          // Track which tables are queried
+          const queriedTables = new Set<string>();
+
+          mockAirtableClient.findRecords.mockImplementation(async (table) => {
+            queriedTables.add(table);
+            if (table === 'Follow-up Assignments') {
+              return assignments;
+            }
+            return [];
+          });
+
+          mockAirtableClient.getRecord.mockImplementation(async (table, id) => {
+            queriedTables.add(table);
+            if (table === 'Members') {
+              // Return follow-up member or regular member
+              const followUpMember = followUpMemberRecords.find(m => m.id === id);
+              if (followUpMember) return followUpMember;
+              const member = memberRecords.find(m => m.id === id);
+              if (member) return member;
+            }
+            throw new Error(`Record not found: ${table}/${id}`);
+          });
+
+          const result = await queryService.getFollowUpSummary();
+
+          // Property: Should query Members table, not Volunteers table
+          expect(queriedTables.has('Members')).toBe(true);
+          expect(queriedTables.has('Volunteers')).toBe(false);
+
+          // Property: Result should have byFollowUpMember property (not byVolunteer)
+          expect(result).toHaveProperty('byFollowUpMember');
+          expect(result).not.toHaveProperty('byVolunteer');
+
+          // Property: Each entry should have followUpMemberId and followUpMemberName
+          result.byFollowUpMember.forEach(entry => {
+            expect(entry).toHaveProperty('followUpMemberId');
+            expect(entry).toHaveProperty('followUpMemberName');
+            expect(entry).not.toHaveProperty('volunteerId');
+            expect(entry).not.toHaveProperty('volunteerName');
+          });
+
+          jest.clearAllMocks();
+        }
+      ),
+      { numRuns: 100 }
+    );
+  });
+
+  /**
+   * Property 8.2: Follow-up comments queries Members table for follow-up member data
+   * 
+   * Validates that getFollowUpComments uses MEMBERS table when looking up
+   * follow-up member names from the Volunteer field
+   * 
+   * Validates: Requirements 7.3, 13.4
+   */
+  it('should query Members table for follow-up member data in getFollowUpComments', async () => {
+    await fc.assert(
+      fc.asyncProperty(
+        fc.uniqueArray(airtableIdArb, { minLength: 1, maxLength: 5 }), // interactionIds
+        fc.uniqueArray(airtableIdArb, { minLength: 1, maxLength: 5 }), // followUpMemberIds
+        fc.uniqueArray(airtableIdArb, { minLength: 1, maxLength: 5 }), // memberIds
+        async (interactionIds, followUpMemberIds, memberIds) => {
+          // Create interaction records
+          const interactions: AirtableRecord[] = interactionIds.map((id, i) => ({
+            id,
+            fields: {
+              'Member': [memberIds[i % memberIds.length]],
+              'Volunteer': [followUpMemberIds[i % followUpMemberIds.length]], // Airtable field name
+              'Interaction Date': '2024-01-15',
+              'Comment': `Comment ${i}`,
+            },
+            createdTime: new Date().toISOString(),
+          }));
+
+          // Create follow-up member records (in Members table)
+          const followUpMemberRecords: AirtableRecord[] = followUpMemberIds.map((id, i) => ({
+            id,
+            fields: {
+              'Name': `Follow-up Member ${i}`,
+              'Full Name': `Follow-up Member ${i}`,
+              'First Name': `Follow-up`,
+              'Last Name': `Member ${i}`,
+              'Phone': `+123456789${i}`,
+              'Status': 'Member',
+              'Source': 'Other',
+              'Date First Captured': '2024-01-01',
+              'Follow-up Status': 'Not Started',
+            },
+            createdTime: new Date().toISOString(),
+          }));
+
+          // Create member records
+          const memberRecords: AirtableRecord[] = memberIds.map((id, i) => ({
+            id,
+            fields: {
+              'First Name': `First${i}`,
+              'Last Name': `Last${i}`,
+              'Full Name': `First${i} Last${i}`,
+              'Phone': `+987654321${i}`,
+              'Status': 'First Timer',
+              'Source': 'Other',
+              'Date First Captured': '2024-01-01',
+              'Follow-up Status': 'Not Started',
+            },
+            createdTime: new Date().toISOString(),
+          }));
+
+          // Track which tables are queried
+          const queriedTables = new Set<string>();
+
+          mockAirtableClient.findRecords.mockImplementation(async (table) => {
+            queriedTables.add(table);
+            if (table === 'Follow-up Interactions') {
+              return interactions;
+            }
+            return [];
+          });
+
+          mockAirtableClient.getRecord.mockImplementation(async (table, id) => {
+            queriedTables.add(table);
+            if (table === 'Members') {
+              // Return follow-up member or regular member
+              const followUpMember = followUpMemberRecords.find(m => m.id === id);
+              if (followUpMember) return followUpMember;
+              const member = memberRecords.find(m => m.id === id);
+              if (member) return member;
+            }
+            throw new Error(`Record not found: ${table}/${id}`);
+          });
+
+          const result = await queryService.getFollowUpComments();
+
+          // Property: Should query Members table, not Volunteers table
+          expect(queriedTables.has('Members')).toBe(true);
+          expect(queriedTables.has('Volunteers')).toBe(false);
+
+          // Property: Each interaction should have followUpMemberId and followUpMemberName
+          result.forEach(interaction => {
+            expect(interaction).toHaveProperty('followUpMemberId');
+            expect(interaction).toHaveProperty('followUpMemberName');
+            expect(interaction).not.toHaveProperty('volunteerId');
+            expect(interaction).not.toHaveProperty('volunteerName');
+          });
+
+          jest.clearAllMocks();
+        }
+      ),
+      { numRuns: 100 }
+    );
+  });
+
+  /**
+   * Property 8.3: Souls assigned queries Members table for follow-up member data
+   * 
+   * Validates that getSoulsAssignedByFollowUpMember uses MEMBERS table
+   * when looking up Soul Winner names
+   * 
+   * Validates: Requirements 7.3, 13.4
+   */
+  it('should query Members table for follow-up member data in getSoulsAssignedByFollowUpMember', async () => {
+    await fc.assert(
+      fc.asyncProperty(
+        fc.uniqueArray(airtableIdArb, { minLength: 1, maxLength: 5 }), // evangelismIds
+        fc.uniqueArray(airtableIdArb, { minLength: 1, maxLength: 5 }), // soulWinnerIds
+        fc.uniqueArray(airtableIdArb, { minLength: 1, maxLength: 5 }), // linkedMemberIds
+        async (evangelismIds, soulWinnerIds, linkedMemberIds) => {
+          // Create evangelism records
+          const evangelismRecords: AirtableRecord[] = evangelismIds.map((id, i) => ({
+            id,
+            fields: {
+              'Soul Winner': [soulWinnerIds[i % soulWinnerIds.length]],
+              'Linked Member': [linkedMemberIds[i % linkedMemberIds.length]],
+              'Date': '2024-01-01',
+              'First Name': `Contact${i}`,
+              'Last Name': `Person${i}`,
+            },
+            createdTime: new Date().toISOString(),
+          }));
+
+          // Create soul winner records (in Members table)
+          const soulWinnerRecords: AirtableRecord[] = soulWinnerIds.map((id, i) => ({
+            id,
+            fields: {
+              'Full Name': `Soul Winner ${i}`,
+              'First Name': `Soul`,
+              'Last Name': `Winner ${i}`,
+              'Phone': `+123456789${i}`,
+              'Status': 'Member',
+              'Source': 'Other',
+              'Date First Captured': '2024-01-01',
+              'Follow-up Status': 'Not Started',
+            },
+            createdTime: new Date().toISOString(),
+          }));
+
+          // Create linked member records
+          const linkedMemberRecords: AirtableRecord[] = linkedMemberIds.map((id, i) => ({
+            id,
+            fields: {
+              'First Name': `First${i}`,
+              'Last Name': `Last${i}`,
+              'Full Name': `First${i} Last${i}`,
+              'Phone': `+987654321${i}`,
+              'Status': 'Evangelism Contact',
+              'Source': 'Evangelism',
+              'Date First Captured': '2024-01-01',
+              'Follow-up Status': 'Not Started',
+            },
+            createdTime: new Date().toISOString(),
+          }));
+
+          // Track which tables are queried
+          const queriedTables = new Set<string>();
+
+          mockAirtableClient.findRecords.mockImplementation(async (table) => {
+            queriedTables.add(table);
+            if (table === 'Evangelism') {
+              return evangelismRecords;
+            }
+            if (table === 'Members') {
+              return linkedMemberRecords;
+            }
+            return [];
+          });
+
+          mockAirtableClient.getRecord.mockImplementation(async (table, id) => {
+            queriedTables.add(table);
+            if (table === 'Members') {
+              // Return soul winner or linked member
+              const soulWinner = soulWinnerRecords.find(m => m.id === id);
+              if (soulWinner) return soulWinner;
+              const member = linkedMemberRecords.find(m => m.id === id);
+              if (member) return member;
+            }
+            throw new Error(`Record not found: ${table}/${id}`);
+          });
+
+          const result = await queryService.getSoulsAssignedByFollowUpMember();
+
+          // Property: Should query Members table, not Volunteers table
+          expect(queriedTables.has('Members')).toBe(true);
+          expect(queriedTables.has('Volunteers')).toBe(false);
+
+          // Property: Each entry should have followUpMemberId and followUpMemberName
+          result.forEach(entry => {
+            expect(entry).toHaveProperty('followUpMemberId');
+            expect(entry).toHaveProperty('followUpMemberName');
+            expect(entry).not.toHaveProperty('volunteerId');
+            expect(entry).not.toHaveProperty('volunteerName');
+          });
+
+          jest.clearAllMocks();
+        }
+      ),
+      { numRuns: 100 }
+    );
+  });
+
+  /**
+   * Property 8.4: Airtable field names remain unchanged
+   * 
+   * Validates that queries use existing Airtable field names like "Assigned To"
+   * and "Volunteer" even though code variables use followUpMember terminology
+   * 
+   * Validates: Requirements 7.4, 11.3
+   */
+  it('should use existing Airtable field names in queries', async () => {
+    await fc.assert(
+      fc.asyncProperty(
+        airtableIdArb, // followUpMemberId
+        async (followUpMemberId) => {
+          // Track the filter formulas used
+          const filterFormulas: string[] = [];
+
+          mockAirtableClient.findRecords.mockImplementation(async (_table, filter) => {
+            if (filter) {
+              filterFormulas.push(filter);
+            }
+            return [];
+          });
+
+          // Call method that queries by follow-up member
+          try {
+            await queryService.getFollowUpsByFollowUpMember(followUpMemberId);
+          } catch {
+            // Ignore errors - we're just checking the query
+          }
+
+          // Property: Filter should use "Assigned To" field name (Airtable field)
+          // not "assignedToFollowUpMember" or similar code-level names
+          const hasAssignedToField = filterFormulas.some(formula => 
+            formula.includes('Assigned To')
+          );
+          expect(hasAssignedToField).toBe(true);
+
+          // Property: Filter should not use code-level field names
+          const hasCodeLevelNames = filterFormulas.some(formula => 
+            formula.includes('assignedToFollowUpMember') ||
+            formula.includes('followUpMemberId')
+          );
+          expect(hasCodeLevelNames).toBe(false);
+
+          jest.clearAllMocks();
+        }
+      ),
+      { numRuns: 50 }
     );
   });
 });

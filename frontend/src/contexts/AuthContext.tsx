@@ -54,14 +54,14 @@ export function AuthProvider({ children }: AuthProviderProps) {
       const role = determineRole(groups || []);
       
       // Extract custom attributes
-      const volunteerId = idToken?.payload?.['custom:volunteerId'] as string | undefined;
+      const followUpMemberId = idToken?.payload?.['custom:followUpMemberId'] as string | undefined;
       const departmentIds = idToken?.payload?.['custom:departmentIds'] as string | undefined;
       
       return {
         userId: authUser.userId,
         email: authUser.signInDetails?.loginId || '',
         role,
-        volunteerId,
+        followUpMemberId,
         departmentIds: departmentIds ? departmentIds.split(',') : undefined,
       };
     } catch {

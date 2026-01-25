@@ -12,7 +12,7 @@ import type {
   ServiceComparison,
   FollowUpAssignment,
   FollowUpInteraction,
-  SoulsAssignedByVolunteer,
+  SoulsAssignedByMember,
   EvangelismRecord,
   VisitedMember,
   DepartmentRoster,
@@ -39,7 +39,7 @@ export const churchApi = {
       apiClient.get<EvangelismStats>(`/query/dashboard?type=evangelism&period=${period}`),
 
     /**
-     * Get follow-up summary grouped by volunteer
+     * Get follow-up summary grouped by member
      */
     getFollowUpSummary: () =>
       apiClient.get<FollowUpSummary[]>('/query/dashboard?type=follow-up-summary'),
@@ -77,12 +77,12 @@ export const churchApi = {
      * Get attendees by category for drill-down view
      * Requirements: 3.2, 3.3
      * @param serviceId - The service ID to get attendees for
-     * @param category - The attendance category (firstTimers, returners, evangelismContacts, department)
+     * @param category - The attendance category (firstTimers, returners, members, evangelismContacts, visitors, department)
      * @param departmentId - Optional department ID when category is 'department'
      */
     getAttendeesByCategory: (
       serviceId: string, 
-      category: 'firstTimers' | 'returners' | 'evangelismContacts' | 'department',
+      category: 'firstTimers' | 'returners' | 'members' | 'children' | 'evangelismContacts' | 'visitors' | 'department',
       departmentId?: string
     ) => {
       const params = new URLSearchParams({
@@ -186,10 +186,10 @@ export const churchApi = {
       apiClient.get<FollowUpAssignment[]>('/query/follow-up?type=due-today'),
 
     /**
-     * Get follow-ups by volunteer
+     * Get follow-ups by member
      */
-    getByVolunteer: (volunteerId: string) =>
-      apiClient.get<FollowUpAssignment[]>(`/query/follow-up?type=by-volunteer&volunteerId=${volunteerId}`),
+    getByMember: (memberId: string) =>
+      apiClient.get<FollowUpAssignment[]>(`/query/follow-up?type=by-member&memberId=${memberId}`),
 
     /**
      * Get unassigned members
@@ -198,10 +198,10 @@ export const churchApi = {
       apiClient.get<Member[]>('/query/follow-up?type=unassigned'),
 
     /**
-     * Get souls assigned grouped by volunteer
+     * Get souls assigned grouped by member
      */
-    getSoulsAssignedByVolunteer: () =>
-      apiClient.get<SoulsAssignedByVolunteer[]>('/query/follow-up?type=souls-by-volunteer'),
+    getSoulsAssignedByMember: () =>
+      apiClient.get<SoulsAssignedByMember[]>('/query/follow-up?type=souls-by-member'),
 
     /**
      * Get follow-up interactions with date filter

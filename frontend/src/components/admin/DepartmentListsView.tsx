@@ -115,10 +115,10 @@ function DepartmentListsView({ data, isLoading = false }: DepartmentListsViewPro
                 <div className="flex items-center gap-3">
                   <div className="w-10 h-10 bg-blue-100 dark:bg-blue-900/30 rounded-full flex items-center justify-center">
                     <span className="text-primary dark:text-primary-light font-semibold text-sm">
-                      {dept.departmentName.charAt(0).toUpperCase()}
+                      {dept.departmentName ? String(dept.departmentName).charAt(0).toUpperCase() : '?'}
                     </span>
                   </div>
-                  <span className="font-medium text-text-primary-light dark:text-text-primary-dark">{dept.departmentName}</span>
+                  <span className="font-medium text-text-primary-light dark:text-text-primary-dark">{dept.departmentName || 'Unknown'}</span>
                 </div>
                 <div className="flex items-center gap-3">
                   <span className="bg-blue-100 dark:bg-blue-900/30 text-primary dark:text-primary-light text-sm font-medium px-2.5 py-0.5 rounded">
