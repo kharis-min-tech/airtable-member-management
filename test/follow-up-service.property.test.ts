@@ -51,7 +51,7 @@ describe('Property 6: Follow-up Assignment Creation', () => {
   });
 
   /**
-   * Property 6.1: For any valid member and volunteer IDs, createAssignment
+   * Property 6.1: For any valid member and follow-up member IDs, createAssignment
    * should create an assignment with Due Date = Assigned Date + 3 days
    * 
    * Validates: Requirements 4.2, 4.3
@@ -62,11 +62,11 @@ describe('Property 6: Follow-up Assignment Creation', () => {
         airtableIdArb,
         airtableIdArb,
         assignmentRecordArb,
-        async (memberId, volunteerId, mockRecord) => {
+        async (memberId, followUpMemberId, mockRecord) => {
           mockAirtableClient.createRecord.mockResolvedValue(mockRecord as AirtableRecord);
 
           const beforeCreate = new Date();
-          await followUpService.createAssignment(memberId, volunteerId);
+          await followUpService.createAssignment(memberId, followUpMemberId);
           const afterCreate = new Date();
 
           // Verify createRecord was called with correct parameters
@@ -74,7 +74,7 @@ describe('Property 6: Follow-up Assignment Creation', () => {
             'Follow-up Assignments',
             expect.objectContaining({
               'Member': [memberId],
-              'Assigned To': [volunteerId],
+              'Assigned To': [followUpMemberId],
               'Status': 'Assigned',
             })
           );
@@ -116,10 +116,10 @@ describe('Property 6: Follow-up Assignment Creation', () => {
         airtableIdArb,
         airtableIdArb,
         assignmentRecordArb,
-        async (memberId, volunteerId, mockRecord) => {
+        async (memberId, followUpMemberId, mockRecord) => {
           mockAirtableClient.createRecord.mockResolvedValue(mockRecord as AirtableRecord);
 
-          await followUpService.createAssignment(memberId, volunteerId);
+          await followUpService.createAssignment(memberId, followUpMemberId);
 
           expect(mockAirtableClient.createRecord).toHaveBeenCalledWith(
             expect.any(String),
@@ -136,18 +136,18 @@ describe('Property 6: Follow-up Assignment Creation', () => {
   });
 
   /**
-   * Property 6.3: createAssignment should reject empty member or volunteer IDs
+   * Property 6.3: createAssignment should reject empty member or follow-up member IDs
    * 
    * Validates: Input validation for Requirements 4.1
    */
-  it('should reject empty member or volunteer IDs', async () => {
+  it('should reject empty member or follow-up member IDs', async () => {
     await fc.assert(
       fc.asyncProperty(
         fc.constantFrom('', ' ', '  '),
         airtableIdArb,
-        async (emptyMemberId, volunteerId) => {
+        async (emptyMemberId, followUpMemberId) => {
           await expect(
-            followUpService.createAssignment(emptyMemberId.trim() || '', volunteerId)
+            followUpService.createAssignment(emptyMemberId.trim() || '', followUpMemberId)
           ).rejects.toThrow(FollowUpError);
         }
       ),
@@ -158,9 +158,9 @@ describe('Property 6: Follow-up Assignment Creation', () => {
       fc.asyncProperty(
         airtableIdArb,
         fc.constantFrom('', ' ', '  '),
-        async (memberId, emptyVolunteerId) => {
+        async (memberId, emptyFollowUpMemberId) => {
           await expect(
-            followUpService.createAssignment(memberId, emptyVolunteerId.trim() || '')
+            followUpService.createAssignment(memberId, emptyFollowUpMemberId.trim() || '')
           ).rejects.toThrow(FollowUpError);
         }
       ),
@@ -180,10 +180,10 @@ describe('Property 6: Follow-up Assignment Creation', () => {
         airtableIdArb,
         fc.integer({ min: 1, max: 30 }),
         assignmentRecordArb,
-        async (memberId, volunteerId, customDueDays, mockRecord) => {
+        async (memberId, followUpMemberId, customDueDays, mockRecord) => {
           mockAirtableClient.createRecord.mockResolvedValue(mockRecord as AirtableRecord);
 
-          await followUpService.createAssignment(memberId, volunteerId, customDueDays);
+          await followUpService.createAssignment(memberId, followUpMemberId, customDueDays);
 
           const createCall = mockAirtableClient.createRecord.mock.calls[0];
           const fields = createCall?.[1] as Record<string, unknown>;
@@ -230,24 +230,24 @@ describe('Property 7: Follow-up Reassignment on Capacity', () => {
   });
 
   /**
-   * Property 7.1: When volunteer has capacity (< 20 assignments), 
+   * Property 7.1: When follow-up member has capacity (< 20 assignments), 
    * no reassignment should occur
    * 
    * Validates: Requirement 5.1
    */
-  it('should not reassign when volunteer has capacity', async () => {
+  it('should not reassign when follow-up member has capacity', async () => {
     await fc.assert(
       fc.asyncProperty(
         airtableIdArb,
         airtableIdArb,
         fc.integer({ min: 0, max: 19 }), // Under capacity
         assignmentRecordArb,
-        async (memberId, volunteerId, currentAssignments, mockAssignmentRecord) => {
-          // Mock volunteer with capacity
+        async (memberId, followUpMemberId, currentAssignments, mockAssignmentRecord) => {
+          // Mock follow-up member with capacity
           mockAirtableClient.getRecord.mockResolvedValue({
-            id: volunteerId,
+            id: followUpMemberId,
             fields: {
-              'Name': 'Test Volunteer',
+              'Name': 'Test Follow-up Member',
               'Role': 'Follow-up',
               'Active': true,
               'Capacity': 20,
@@ -264,11 +264,11 @@ describe('Property 7: Follow-up Reassignment on Capacity', () => {
           mockAirtableClient.findRecords.mockResolvedValue(mockAssignments as AirtableRecord[]);
           mockAirtableClient.createRecord.mockResolvedValue(mockAssignmentRecord as AirtableRecord);
 
-          const result = await followUpService.assignWithCapacityCheck(memberId, volunteerId);
+          const result = await followUpService.assignWithCapacityCheck(memberId, followUpMemberId);
 
-          // Should assign to preferred volunteer without reassignment
+          // Should assign to preferred follow-up member without reassignment
           expect(result.wasReassigned).toBe(false);
-          expect(result.assignedVolunteerId).toBe(volunteerId);
+          expect(result.assignedFollowUpMemberId).toBe(followUpMemberId);
           expect(result.assignment).toBeDefined();
 
           jest.clearAllMocks();
@@ -279,12 +279,12 @@ describe('Property 7: Follow-up Reassignment on Capacity', () => {
   });
 
   /**
-   * Property 7.2: When volunteer is at capacity (>= 20 assignments) and 
-   * another volunteer is available, reassignment should occur
+   * Property 7.2: When follow-up member is at capacity (>= 20 assignments) and 
+   * another follow-up member is available, reassignment should occur
    * 
    * Validates: Requirements 5.1, 5.2, 5.3
    */
-  it('should reassign when volunteer at capacity and alternative available', async () => {
+  it('should reassign when follow-up member at capacity and alternative available', async () => {
     await fc.assert(
       fc.asyncProperty(
         airtableIdArb,
@@ -292,17 +292,17 @@ describe('Property 7: Follow-up Reassignment on Capacity', () => {
         airtableIdArb,
         fc.integer({ min: 20, max: 30 }), // At or over capacity
         assignmentRecordArb,
-        async (memberId, preferredVolunteerId, alternativeVolunteerId, currentAssignments, mockAssignmentRecord) => {
+        async (memberId, preferredFollowUpMemberId, alternativeFollowUpMemberId, currentAssignments, mockAssignmentRecord) => {
           // Ensure IDs are different
-          fc.pre(preferredVolunteerId !== alternativeVolunteerId);
+          fc.pre(preferredFollowUpMemberId !== alternativeFollowUpMemberId);
 
-          // Mock preferred volunteer at capacity
+          // Mock preferred follow-up member at capacity
           mockAirtableClient.getRecord.mockImplementation(async (_table: string, id: string) => {
-            if (id === preferredVolunteerId) {
+            if (id === preferredFollowUpMemberId) {
               return {
-                id: preferredVolunteerId,
+                id: preferredFollowUpMemberId,
                 fields: {
-                  'Name': 'Preferred Volunteer',
+                  'Name': 'Preferred Follow-up Member',
                   'Role': 'Follow-up',
                   'Active': true,
                   'Capacity': 20,
@@ -311,9 +311,9 @@ describe('Property 7: Follow-up Reassignment on Capacity', () => {
               } as AirtableRecord;
             }
             return {
-              id: alternativeVolunteerId,
+              id: alternativeFollowUpMemberId,
               fields: {
-                'Name': 'Alternative Volunteer',
+                'Name': 'Alternative Follow-up Member',
                 'Role': 'Follow-up',
                 'Active': true,
                 'Capacity': 20,
@@ -325,7 +325,7 @@ describe('Property 7: Follow-up Reassignment on Capacity', () => {
           let findRecordsCallCount = 0;
           mockAirtableClient.findRecords.mockImplementation(async () => {
             findRecordsCallCount++;
-            // First call: check preferred volunteer's assignments (at capacity)
+            // First call: check preferred follow-up member's assignments (at capacity)
             if (findRecordsCallCount === 1) {
               return Array(currentAssignments).fill(null).map((_, i) => ({
                 id: `rec${String(i).padStart(14, '0')}`,
@@ -333,12 +333,12 @@ describe('Property 7: Follow-up Reassignment on Capacity', () => {
                 createdTime: new Date().toISOString(),
               })) as AirtableRecord[];
             }
-            // Second call: find available volunteers
+            // Second call: find available follow-up members
             if (findRecordsCallCount === 2) {
               return [{
-                id: alternativeVolunteerId,
+                id: alternativeFollowUpMemberId,
                 fields: {
-                  'Name': 'Alternative Volunteer',
+                  'Name': 'Alternative Follow-up Member',
                   'Role': 'Follow-up',
                   'Active': true,
                   'Capacity': 20,
@@ -346,17 +346,17 @@ describe('Property 7: Follow-up Reassignment on Capacity', () => {
                 createdTime: new Date().toISOString(),
               }] as AirtableRecord[];
             }
-            // Third call: check alternative volunteer's capacity (has capacity)
+            // Third call: check alternative follow-up member's capacity (has capacity)
             return [] as AirtableRecord[];
           });
 
           mockAirtableClient.createRecord.mockResolvedValue(mockAssignmentRecord as AirtableRecord);
 
-          const result = await followUpService.assignWithCapacityCheck(memberId, preferredVolunteerId);
+          const result = await followUpService.assignWithCapacityCheck(memberId, preferredFollowUpMemberId);
 
-          // Should reassign to alternative volunteer
+          // Should reassign to alternative follow-up member
           expect(result.wasReassigned).toBe(true);
-          expect(result.assignedVolunteerId).toBe(alternativeVolunteerId);
+          expect(result.assignedFollowUpMemberId).toBe(alternativeFollowUpMemberId);
           expect(result.assignment).toBeDefined();
           expect(result.warning).toBeDefined();
 
@@ -368,24 +368,24 @@ describe('Property 7: Follow-up Reassignment on Capacity', () => {
   });
 
   /**
-   * Property 7.3: When volunteer is at capacity and no alternative available,
+   * Property 7.3: When follow-up member is at capacity and no alternative available,
    * should still assign but with warning
    * 
    * Validates: Requirement 5.4
    */
-  it('should assign with warning when no alternative volunteer available', async () => {
+  it('should assign with warning when no alternative follow-up member available', async () => {
     await fc.assert(
       fc.asyncProperty(
         airtableIdArb,
         airtableIdArb,
         fc.integer({ min: 20, max: 30 }), // At or over capacity
         assignmentRecordArb,
-        async (memberId, volunteerId, currentAssignments, mockAssignmentRecord) => {
-          // Mock volunteer at capacity
+        async (memberId, followUpMemberId, currentAssignments, mockAssignmentRecord) => {
+          // Mock follow-up member at capacity
           mockAirtableClient.getRecord.mockResolvedValue({
-            id: volunteerId,
+            id: followUpMemberId,
             fields: {
-              'Name': 'Test Volunteer',
+              'Name': 'Test Follow-up Member',
               'Role': 'Follow-up',
               'Active': true,
               'Capacity': 20,
@@ -396,7 +396,7 @@ describe('Property 7: Follow-up Reassignment on Capacity', () => {
           let findRecordsCallCount = 0;
           mockAirtableClient.findRecords.mockImplementation(async () => {
             findRecordsCallCount++;
-            // First call: check volunteer's assignments (at capacity)
+            // First call: check follow-up member's assignments (at capacity)
             if (findRecordsCallCount === 1) {
               return Array(currentAssignments).fill(null).map((_, i) => ({
                 id: `rec${String(i).padStart(14, '0')}`,
@@ -404,7 +404,7 @@ describe('Property 7: Follow-up Reassignment on Capacity', () => {
                 createdTime: new Date().toISOString(),
               })) as AirtableRecord[];
             }
-            // Second call: find available volunteers (none available)
+            // Second call: find available follow-up members (none available)
             if (findRecordsCallCount === 2) {
               return [] as AirtableRecord[];
             }
@@ -418,11 +418,11 @@ describe('Property 7: Follow-up Reassignment on Capacity', () => {
 
           mockAirtableClient.createRecord.mockResolvedValue(mockAssignmentRecord as AirtableRecord);
 
-          const result = await followUpService.assignWithCapacityCheck(memberId, volunteerId);
+          const result = await followUpService.assignWithCapacityCheck(memberId, followUpMemberId);
 
-          // Should still assign to preferred volunteer but with warning
+          // Should still assign to preferred follow-up member but with warning
           expect(result.wasReassigned).toBe(false);
-          expect(result.assignedVolunteerId).toBe(volunteerId);
+          expect(result.assignedFollowUpMemberId).toBe(followUpMemberId);
           expect(result.assignment).toBeDefined();
           expect(result.warning).toBeDefined();
           expect(result.warning).toContain('capacity');
@@ -489,7 +489,7 @@ describe('Property 7: Follow-up Reassignment on Capacity', () => {
                 createdTime: new Date().toISOString(),
               })) as AirtableRecord[];
             }
-            // Second call: find available volunteers
+            // Second call: find available follow-up members
             if (findRecordsCallCount === 2) {
               return [{
                 id: newOwnerId,
@@ -564,7 +564,7 @@ describe('Property 7: Follow-up Reassignment on Capacity', () => {
             followUpService.assignWithCapacityCheck('', validId)
           ).rejects.toThrow(FollowUpError);
 
-          // Empty volunteer ID
+          // Empty follow-up member ID
           await expect(
             followUpService.assignWithCapacityCheck(validId, '')
           ).rejects.toThrow(FollowUpError);

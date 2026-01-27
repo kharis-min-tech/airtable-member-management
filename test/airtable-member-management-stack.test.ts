@@ -1,6 +1,6 @@
 import * as cdk from 'aws-cdk-lib';
 import { Template } from 'aws-cdk-lib/assertions';
-import { AirtableMemberManagementStack } from '../lib/airtable-member-management-stack';
+import { AirtableMemberManagementStack, DomainConfig } from '../lib/airtable-member-management-stack';
 
 describe('ChurchAutomationStack', () => {
   let app: cdk.App;
@@ -101,8 +101,10 @@ describe('ChurchAutomationStack', () => {
       });
     });
 
-    it('should create CloudFront Origin Access Identity', () => {
-      template.resourceCountIs('AWS::CloudFront::CloudFrontOriginAccessIdentity', 1);
+    it('should create CloudFront Origin Access Control (not deprecated OAI)', () => {
+      template.resourceCountIs('AWS::CloudFront::OriginAccessControl', 1);
+      // Verify no deprecated Origin Access Identity is created
+      template.resourceCountIs('AWS::CloudFront::CloudFrontOriginAccessIdentity', 0);
     });
 
     it('should configure SPA error handling for client-side routing', () => {
@@ -122,6 +124,64 @@ describe('ChurchAutomationStack', () => {
           ],
         },
       });
+    });
+
+    it('should not create Route 53 resources (managed by Cloudflare)', () => {
+      // Verify no Route 53 resources are created with Cloudflare DNS
+      template.resourceCountIs('AWS::Route53::RecordSet', 0);
+      template.resourceCountIs('AWS::Route53::HostedZone', 0);
+    });
+  });
+
+  describe('Custom Domain Configuration', () => {
+    let domainApp: cdk.App;
+    let domainStack: AirtableMemberManagementStack;
+    let domainTemplate: Template;
+
+    beforeAll(() => {
+      const domainConfig: DomainConfig = {
+        domainName: 'test.example.com',
+        certificateArn: 'arn:aws:acm:us-east-1:123456789012:certificate/test-cert-id',
+      };
+
+      domainApp = new cdk.App();
+      domainStack = new AirtableMemberManagementStack(domainApp, 'TestDomainStack', {
+        domainConfig,
+        env: { account: '123456789012', region: 'us-east-1' },
+      });
+      domainTemplate = Template.fromStack(domainStack);
+    });
+
+    it('should configure CloudFront with custom domain', () => {
+      domainTemplate.hasResourceProperties('AWS::CloudFront::Distribution', {
+        DistributionConfig: {
+          Aliases: ['test.example.com'],
+          ViewerCertificate: {
+            AcmCertificateArn: 'arn:aws:acm:us-east-1:123456789012:certificate/test-cert-id',
+            SslSupportMethod: 'sni-only',
+            MinimumProtocolVersion: 'TLSv1.2_2021',
+          },
+        },
+      });
+    });
+
+    it('should output CloudFront domain for Cloudflare DNS setup', () => {
+      domainTemplate.hasOutput('CloudFrontDomainForDNS', {
+        Description: 'CloudFront domain name for Cloudflare DNS CNAME record',
+      });
+    });
+
+    it('should output custom domain name', () => {
+      domainTemplate.hasOutput('CustomDomain', {
+        Value: 'test.example.com',
+        Description: 'Custom domain name',
+      });
+    });
+
+    it('should still not create Route 53 resources with custom domain', () => {
+      // Even with custom domain, no Route 53 resources should be created
+      domainTemplate.resourceCountIs('AWS::Route53::RecordSet', 0);
+      domainTemplate.resourceCountIs('AWS::Route53::HostedZone', 0);
     });
   });
 });

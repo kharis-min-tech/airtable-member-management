@@ -4,7 +4,7 @@
  * Shows Attendance grouped first by Service then by Department
  */
 
-import { useMemo, useState, useCallback } from 'react';
+import { useMemo, useState, useCallback, useEffect } from 'react';
 import { useApi } from '../../hooks/useApi';
 import { churchApi } from '../../services/church-api';
 import { Select } from '../tailus-ui/Select';
@@ -23,17 +23,27 @@ function AttendanceByServiceView({ services, isLoadingServices = false }: Attend
   const [expandedDepartments, setExpandedDepartments] = useState<Set<string>>(new Set());
 
   const attendanceData = useApi<AttendanceByDepartment>(
-    useCallback(() => churchApi.admin.getAttendanceByDepartment(selectedServiceId), [selectedServiceId]),
+    useCallback(() => {
+      if (selectedServiceId) {
+        return churchApi.admin.getAttendanceByDepartment(selectedServiceId);
+      }
+      return Promise.reject(new Error('No service selected'));
+    }, [selectedServiceId]),
     { immediate: false }
   );
 
   const handleServiceChange = (serviceId: string) => {
     setSelectedServiceId(serviceId);
     setExpandedDepartments(new Set());
-    if (serviceId) {
+    // Use useEffect to trigger the API call when selectedServiceId changes
+  };
+
+  // Effect to trigger API call when selectedServiceId changes
+  useEffect(() => {
+    if (selectedServiceId) {
       attendanceData.execute();
     }
-  };
+  }, [selectedServiceId]); // Remove attendanceData from dependencies to avoid infinite loop
 
   const toggleDepartment = (departmentId: string) => {
     setExpandedDepartments((prev) => {
@@ -154,10 +164,10 @@ function AttendanceByServiceView({ services, isLoadingServices = false }: Attend
                   <div className="flex items-center gap-3">
                     <div className="w-10 h-10 bg-green-100 dark:bg-green-900/30 rounded-full flex items-center justify-center">
                       <span className="text-green-600 dark:text-green-400 font-semibold text-sm">
-                        {dept.departmentName.charAt(0).toUpperCase()}
+                        {dept.departmentName ? String(dept.departmentName).charAt(0).toUpperCase() : '?'}
                       </span>
                     </div>
-                    <span className="font-medium text-text-primary-light dark:text-text-primary-dark">{dept.departmentName}</span>
+                    <span className="font-medium text-text-primary-light dark:text-text-primary-dark">{dept.departmentName || 'Unknown'}</span>
                   </div>
                   <div className="flex items-center gap-3">
                     <span className="bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-300 text-sm font-medium px-2.5 py-0.5 rounded">

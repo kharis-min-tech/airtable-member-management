@@ -444,6 +444,9 @@ export class AirtableClient {
 
 /**
  * Table name constants for the church member management system
+ * 
+ * Note: Follow-up members are stored in the Members table, not a separate table.
+ * Members with follow-up roles are identified by their role field in the Members table.
  */
 export const AIRTABLE_TABLES = {
   MEMBERS: 'Members',
@@ -455,7 +458,6 @@ export const AIRTABLE_TABLES = {
   FOLLOW_UP_ASSIGNMENTS: 'Follow-up Assignments',
   FOLLOW_UP_INTERACTIONS: 'Follow-up Interactions',
   HOME_VISITS: 'Home Visits',
-  VOLUNTEERS: 'Volunteers',
   DEPARTMENTS: 'Departments',
   MEMBER_DEPARTMENTS: 'Member Departments',
   MEMBER_PROGRAMS: 'Member Programs',

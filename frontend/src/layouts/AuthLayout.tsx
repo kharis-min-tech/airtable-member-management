@@ -7,7 +7,7 @@ function AuthLayout() {
         {/* Logo/Header */}
         <div className="text-center mb-8">
           <h1 className="text-3xl font-bold text-blue-600 dark:text-blue-400">
-            Church Member Management
+            Member Management
           </h1>
           <p className="text-text-secondary-light dark:text-text-secondary-dark mt-2">
             Sign in to access your dashboard

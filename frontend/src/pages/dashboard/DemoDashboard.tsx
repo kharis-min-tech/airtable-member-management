@@ -13,7 +13,7 @@ import type {
   Service,
   ServiceKPIs,
   EvangelismStats,
-  SoulsAssignedByVolunteer,
+  SoulsAssignedByMember,
   FollowUpInteraction,
 } from '../../types';
 
@@ -31,6 +31,10 @@ const mockKPIs: Record<string, ServiceKPIs> = {
     totalAttendance: 245,
     firstTimersCount: 12,
     returnersCount: 8,
+    membersCount: 180,
+    childrenCount: 28,
+    evangelismContactsCount: 5,
+    visitorsCount: 40,
     departmentBreakdown: [
       { department: 'Choir', count: 35 },
       { department: 'Ushers', count: 22 },
@@ -43,6 +47,10 @@ const mockKPIs: Record<string, ServiceKPIs> = {
     totalAttendance: 198,
     firstTimersCount: 7,
     returnersCount: 5,
+    membersCount: 150,
+    childrenCount: 25,
+    evangelismContactsCount: 3,
+    visitorsCount: 33,
     departmentBreakdown: [
       { department: 'Choir', count: 30 },
       { department: 'Ushers', count: 18 },
@@ -55,6 +63,10 @@ const mockKPIs: Record<string, ServiceKPIs> = {
     totalAttendance: 85,
     firstTimersCount: 3,
     returnersCount: 2,
+    membersCount: 65,
+    childrenCount: 0,
+    evangelismContactsCount: 1,
+    visitorsCount: 14,
     departmentBreakdown: [
       { department: 'Choir', count: 15 },
       { department: 'Ushers', count: 8 },
@@ -65,6 +77,10 @@ const mockKPIs: Record<string, ServiceKPIs> = {
     totalAttendance: 210,
     firstTimersCount: 9,
     returnersCount: 6,
+    membersCount: 160,
+    childrenCount: 26,
+    evangelismContactsCount: 4,
+    visitorsCount: 31,
     departmentBreakdown: [
       { department: 'Choir', count: 32 },
       { department: 'Ushers', count: 20 },
@@ -77,6 +93,10 @@ const mockKPIs: Record<string, ServiceKPIs> = {
     totalAttendance: 320,
     firstTimersCount: 25,
     returnersCount: 15,
+    membersCount: 230,
+    childrenCount: 40,
+    evangelismContactsCount: 8,
+    visitorsCount: 42,
     departmentBreakdown: [
       { department: 'Choir', count: 45 },
       { department: 'Ushers', count: 30 },
@@ -102,10 +122,10 @@ const mockEvangelismStats: Record<'week' | 'month', EvangelismStats> = {
   },
 };
 
-const mockSoulsAssigned: SoulsAssignedByVolunteer[] = [
+const mockSoulsAssigned: SoulsAssignedByMember[] = [
   {
-    volunteerId: 'v1',
-    volunteerName: 'John Mensah',
+    followUpMemberId: 'mem-101',
+    followUpMemberName: 'John Mensah',
     members: [
       { id: 'm1', name: 'Kwame Asante', status: 'First Timer', phone: '0244123456', assignedDate: new Date('2025-12-28') },
       { id: 'm2', name: 'Ama Serwaa', status: 'Evangelism Contact', phone: '0201234567', assignedDate: new Date('2025-12-25') },
@@ -113,16 +133,16 @@ const mockSoulsAssigned: SoulsAssignedByVolunteer[] = [
     ],
   },
   {
-    volunteerId: 'v2',
-    volunteerName: 'Grace Owusu',
+    followUpMemberId: 'mem-102',
+    followUpMemberName: 'Grace Owusu',
     members: [
       { id: 'm4', name: 'Abena Darko', status: 'Returner', phone: '0271234567', assignedDate: new Date('2025-12-30') },
       { id: 'm5', name: 'Yaw Mensah', status: 'Evangelism Contact', phone: '0541234567', assignedDate: new Date('2025-12-22') },
     ],
   },
   {
-    volunteerId: 'v3',
-    volunteerName: 'Emmanuel Adjei',
+    followUpMemberId: 'mem-103',
+    followUpMemberName: 'Emmanuel Adjei',
     members: [
       { id: 'm6', name: 'Akua Frimpong', status: 'First Timer', phone: '0231234567', assignedDate: new Date('2025-12-29') },
       { id: 'm7', name: 'Kwesi Appiah', status: 'Evangelism Contact', phone: '0501234567', assignedDate: new Date('2025-12-27') },
@@ -131,8 +151,8 @@ const mockSoulsAssigned: SoulsAssignedByVolunteer[] = [
     ],
   },
   {
-    volunteerId: 'v4',
-    volunteerName: 'Priscilla Agyemang',
+    followUpMemberId: 'mem-104',
+    followUpMemberName: 'Priscilla Agyemang',
     members: [
       { id: 'm10', name: 'Adwoa Sarpong', status: 'First Timer', phone: '0241234567', assignedDate: new Date('2025-12-31') },
     ],
@@ -140,14 +160,14 @@ const mockSoulsAssigned: SoulsAssignedByVolunteer[] = [
 ];
 
 const mockFollowUpComments: FollowUpInteraction[] = [
-  { id: 'c1', memberId: 'm1', memberName: 'Kwame Asante', volunteerId: 'v1', volunteerName: 'John Mensah', date: new Date('2026-01-02T10:30:00'), comment: 'Called and spoke with him. He is excited about the church and wants to join a cell group.' },
-  { id: 'c2', memberId: 'm2', memberName: 'Ama Serwaa', volunteerId: 'v1', volunteerName: 'John Mensah', date: new Date('2026-01-01T14:15:00'), comment: 'Visited her home. She has some questions about baptism. Will follow up next week.' },
-  { id: 'c3', memberId: 'm4', memberName: 'Abena Darko', volunteerId: 'v2', volunteerName: 'Grace Owusu', date: new Date('2025-12-31T09:00:00'), comment: 'She attended the New Year service. Very happy to be back in church.' },
-  { id: 'c4', memberId: 'm6', memberName: 'Akua Frimpong', volunteerId: 'v3', volunteerName: 'Emmanuel Adjei', date: new Date('2025-12-30T16:45:00'), comment: 'First call made. She is interested in the youth ministry.' },
-  { id: 'c5', memberId: 'm7', memberName: 'Kwesi Appiah', volunteerId: 'v3', volunteerName: 'Emmanuel Adjei', date: new Date('2025-12-29T11:20:00'), comment: 'Met him at the market. Reminded him about Sunday service.' },
-  { id: 'c6', memberId: 'm3', memberName: 'Kofi Boateng', volunteerId: 'v1', volunteerName: 'John Mensah', date: new Date('2025-12-28T15:00:00'), comment: 'Home visit completed. Family is very welcoming. Prayed with them.' },
-  { id: 'c7', memberId: 'm5', memberName: 'Yaw Mensah', volunteerId: 'v2', volunteerName: 'Grace Owusu', date: new Date('2025-12-27T10:00:00'), comment: 'Phone was off. Will try again tomorrow.' },
-  { id: 'c8', memberId: 'm8', memberName: 'Efua Mensah', volunteerId: 'v3', volunteerName: 'Emmanuel Adjei', date: new Date('2025-12-26T13:30:00'), comment: 'She confirmed she will attend the Christmas service with her family.' },
+  { id: 'c1', memberId: 'm1', memberName: 'Kwame Asante', followUpMemberId: 'mem-101', followUpMemberName: 'John Mensah', date: new Date('2026-01-02T10:30:00'), comment: 'Called and spoke with him. He is excited about the church and wants to join a cell group.' },
+  { id: 'c2', memberId: 'm2', memberName: 'Ama Serwaa', followUpMemberId: 'mem-101', followUpMemberName: 'John Mensah', date: new Date('2026-01-01T14:15:00'), comment: 'Visited her home. She has some questions about baptism. Will follow up next week.' },
+  { id: 'c3', memberId: 'm4', memberName: 'Abena Darko', followUpMemberId: 'mem-102', followUpMemberName: 'Grace Owusu', date: new Date('2025-12-31T09:00:00'), comment: 'She attended the New Year service. Very happy to be back in church.' },
+  { id: 'c4', memberId: 'm6', memberName: 'Akua Frimpong', followUpMemberId: 'mem-103', followUpMemberName: 'Emmanuel Adjei', date: new Date('2025-12-30T16:45:00'), comment: 'First call made. She is interested in the youth ministry.' },
+  { id: 'c5', memberId: 'm7', memberName: 'Kwesi Appiah', followUpMemberId: 'mem-103', followUpMemberName: 'Emmanuel Adjei', date: new Date('2025-12-29T11:20:00'), comment: 'Met him at the market. Reminded him about Sunday service.' },
+  { id: 'c6', memberId: 'm3', memberName: 'Kofi Boateng', followUpMemberId: 'mem-101', followUpMemberName: 'John Mensah', date: new Date('2025-12-28T15:00:00'), comment: 'Home visit completed. Family is very welcoming. Prayed with them.' },
+  { id: 'c7', memberId: 'm5', memberName: 'Yaw Mensah', followUpMemberId: 'mem-102', followUpMemberName: 'Grace Owusu', date: new Date('2025-12-27T10:00:00'), comment: 'Phone was off. Will try again tomorrow.' },
+  { id: 'c8', memberId: 'm8', memberName: 'Efua Mensah', followUpMemberId: 'mem-103', followUpMemberName: 'Emmanuel Adjei', date: new Date('2025-12-26T13:30:00'), comment: 'She confirmed she will attend the Christmas service with her family.' },
 ];
 
 function DemoDashboard() {

@@ -70,7 +70,7 @@ export class MemberService {
 
   /**
    * Create a new member record
-   * Requirements: 1.1, 2.4
+   * Requirements: 1.1, 2.4, 3.2, 4.2
    */
   async createMember(input: CreateMemberInput): Promise<Member> {
     // Validate required fields
@@ -81,7 +81,12 @@ export class MemberService {
       );
     }
 
-    if (!input.phone && !input.email) {
+    // Contact info validation - skip for children and visitors (Requirements 3.2, 4.2)
+    const isChild = input.ageBracket?.toLowerCase() === 'child';
+    const isVisitor = input.visitor === true;
+    const contactInfoRequired = !isChild && !isVisitor;
+
+    if (contactInfoRequired && !input.phone && !input.email) {
       throw new MemberError(
         MemberErrorCode.INVALID_INPUT,
         'At least one of phone or email is required'
@@ -89,17 +94,20 @@ export class MemberService {
     }
 
     // Check for existing member to prevent duplicates
-    const existingMember = await this.findMemberByPhoneOrEmail(
-      input.phone,
-      input.email
-    );
-
-    if (existingMember) {
-      throw new MemberError(
-        MemberErrorCode.DUPLICATE_MEMBER,
-        'A member with this phone or email already exists',
-        { existingMemberId: existingMember.id }
+    // Skip duplicate check for children/visitors without contact info
+    if (input.phone || input.email) {
+      const existingMember = await this.findMemberByPhoneOrEmail(
+        input.phone,
+        input.email
       );
+
+      if (existingMember) {
+        throw new MemberError(
+          MemberErrorCode.DUPLICATE_MEMBER,
+          'A member with this phone or email already exists',
+          { existingMemberId: existingMember.id }
+        );
+      }
     }
 
     // Prepare fields for Airtable
@@ -124,6 +132,9 @@ export class MemberService {
     }
     if (input.ghanaPostCode) {
       fields['GhanaPost Code'] = input.ghanaPostCode;
+    }
+    if (input.ageBracket) {
+      fields['Age Bracket'] = input.ageBracket;
     }
 
     const record = await this.airtableClient.createRecord(

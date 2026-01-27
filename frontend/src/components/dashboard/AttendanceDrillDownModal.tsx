@@ -6,7 +6,10 @@ import { useCallback } from 'react';
 export type AttendanceCategory = 
   | 'firstTimers' 
   | 'returners' 
+  | 'members'
+  | 'children'
   | 'evangelismContacts' 
+  | 'visitors'
   | 'department';
 
 /**
@@ -48,8 +51,12 @@ function getCategoryDisplayLabel(category: AttendanceCategory, customLabel?: str
       return 'First Timers';
     case 'returners':
       return 'Returners';
+    case 'members':
+      return 'Members';
     case 'evangelismContacts':
       return 'Evangelism Contacts';
+    case 'visitors':
+      return 'Visitors';
     case 'department':
       return 'Department Members';
     default:

@@ -77,7 +77,8 @@ function createMockAirtableClient(): jest.Mocked<AirtableClient> {
 // Generators for test data
 const nameGenerator = fc
   .string({ minLength: 1, maxLength: 50 })
-  .filter((s) => s.trim().length > 0);
+  .filter((s) => s.trim().length > 0)
+  .map((s) => s.trim()); // Trim to match actual handler behavior
 
 const phoneGenerator = fc.stringOf(
   fc.constantFrom('0', '1', '2', '3', '4', '5', '6', '7', '8', '9'),

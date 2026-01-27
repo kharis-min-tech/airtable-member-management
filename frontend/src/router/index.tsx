@@ -8,6 +8,7 @@ import PublicRoute from '../components/PublicRoute';
 const MainLayout = lazy(() => import('../layouts/MainLayout'));
 const AuthLayout = lazy(() => import('../layouts/AuthLayout'));
 const DemoLayout = lazy(() => import('../layouts/DemoLayout'));
+const PublicLayout = lazy(() => import('../layouts/PublicLayout'));
 
 // Auth pages
 const LoginPage = lazy(() => import('../pages/auth/LoginPage'));
@@ -19,6 +20,11 @@ const AttendanceExplorer = lazy(() => import('../pages/attendance/AttendanceExpl
 const MissingMembers = lazy(() => import('../pages/attendance/MissingMembers'));
 const MemberJourney = lazy(() => import('../pages/members/MemberJourney'));
 const AdminViews = lazy(() => import('../pages/admin/AdminViews'));
+
+// Public pages
+const FormsPage = lazy(() => import('../pages/forms/FormsPage'));
+const ContactsPage = lazy(() => import('../pages/contacts/ContactsPage'));
+const FollowUpPage = lazy(() => import('../pages/followup/FollowUpPage'));
 
 // Demo pages
 const DemoAttendanceExplorer = lazy(() => import('../pages/demo/DemoAttendanceExplorer'));
@@ -33,6 +39,40 @@ const NotFoundPage = lazy(() => import('../pages/NotFoundPage'));
 
 // Router configuration
 export const router = createBrowserRouter([
+  {
+    // Public routes (no auth required) with PublicLayout
+    element: (
+      <Suspense fallback={<LoadingSpinner />}>
+        <PublicLayout />
+      </Suspense>
+    ),
+    children: [
+      {
+        path: '/forms',
+        element: (
+          <Suspense fallback={<LoadingSpinner />}>
+            <FormsPage />
+          </Suspense>
+        ),
+      },
+      {
+        path: '/contacts',
+        element: (
+          <Suspense fallback={<LoadingSpinner />}>
+            <ContactsPage />
+          </Suspense>
+        ),
+      },
+      {
+        path: '/followup',
+        element: (
+          <Suspense fallback={<LoadingSpinner />}>
+            <FollowUpPage />
+          </Suspense>
+        ),
+      },
+    ],
+  },
   {
     // Demo routes (no auth required) with DemoLayout
     path: '/demo',

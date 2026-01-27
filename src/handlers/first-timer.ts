@@ -26,6 +26,9 @@ export interface FirstTimerEvent {
   address?: string;
   ghanaPostCode?: string;
   serviceId?: string;
+  // New fields for age bracket and visitor support
+  ageBracket?: string | null;  // e.g., "Child", "Adult", "Senior"
+  visitor?: boolean | null;
 }
 
 /**
@@ -50,6 +53,8 @@ export interface FirstTimerWebhookPayload {
       "GhanaPost Code"?: string;
       Service?: string[];
       "Linked Member"?: string[];
+      "Age Bracket"?: string;
+      "Visitor?"?: boolean;
     };
   };
   // Alternative flat format - fields at top level
@@ -62,6 +67,8 @@ export interface FirstTimerWebhookPayload {
     "GhanaPost Code"?: string;
     Service?: string[];
     "Linked Member"?: string[];
+    "Age Bracket"?: string;
+    "Visitor?"?: boolean;
   };
   // Record ID can be at top level in flat format
   recordId?: string;
@@ -80,6 +87,24 @@ export interface FirstTimerHandlerResult {
   reassignmentOccurred: boolean;
   firstServiceAttendedUpdated: boolean;
   error?: string;
+}
+
+/**
+ * Determine if contact information (phone/email) is required for a first-timer event.
+ * Contact info is NOT required if the registrant is a child or a visitor.
+ * 
+ * Requirements: 3.1, 4.1, 5.1, 5.2
+ * 
+ * @param event - The first timer event to check
+ * @returns true if contact info is required, false if it can be skipped
+ */
+export function isContactInfoRequired(event: FirstTimerEvent): boolean {
+  // Contact info NOT required if child (case-insensitive check)
+  if (event.ageBracket?.toLowerCase() === 'child') return false;
+  // Contact info NOT required if visitor
+  if (event.visitor === true) return false;
+  // Otherwise, contact info is required
+  return true;
 }
 
 /**
@@ -132,6 +157,8 @@ export function parseFirstTimerWebhook(
     address: fields["Address"],
     ghanaPostCode: fields["GhanaPost Code"],
     serviceId,
+    ageBracket: fields["Age Bracket"] || null,
+    visitor: fields["Visitor?"] ?? null,
   };
 }
 
@@ -168,7 +195,8 @@ export async function processFirstTimerEvent(
     };
   }
 
-  if (!event.phone && !event.email) {
+  // Contact info validation - skip for children and visitors (Requirements 3.1, 4.1, 5.1, 5.2)
+  if (isContactInfoRequired(event) && !event.phone && !event.email) {
     return {
       success: false,
       memberCreated: false,
@@ -205,10 +233,14 @@ export async function processFirstTimerEvent(
 
       // Check if status is "Evangelism Contact" (Requirement 2.2)
       if (existingMember.status === "Evangelism Contact") {
-        // Update status to "First Timer" but don't change Source (Requirement 2.2)
+        // Determine status based on visitor flag (Requirements 2.2, 2.4)
+        // If visitor is true, set status to "Visitor", otherwise "First Timer"
+        const newStatus: MemberStatus = event.visitor === true ? "Visitor" : "First Timer";
+        
+        // Update status but don't change Source (Requirement 2.2)
         // Merge missing fields without overwriting (Requirement 2.3)
         await memberService.mergeFieldsIntoMember(memberId, {
-          status: "First Timer" as MemberStatus,
+          status: newStatus,
           address: event.address,
           ghanaPostCode: event.ghanaPostCode,
           email: event.email,
@@ -280,6 +312,9 @@ export async function processFirstTimerEvent(
       }
     } else {
       // No existing member - create new one (Requirement 2.4)
+      // Determine status based on visitor flag (Requirements 2.2, 2.3)
+      const memberStatus: MemberStatus = event.visitor === true ? "Visitor" : "First Timer";
+      
       const newMember = await memberService.createMember({
         firstName: event.firstName,
         lastName: event.lastName,
@@ -287,9 +322,11 @@ export async function processFirstTimerEvent(
         email: event.email,
         address: event.address,
         ghanaPostCode: event.ghanaPostCode,
-        status: "First Timer",
+        status: memberStatus,
         source: "First Timer Form",
         dateFirstCaptured: new Date(),
+        ageBracket: event.ageBracket ?? undefined,
+        visitor: event.visitor ?? undefined,
       });
 
       memberId = newMember.id;
@@ -319,18 +356,6 @@ export async function processFirstTimerEvent(
         console.log(`No serviceId provided, skipping First Service Attended update for member ${memberId}`);
       }
     }
-
-    // Step 2: Link first timer record to member (Requirement 2.5)
-    await airtableClient.updateRecord(
-      AIRTABLE_TABLES.FIRST_TIMERS_REGISTER,
-      event.recordId,
-      { "Linked Member": [memberId] }
-    );
-
-    // eslint-disable-next-line no-console
-    console.log(
-      `Linked first timer record ${event.recordId} to member ${memberId}`
-    );
 
     // Step 3: Mark attendance for the service (Requirements 6.1, 6.2)
     let attendanceMarked = false;

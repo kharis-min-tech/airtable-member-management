@@ -199,7 +199,7 @@ describe('MainLayout Navigation - Role-Based Visibility', () => {
     expect(within(mainNav).getByText('Admin')).toBeInTheDocument();
   });
 
-  it('should hide Admin tab for volunteer role', () => {
+  it('should hide Admin tab for follow-up member role', () => {
     renderWithRouter('/dashboard', 'volunteer');
 
     const mainNav = screen.getByRole('navigation', { name: 'Main navigation' });

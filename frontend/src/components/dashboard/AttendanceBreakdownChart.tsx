@@ -40,7 +40,9 @@ interface AttendanceBreakdownChartProps {
 const COLORS_LIGHT = {
   'First Timers': '#1e3a5f', // primary navy
   'Returners': '#06b6d4', // secondary teal
-  'Evangelism Contacts': '#f59e0b', // accent gold
+  'Members': '#10b981', // green
+  'Children': '#f59e0b', // accent gold
+  'Visitors': '#8b5cf6', // violet
   'Department Members': '#a855f7', // tertiary purple
   'Other': '#6B7280', // gray-500
 };
@@ -48,7 +50,9 @@ const COLORS_LIGHT = {
 const COLORS_DARK = {
   'First Timers': '#60a5fa', // primary-dark (brighter blue)
   'Returners': '#22d3ee', // secondary-400 (brighter teal)
-  'Evangelism Contacts': '#fbbf24', // accent-light (brighter gold)
+  'Members': '#34d399', // green-400
+  'Children': '#fbbf24', // accent-light (brighter gold)
+  'Visitors': '#a78bfa', // violet-400
   'Department Members': '#c084fc', // tertiary-400 (brighter purple)
   'Other': '#94a3b8', // gray-400
 };
@@ -62,22 +66,14 @@ function AttendanceBreakdownChart({ kpis, isLoading = false, serviceId, onCatego
     if (!kpis) return [];
 
     // Build chart data from KPIs with category information for drill-down
+    // Note: Evangelism Contacts are excluded as they are not attendees
     const data: ChartDataItem[] = [
       { name: 'First Timers', count: kpis.firstTimersCount, category: 'firstTimers' },
       { name: 'Returners', count: kpis.returnersCount, category: 'returners' },
+      { name: 'Members', count: kpis.membersCount, category: 'members' },
+      { name: 'Children', count: kpis.childrenCount, category: 'children' },
+      { name: 'Visitors', count: kpis.visitorsCount, category: 'visitors' },
     ];
-
-    // Add department breakdown
-    if (kpis.departmentBreakdown && kpis.departmentBreakdown.length > 0) {
-      kpis.departmentBreakdown.forEach((dept) => {
-        data.push({
-          name: dept.department,
-          count: dept.count,
-          category: 'department',
-          departmentId: dept.department, // Using department name as ID for now
-        });
-      });
-    }
 
     return data;
   }, [kpis]);

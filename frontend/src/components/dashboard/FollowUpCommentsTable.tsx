@@ -19,17 +19,71 @@ function FollowUpCommentsTable({
 }: FollowUpCommentsTableProps) {
   const [searchTerm, setSearchTerm] = useState('');
 
+  // Debug logging to understand the data structure
+  console.log('FollowUpCommentsTable received data:', {
+    data,
+    type: typeof data,
+    isArray: Array.isArray(data),
+    isNull: data === null,
+    isUndefined: data === undefined,
+    keys: data ? Object.keys(data) : 'N/A'
+  });
+
+  // Ensure data is always an array, even if undefined or null
+  const safeData = useMemo(() => {
+    if (!data) {
+      console.log('FollowUpCommentsTable: data is null/undefined, returning empty array');
+      return [];
+    }
+    if (!Array.isArray(data)) {
+      console.warn('FollowUpCommentsTable: data is not an array:', data);
+      return [];
+    }
+    console.log('FollowUpCommentsTable: safeData has', data.length, 'items');
+    return data;
+  }, [data]);
+
   const filteredData = useMemo(() => {
-    if (!data) return [];
-    if (!searchTerm) return data;
+    console.log('FollowUpCommentsTable: Computing filteredData', {
+      safeDataLength: safeData.length,
+      searchTerm,
+      firstItem: safeData[0]
+    });
+    
+    if (safeData.length === 0) {
+      console.log('FollowUpCommentsTable: safeData is empty, returning empty array');
+      return [];
+    }
+    if (!searchTerm) {
+      console.log('FollowUpCommentsTable: No search term, returning all', safeData.length, 'items');
+      return safeData;
+    }
+    
     const term = searchTerm.toLowerCase();
-    return data.filter(
-      (interaction) =>
-        interaction.memberName.toLowerCase().includes(term) ||
-        interaction.volunteerName.toLowerCase().includes(term) ||
-        interaction.comment.toLowerCase().includes(term)
+    const filtered = safeData.filter(
+      (interaction) => {
+        // Defensive checks for all fields
+        if (!interaction || typeof interaction !== 'object') {
+          console.warn('FollowUpCommentsTable: Invalid interaction object:', interaction);
+          return false;
+        }
+        
+        // Ensure all values are strings before calling toLowerCase
+        const memberName = String(interaction?.memberName || '');
+        const followUpMemberName = String(interaction?.followUpMemberName || '');
+        const comment = String(interaction?.comment || '');
+        
+        return (
+          memberName.toLowerCase().includes(term) ||
+          followUpMemberName.toLowerCase().includes(term) ||
+          comment.toLowerCase().includes(term)
+        );
+      }
     );
-  }, [data, searchTerm]);
+    
+    console.log('FollowUpCommentsTable: Filtered to', filtered.length, 'items');
+    return filtered;
+  }, [safeData, searchTerm]);
 
   const formatDate = (date: Date | string) => {
     return new Date(date).toLocaleDateString('en-GB', {
@@ -159,7 +213,7 @@ function FollowUpCommentsTable({
         </div>
       ) : filteredData.length === 0 ? (
         <div className="text-center py-8 text-text-secondary-light dark:text-text-secondary-dark">
-          {data && data.length > 0
+          {safeData && safeData.length > 0
             ? 'No comments match your search'
             : 'No follow-up comments found for the selected date range'}
         </div>
@@ -175,7 +229,7 @@ function FollowUpCommentsTable({
                   Member
                 </th>
                 <th className="px-4 py-3 text-left text-xs font-medium text-text-secondary-light dark:text-text-secondary-dark uppercase">
-                  Volunteer
+                  Follow-up Member
                 </th>
                 <th className="px-4 py-3 text-left text-xs font-medium text-text-secondary-light dark:text-text-secondary-dark uppercase">
                   Comment
@@ -183,23 +237,53 @@ function FollowUpCommentsTable({
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
-              {filteredData.map((interaction) => (
-                <tr key={interaction.id} className="hover:bg-gray-50 dark:hover:bg-gray-800">
-                  <td className="px-4 py-3 text-sm text-text-secondary-light dark:text-text-secondary-dark whitespace-nowrap">
-                    <div>{formatDate(interaction.date)}</div>
-                    <div className="text-xs text-text-secondary-light/70 dark:text-text-secondary-dark/70">{formatTime(interaction.date)}</div>
-                  </td>
-                  <td className="px-4 py-3 text-sm font-medium text-text-primary-light dark:text-text-primary-dark">
-                    {interaction.memberName}
-                  </td>
-                  <td className="px-4 py-3 text-sm text-text-secondary-light dark:text-text-secondary-dark">
-                    {interaction.volunteerName}
-                  </td>
-                  <td className="px-4 py-3 text-sm text-text-secondary-light dark:text-text-secondary-dark max-w-md">
-                    <p className="line-clamp-2">{interaction.comment}</p>
-                  </td>
-                </tr>
-              ))}
+              {(() => {
+                console.log('FollowUpCommentsTable: About to render tbody', {
+                  filteredDataType: typeof filteredData,
+                  isArray: Array.isArray(filteredData),
+                  length: filteredData?.length,
+                  filteredData
+                });
+                
+                if (!Array.isArray(filteredData)) {
+                  console.error('FollowUpCommentsTable: filteredData is not an array!', filteredData);
+                  return null;
+                }
+                
+                return filteredData.map((interaction, index) => {
+                  try {
+                    console.log(`FollowUpCommentsTable: Rendering row ${index}`, interaction);
+                    
+                    // Defensive extraction of values with explicit string conversion
+                    const id = interaction?.id || Math.random().toString();
+                    const date = interaction?.date || new Date();
+                    const memberName = String(interaction?.memberName || 'Unknown');
+                    const followUpMemberName = String(interaction?.followUpMemberName || 'Unknown');
+                    const comment = String(interaction?.comment || '');
+                    
+                    return (
+                      <tr key={id} className="hover:bg-gray-50 dark:hover:bg-gray-800">
+                        <td className="px-4 py-3 text-sm text-text-secondary-light dark:text-text-secondary-dark whitespace-nowrap">
+                          <div>{formatDate(date)}</div>
+                          <div className="text-xs text-text-secondary-light/70 dark:text-text-secondary-dark/70">{formatTime(date)}</div>
+                        </td>
+                        <td className="px-4 py-3 text-sm font-medium text-text-primary-light dark:text-text-primary-dark">
+                          {memberName}
+                        </td>
+                        <td className="px-4 py-3 text-sm text-text-secondary-light dark:text-text-secondary-dark">
+                          {followUpMemberName}
+                        </td>
+                        <td className="px-4 py-3 text-sm text-text-secondary-light dark:text-text-secondary-dark max-w-md">
+                          <p className="line-clamp-2">{comment}</p>
+                        </td>
+                      </tr>
+                    );
+                  } catch (error) {
+                    console.error(`FollowUpCommentsTable: Error rendering row ${index}:`, error, interaction);
+                    return null;
+                  }
+                });
+              })()}
             </tbody>
           </table>
         </div>

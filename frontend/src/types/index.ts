@@ -5,7 +5,7 @@ export interface UserContext {
   userId: string;
   email: string;
   role: UserRole;
-  volunteerId?: string;
+  followUpMemberId?: string;
   departmentIds?: string[];
 }
 
@@ -113,6 +113,10 @@ export interface ServiceKPIs {
   totalAttendance: number;
   firstTimersCount: number;
   returnersCount: number;
+  membersCount: number;
+  childrenCount: number;
+  evangelismContactsCount: number;
+  visitorsCount: number;
   departmentBreakdown: { department: string; count: number }[];
 }
 
@@ -124,8 +128,8 @@ export interface EvangelismStats {
 }
 
 export interface FollowUpSummary {
-  volunteerId: string;
-  volunteerName: string;
+  memberId: string;
+  memberName: string;
   assignedCount: number;
   completedCount: number;
   overdueCount: number;
@@ -148,16 +152,16 @@ export interface FollowUpInteraction {
   id: string;
   memberId: string;
   memberName: string;
-  volunteerId: string;
-  volunteerName: string;
+  followUpMemberId: string;
+  followUpMemberName: string;
   date: Date;
   comment: string;
   interactionType?: string;
 }
 
-export interface SoulsAssignedByVolunteer {
-  volunteerId: string;
-  volunteerName: string;
+export interface SoulsAssignedByMember {
+  followUpMemberId: string;
+  followUpMemberName: string;
   members: {
     id: string;
     name: string;

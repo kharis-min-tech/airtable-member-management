@@ -17,7 +17,7 @@ export enum ErrorCode {
   // Business logic errors
   DUPLICATE_MEMBER = 'DUPLICATE_MEMBER',
   MEMBER_NOT_FOUND = 'MEMBER_NOT_FOUND',
-  NO_AVAILABLE_VOLUNTEER = 'NO_AVAILABLE_VOLUNTEER',
+  NO_AVAILABLE_FOLLOW_UP_MEMBER = 'NO_AVAILABLE_FOLLOW_UP_MEMBER',
   INVALID_STATUS_TRANSITION = 'INVALID_STATUS_TRANSITION',
   RETURNER_NOT_IN_SYSTEM = 'RETURNER_NOT_IN_SYSTEM',
 
@@ -108,7 +108,7 @@ export class AppError extends Error {
   private getSeverityByDefault(code: ErrorCode): ErrorSeverity {
     const criticalCodes = [
       ErrorCode.DUPLICATE_MEMBER,
-      ErrorCode.NO_AVAILABLE_VOLUNTEER,
+      ErrorCode.NO_AVAILABLE_FOLLOW_UP_MEMBER,
       ErrorCode.CONFIGURATION_ERROR,
       ErrorCode.INTERNAL_ERROR,
     ];
@@ -388,7 +388,7 @@ export function logInfo(message: string, context?: Partial<ErrorContext>): void 
  */
 export const CRITICAL_ERROR_CODES: ErrorCode[] = [
   ErrorCode.DUPLICATE_MEMBER,
-  ErrorCode.NO_AVAILABLE_VOLUNTEER,
+  ErrorCode.NO_AVAILABLE_FOLLOW_UP_MEMBER,
   ErrorCode.CONFIGURATION_ERROR,
   ErrorCode.INTERNAL_ERROR,
 ];

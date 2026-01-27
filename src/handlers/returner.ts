@@ -97,13 +97,16 @@ export function parseReturnerWebhook(payload: ReturnerWebhookPayload): ReturnerE
   }
 
   // eslint-disable-next-line no-console
-  console.log('Parsed Returner fields - Service:', serviceId, 'Linked Member:', linkedMemberId, 'Phone:', fields['Phone'], 'Email:', fields['Email']);
+  console.log('Parsed Returner fields - Service:', serviceId, 'Linked Member:', linkedMemberId);
+
+  // Extract name if provided (may be empty string if not in Returners Register table)
+  const name = (fields['Name'] as string) || '';
 
   return {
     recordId: record.id,
-    name: fields['Name'] || '',
-    phone: fields['Phone'],
-    email: fields['Email'],
+    name: name.trim(), // Trim whitespace but preserve the name if provided
+    phone: fields['Phone'] as string | undefined,
+    email: fields['Email'] as string | undefined,
     serviceId,
     linkedMemberId,
   };

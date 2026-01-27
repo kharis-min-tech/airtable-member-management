@@ -6,6 +6,7 @@ import { AirtableClient, QueryService, CacheService, CACHE_KEYS, DEFAULT_TTL } f
  * Provides KPIs, attendance data, member journeys, and admin views
  * 
  * Requirements: 15.1-15.7, 16.1-16.6, 17.1-17.6, 18.1-18.7, 19.1-19.7
+ * Updated: Requirements 4.1, 4.2, 4.3, 4.4 - Use member terminology in responses
  */
 
 // Initialize services
@@ -121,14 +122,14 @@ export const handler = async (event: APIGatewayProxyEvent): Promise<APIGatewayPr
       if (type === 'due-today' || path.includes('/due-today')) {
         return await handleTodaysFollowUps(forceRefresh);
       }
-      if (type === 'by-volunteer' || path.includes('/volunteer')) {
-        return await handleFollowUpByVolunteer(queryParams, forceRefresh);
+      if (type === 'by-member' || path.includes('/by-member')) {
+        return await handleFollowUpByFollowUpMember(queryParams, forceRefresh);
       }
       if (type === 'unassigned' || path.includes('/unassigned')) {
         return await handleUnassignedMembers(forceRefresh);
       }
-      if (type === 'souls-by-volunteer' || path.includes('/souls-by-volunteer')) {
-        return await handleSoulsByVolunteer(forceRefresh);
+      if (type === 'souls-by-member' || path.includes('/souls-by-member')) {
+        return await handleSoulsByFollowUpMember(forceRefresh);
       }
       if (type === 'interactions' || path.includes('/interactions')) {
         return await handleFollowUpComments(queryParams);
@@ -437,7 +438,7 @@ async function handleServiceAttendees(params: QueryParams, forceRefresh: boolean
 
 async function handleAttendeesByCategory(params: QueryParams, forceRefresh: boolean): Promise<APIGatewayProxyResult> {
   const serviceId = params.serviceId;
-  const category = params.category as 'firstTimers' | 'returners' | 'evangelismContacts' | 'department';
+  const category = params.category as 'firstTimers' | 'returners' | 'members' | 'children' | 'evangelismContacts' | 'visitors' | 'department';
   const departmentId = params.departmentId;
 
   if (!serviceId) return errorResponse(400, 'serviceId is required');
@@ -474,29 +475,29 @@ async function handleMemberById(params: QueryParams, forceRefresh: boolean): Pro
   return successResponse(data);
 }
 
-async function handleFollowUpByVolunteer(params: QueryParams, forceRefresh: boolean): Promise<APIGatewayProxyResult> {
-  const volunteerId = params.volunteerId;
-  if (!volunteerId) return errorResponse(400, 'volunteerId is required');
+async function handleFollowUpByFollowUpMember(params: QueryParams, forceRefresh: boolean): Promise<APIGatewayProxyResult> {
+  const followUpMemberId = params.followUpMemberId;
+  if (!followUpMemberId) return errorResponse(400, 'followUpMemberId is required');
 
-  const cacheKey = `follow-up:volunteer:${volunteerId}`;
+  const cacheKey = `follow-up:member:${followUpMemberId}`;
   if (!forceRefresh) {
     const cached = await cacheService.getWithMetadata(cacheKey);
     if (cached) return successResponse(cached.data);
   }
 
-  const data = await queryService.getFollowUpsByVolunteer(volunteerId);
+  const data = await queryService.getFollowUpsByFollowUpMember(followUpMemberId);
   await cacheService.set(cacheKey, data, DEFAULT_TTL);
   return successResponse(data);
 }
 
-async function handleSoulsByVolunteer(forceRefresh: boolean): Promise<APIGatewayProxyResult> {
-  const cacheKey = 'follow-up:souls-by-volunteer';
+async function handleSoulsByFollowUpMember(forceRefresh: boolean): Promise<APIGatewayProxyResult> {
+  const cacheKey = 'follow-up:souls-by-member';
   if (!forceRefresh) {
     const cached = await cacheService.getWithMetadata(cacheKey);
     if (cached) return successResponse(cached.data);
   }
 
-  const data = await queryService.getSoulsAssignedByVolunteer();
+  const data = await queryService.getSoulsAssignedByFollowUpMember();
   await cacheService.set(cacheKey, data, DEFAULT_TTL);
   return successResponse(data);
 }
