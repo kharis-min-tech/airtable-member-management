@@ -3,12 +3,19 @@ import type { ApiResponse, ApiError } from '../types';
 
 const API_BASE_URL = import.meta.env.VITE_API_ENDPOINT || 'http://localhost:3000';
 const DEFAULT_CACHE_TTL = 15 * 60 * 1000; // 15 minutes in milliseconds
+const STALE_THRESHOLD = 5 * 60 * 1000; // 5 minutes - data is considered stale after this
 
 interface CacheEntry<T> {
   data: T;
   timestamp: number;
   ttl: number;
 }
+
+// Callback type for UI updates when background refresh completes
+type RefreshCallback<T> = (data: T) => void;
+
+// Store for background refresh callbacks
+const refreshCallbacks = new Map<string, Set<RefreshCallback<any>>>();
 
 interface RequestOptions {
   method?: 'GET' | 'POST' | 'PUT' | 'DELETE';
@@ -66,10 +73,24 @@ function getCacheKey(endpoint: string, params?: Record<string, string>): string 
   return `${endpoint}${paramString}`;
 }
 
-// Check if cache entry is valid
+// Check if cache entry is valid (not expired)
 function isCacheValid<T>(entry: CacheEntry<T> | undefined): entry is CacheEntry<T> {
   if (!entry) return false;
   return Date.now() - entry.timestamp < entry.ttl;
+}
+
+// Check if cache entry is stale (older than stale threshold but not expired)
+function isCacheStale<T>(entry: CacheEntry<T> | undefined): boolean {
+  if (!entry) return false;
+  const age = Date.now() - entry.timestamp;
+  return age >= STALE_THRESHOLD && age < entry.ttl;
+}
+
+// Check if cache entry is fresh (younger than stale threshold)
+function isCacheFresh<T>(entry: CacheEntry<T> | undefined): boolean {
+  if (!entry) return false;
+  const age = Date.now() - entry.timestamp;
+  return age < STALE_THRESHOLD;
 }
 
 // Get cached data
@@ -80,6 +101,53 @@ function getFromCache<T>(key: string): CacheEntry<T> | undefined {
     return undefined;
   }
   return entry;
+}
+
+// Background refresh for stale cache entries
+async function backgroundRefresh<T>(
+  cacheKey: string,
+  endpoint: string,
+  options: RequestOptions,
+  retryConfig: RetryConfig
+): Promise<void> {
+  try {
+    // Perform the actual fetch in the background
+    const result = await apiRequest<T>(endpoint, { ...options, skipCache: true }, retryConfig);
+    
+    // Notify all registered callbacks
+    const callbacks = refreshCallbacks.get(cacheKey);
+    if (callbacks) {
+      callbacks.forEach(callback => {
+        try {
+          callback(result.data);
+        } catch (error) {
+          console.error('Error in refresh callback:', error);
+        }
+      });
+    }
+  } catch (error) {
+    // Silently fail background refresh - stale data remains in cache
+    console.warn('Background refresh failed:', error);
+  }
+}
+
+// Register a callback for background refresh updates
+export function onCacheRefresh<T>(key: string, callback: RefreshCallback<T>): () => void {
+  if (!refreshCallbacks.has(key)) {
+    refreshCallbacks.set(key, new Set());
+  }
+  refreshCallbacks.get(key)!.add(callback);
+  
+  // Return unsubscribe function
+  return () => {
+    const callbacks = refreshCallbacks.get(key);
+    if (callbacks) {
+      callbacks.delete(callback);
+      if (callbacks.size === 0) {
+        refreshCallbacks.delete(key);
+      }
+    }
+  };
 }
 
 // Set cache data
@@ -117,6 +185,20 @@ export function getCacheTimestamp(key: string): Date | null {
   return entry ? new Date(entry.timestamp) : null;
 }
 
+// Test helper: Set cache entry with custom timestamp (for testing stale behavior)
+export function __testSetCacheWithTimestamp<T>(
+  key: string,
+  data: T,
+  timestamp: number,
+  ttl: number = DEFAULT_CACHE_TTL
+): void {
+  cache.set(key, {
+    data,
+    timestamp,
+    ttl,
+  });
+}
+
 // Main API request function with retry logic
 async function apiRequest<T>(
   endpoint: string,
@@ -135,13 +217,37 @@ async function apiRequest<T>(
 
   // Check cache for GET requests
   if (method === 'GET' && !skipCache && !forceRefresh) {
-    const cachedEntry = getFromCache<T>(cacheKey);
+    const cachedEntry = cache.get(cacheKey) as CacheEntry<T> | undefined;
+    
     if (cachedEntry) {
-      return {
-        data: cachedEntry.data,
-        lastUpdated: new Date(cachedEntry.timestamp),
-        cached: true,
-      };
+      const age = Date.now() - cachedEntry.timestamp;
+      
+      // Expired cache: treat as cache miss
+      if (age >= cachedEntry.ttl) {
+        cache.delete(cacheKey);
+        // Fall through to fetch fresh data
+      }
+      // Stale cache: return immediately AND trigger background refresh
+      else if (age >= STALE_THRESHOLD) {
+        // Trigger background refresh (non-blocking)
+        backgroundRefresh<T>(cacheKey, endpoint, options, retryConfig).catch(() => {
+          // Silently handle background refresh errors
+        });
+        
+        return {
+          data: cachedEntry.data,
+          lastUpdated: new Date(cachedEntry.timestamp),
+          cached: true,
+        };
+      }
+      // Fresh cache: return immediately without refresh
+      else {
+        return {
+          data: cachedEntry.data,
+          lastUpdated: new Date(cachedEntry.timestamp),
+          cached: true,
+        };
+      }
     }
   }
 
@@ -281,6 +387,7 @@ export const apiClient = {
   invalidateCache,
   clearCache,
   getCacheTimestamp,
+  onCacheRefresh,
 };
 
 export default apiClient;
