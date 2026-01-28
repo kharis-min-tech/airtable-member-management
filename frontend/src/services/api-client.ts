@@ -1,5 +1,6 @@
 import { fetchAuthSession } from 'aws-amplify/auth';
 import type { ApiResponse, ApiError } from '../types';
+import { requestDeduplicator } from './request-deduplicator';
 
 const API_BASE_URL = import.meta.env.VITE_API_ENDPOINT || 'http://localhost:3000';
 const DEFAULT_CACHE_TTL = 15 * 60 * 1000; // 15 minutes in milliseconds
@@ -251,87 +252,100 @@ async function apiRequest<T>(
     }
   }
 
-  // Get auth token
-  const token = await getAuthToken();
-
-  // Build headers
-  const headers: Record<string, string> = {
-    'Content-Type': 'application/json',
-  };
-
-  if (token) {
-    headers['Authorization'] = `Bearer ${token}`;
-  }
-
-  // Build request options
-  const fetchOptions: RequestInit = {
+  // Wrap the actual fetch with deduplication
+  // Generate deduplication params from endpoint, method, and body
+  const deduplicationParams = {
     method,
-    headers,
+    body: body ? JSON.stringify(body) : undefined,
   };
 
-  if (body && method !== 'GET') {
-    fetchOptions.body = JSON.stringify(body);
-  }
+  return requestDeduplicator.fetch<ApiResponse<T>>(
+    endpoint,
+    deduplicationParams,
+    async () => {
+      // Get auth token
+      const token = await getAuthToken();
 
-  // Execute request with retry logic
-  let lastError: Error | null = null;
-  
-  for (let attempt = 0; attempt <= retryConfig.maxRetries; attempt++) {
-    try {
-      const response = await fetch(`${API_BASE_URL}${endpoint}`, fetchOptions);
-
-      if (!response.ok) {
-        if (isRetryableError(response.status) && attempt < retryConfig.maxRetries) {
-          const delay = calculateDelay(attempt, retryConfig);
-          await sleep(delay);
-          continue;
-        }
-
-        const errorData = await response.json().catch(() => ({})) as Partial<ApiError>;
-        throw new ApiClientError(
-          errorData.message || `Request failed with status ${response.status}`,
-          errorData.code || 'API_ERROR',
-          response.status,
-          errorData.details
-        );
-      }
-
-      const responseJson = await response.json() as { success?: boolean; data?: T; error?: string };
-      const timestamp = new Date();
-
-      // Extract data from backend response wrapper if present
-      const data = responseJson.data !== undefined ? responseJson.data : responseJson as T;
-
-      // Cache successful GET responses
-      if (method === 'GET' && !skipCache) {
-        setCache(cacheKey, data, cacheTtl);
-      }
-
-      // Invalidate related cache on mutations
-      if (method !== 'GET') {
-        invalidateRelatedCache(endpoint);
-      }
-
-      return {
-        data,
-        lastUpdated: timestamp,
-        cached: false,
+      // Build headers
+      const headers: Record<string, string> = {
+        'Content-Type': 'application/json',
       };
-    } catch (error) {
-      if (error instanceof ApiClientError) {
-        throw error;
-      }
-      
-      lastError = error instanceof Error ? error : new Error('Unknown error');
-      
-      if (attempt < retryConfig.maxRetries) {
-        const delay = calculateDelay(attempt, retryConfig);
-        await sleep(delay);
-      }
-    }
-  }
 
-  throw lastError || new Error('Request failed after retries');
+      if (token) {
+        headers['Authorization'] = `Bearer ${token}`;
+      }
+
+      // Build request options
+      const fetchOptions: RequestInit = {
+        method,
+        headers,
+      };
+
+      if (body && method !== 'GET') {
+        fetchOptions.body = JSON.stringify(body);
+      }
+
+      // Execute request with retry logic
+      let lastError: Error | null = null;
+      
+      for (let attempt = 0; attempt <= retryConfig.maxRetries; attempt++) {
+        try {
+          const response = await fetch(`${API_BASE_URL}${endpoint}`, fetchOptions);
+
+          if (!response.ok) {
+            if (isRetryableError(response.status) && attempt < retryConfig.maxRetries) {
+              const delay = calculateDelay(attempt, retryConfig);
+              await sleep(delay);
+              continue;
+            }
+
+            const errorData = await response.json().catch(() => ({})) as Partial<ApiError>;
+            throw new ApiClientError(
+              errorData.message || `Request failed with status ${response.status}`,
+              errorData.code || 'API_ERROR',
+              response.status,
+              errorData.details
+            );
+          }
+
+          const responseJson = await response.json() as { success?: boolean; data?: T; error?: string };
+          const timestamp = new Date();
+
+          // Extract data from backend response wrapper if present
+          const data = responseJson.data !== undefined ? responseJson.data : responseJson as T;
+
+          // Cache successful GET responses
+          if (method === 'GET' && !skipCache) {
+            setCache(cacheKey, data, cacheTtl);
+          }
+
+          // Invalidate related cache on mutations
+          if (method !== 'GET') {
+            invalidateRelatedCache(endpoint);
+          }
+
+          return {
+            data,
+            lastUpdated: timestamp,
+            cached: false,
+          };
+        } catch (error) {
+          if (error instanceof ApiClientError) {
+            throw error;
+          }
+          
+          lastError = error instanceof Error ? error : new Error('Unknown error');
+          
+          if (attempt < retryConfig.maxRetries) {
+            const delay = calculateDelay(attempt, retryConfig);
+            await sleep(delay);
+          }
+        }
+      }
+
+      throw lastError || new Error('Request failed after retries');
+    }
+  );
 }
 
 // Invalidate related cache entries after mutations

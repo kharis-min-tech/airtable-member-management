@@ -1,6 +1,7 @@
 import { describe, test, expect, beforeEach, vi, afterEach } from 'vitest';
 import fc from 'fast-check';
 import { apiClient, clearCache, __testSetCacheWithTimestamp } from './api-client';
+import { requestDeduplicator } from './request-deduplicator';
 
 // Mock aws-amplify/auth module
 vi.mock('aws-amplify/auth', () => ({
@@ -12,11 +13,13 @@ vi.mock('aws-amplify/auth', () => ({
 describe('API Client Stale-While-Revalidate Property Tests', () => {
   beforeEach(() => {
     clearCache();
+    requestDeduplicator.clear();
     vi.clearAllMocks();
   });
 
   afterEach(() => {
     clearCache();
+    requestDeduplicator.clear();
     vi.restoreAllMocks();
   });
 
@@ -31,8 +34,9 @@ describe('API Client Stale-While-Revalidate Property Tests', () => {
           value: fc.integer({ min: 0, max: 10000 }),
         }), // Random data
         async (endpoint, mockData) => {
-          // Clear cache before each property test iteration
+          // Clear cache and deduplicator before each property test iteration
           clearCache();
+          requestDeduplicator.clear();
           
           let fetchCallCount = 0;
           const mockFetch = vi.fn(async () => {
@@ -82,8 +86,9 @@ describe('API Client Stale-While-Revalidate Property Tests', () => {
         }), // Random refreshed data
         fc.integer({ min: 5 * 60 * 1000 + 1000, max: 14 * 60 * 1000 }), // Age: 5-14 minutes (stale)
         async (endpoint, initialData, refreshedData, cacheAge) => {
-          // Clear cache before each property test iteration
+          // Clear cache and deduplicator before each property test iteration
           clearCache();
+          requestDeduplicator.clear();
           
           let fetchCallCount = 0;
           
@@ -156,8 +161,9 @@ describe('API Client Stale-While-Revalidate Property Tests', () => {
         }), // Random fresh data
         fc.integer({ min: 15 * 60 * 1000 + 1000, max: 30 * 60 * 1000 }), // Age: >15 minutes (expired)
         async (endpoint, expiredData, freshData, cacheAge) => {
-          // Clear cache before each property test iteration
+          // Clear cache and deduplicator before each property test iteration
           clearCache();
+          requestDeduplicator.clear();
           
           let fetchCallCount = 0;
           
