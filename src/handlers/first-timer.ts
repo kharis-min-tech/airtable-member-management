@@ -357,6 +357,25 @@ export async function processFirstTimerEvent(
       }
     }
 
+    // Step 2: Link the first timer record to the member (Requirement 2.5)
+    try {
+      // eslint-disable-next-line no-console
+      console.log(`Linking first timer record ${event.recordId} to member ${memberId}`);
+      
+      await airtableClient.updateRecord(
+        AIRTABLE_TABLES.FIRST_TIMERS_REGISTER,
+        event.recordId,
+        { 'Linked Member': [memberId] }
+      );
+      
+      // eslint-disable-next-line no-console
+      console.log(`Successfully linked first timer record ${event.recordId} to member ${memberId}`);
+    } catch (linkError) {
+      // Log error but don't fail the entire operation
+      // eslint-disable-next-line no-console
+      console.error("Error linking first timer record to member:", linkError);
+    }
+
     // Step 3: Mark attendance for the service (Requirements 6.1, 6.2)
     let attendanceMarked = false;
     // eslint-disable-next-line no-console

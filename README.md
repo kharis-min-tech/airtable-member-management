@@ -196,6 +196,37 @@ All API endpoints require authentication via AWS Cognito. Include the JWT token 
 Authorization: Bearer <token>
 ```
 
+### Performance Testing
+
+The API includes comprehensive performance testing using Postman and Newman CLI:
+
+- **Target Performance**: <2 seconds response time at p95 with 500 concurrent users
+- **Test Scenarios**: Dashboard load, member journey, mixed workload, cache performance, and stress tests
+- **Documentation**: See [docs/POSTMAN_PERFORMANCE_TEST_SCENARIOS.md](docs/POSTMAN_PERFORMANCE_TEST_SCENARIOS.md)
+- **Analysis Tools**: Automated scripts for validating performance targets
+
+Quick start for performance testing:
+```bash
+# Install Newman CLI
+npm install -g newman newman-reporter-html
+
+# Run performance test with 500 concurrent users
+newman run collection.json \
+  -e environment.json \
+  --iteration-count 100 \
+  --parallel 500 \
+  --reporters cli,json,html \
+  --reporter-json-export results.json
+
+# Analyze results
+node docs/analyze-newman-results.js results.json
+```
+
+For detailed instructions, see:
+- [Postman Collection Setup](docs/POSTMAN_COLLECTION_SETUP.md)
+- [Performance Test Scenarios](docs/POSTMAN_PERFORMANCE_TEST_SCENARIOS.md)
+- [Newman Scripts Documentation](docs/NEWMAN_SCRIPTS_README.md)
+
 ### Key Endpoints
 
 - `GET /members`: List all members (filtered by user's data scope)

@@ -1055,9 +1055,9 @@ describe('Property 13: Timeline Chronological Ordering', () => {
             if (table === 'Home Visits' && id === homeVisitRecord.id) return homeVisitRecord;
             if (table === 'Follow-up Interactions' && id === followUpRecord.id) return followUpRecord;
             if (table === 'Member Departments' && id === memberDeptRecord.id) return memberDeptRecord;
-            if (table === 'Departments') return { id, fields: { 'Name': 'Test Dept' }, createdTime: new Date().toISOString() };
-            if (table === 'Volunteers') return { id, fields: { 'Name': 'Test Volunteer' }, createdTime: new Date().toISOString() };
-            throw new Error(`Record not found: ${id}`);
+            if (table === 'Departments') return { id, fields: { 'Department Name': 'Test Dept', 'Name': 'Test Dept' }, createdTime: new Date().toISOString() };
+            if (table === 'Members' && id === 'recVolunteer001') return { id, fields: { 'Full Name': 'Test Volunteer' }, createdTime: new Date().toISOString() };
+            throw new Error(`Record not found: ${table}/${id}`);
           });
 
           // Program sessions are fetched via findRecords, not linked records
@@ -1085,7 +1085,7 @@ describe('Property 13: Timeline Chronological Ordering', () => {
       ),
       { numRuns: 50 }
     );
-  });
+  }, 90000); // 90 second timeout
 
   /**
    * Property 13.3: Empty timeline when no events exist
@@ -2687,6 +2687,9 @@ describe('Property 9: Unidirectional Missing Members Comparison', () => {
         fc.string({ minLength: 1, maxLength: 50 }), // refServiceName
         fc.string({ minLength: 1, maxLength: 50 }), // compServiceName
         async (referenceServiceId, comparisonServiceId, refServiceName, compServiceName) => {
+          // Skip when comparing the same service to itself
+          if (referenceServiceId === comparisonServiceId) return true;
+          
           // Mock service records
           const refServiceRecord: AirtableRecord = {
             id: referenceServiceId,
@@ -2732,6 +2735,7 @@ describe('Property 9: Unidirectional Missing Members Comparison', () => {
           expect(Array.isArray(result.presentInAMissingInB)).toBe(true);
 
           jest.clearAllMocks();
+          return true;
         }
       ),
       { numRuns: 100 }

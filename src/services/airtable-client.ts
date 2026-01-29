@@ -45,9 +45,9 @@ interface RetryConfig {
 }
 
 const DEFAULT_RETRY_CONFIG: RetryConfig = {
-  maxRetries: 3,
+  maxRetries: 5,
   baseDelayMs: 1000,
-  maxDelayMs: 10000,
+  maxDelayMs: 16000,
 };
 
 /**
@@ -404,10 +404,22 @@ export class AirtableClient {
         }
 
         if (attempt === this.retryConfig.maxRetries) {
+          console.error(`[AirtableClient] Max retries (${this.retryConfig.maxRetries}) reached. Failing request.`, {
+            error: lastError.message,
+            attempt: attempt + 1,
+          });
           throw error;
         }
 
         const delay = this.calculateDelay(attempt);
+        
+        // Log retry attempt for monitoring
+        console.warn(`[AirtableClient] Retry attempt ${attempt + 1}/${this.retryConfig.maxRetries}`, {
+          error: lastError.message,
+          delayMs: delay,
+          isRateLimitError: error instanceof AirtableError && error.code === AirtableErrorCode.RATE_LIMITED,
+        });
+        
         await this.sleep(delay);
       }
     }
@@ -416,9 +428,9 @@ export class AirtableClient {
   }
 
   private calculateDelay(attempt: number): number {
+    // Pure exponential backoff: 1s, 2s, 4s, 8s, 16s
     const exponentialDelay = this.retryConfig.baseDelayMs * Math.pow(2, attempt);
-    const jitter = Math.random() * 1000;
-    return Math.min(exponentialDelay + jitter, this.retryConfig.maxDelayMs);
+    return Math.min(exponentialDelay, this.retryConfig.maxDelayMs);
   }
 
   private mapRecord(record: AirtableApiRecord): AirtableRecord {

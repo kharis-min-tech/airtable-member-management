@@ -1,0 +1,528 @@
+{
+  "workspace": {
+    "id": "5223b139-24a0-4b2d-b983-3d54c6c0bdb7",
+    "name": "Church Management API"
+  },
+  "collection": {
+    "id": "d6553e8e-ab3a-4317-bf15-7a57c4081cbd",
+    "uid": "51684623-d6553e8e-ab3a-4317-bf15-7a57c4081cbd",
+    "name": "Church Management API - Performance Tests"
+  },
+  "folders": {
+    "authentication": {
+      "name": "Authentication",
+      "description": "Cognito authentication requests for obtaining JWT tokens",
+      "requests": [
+        {
+          "id": "4337f7dd-548f-4835-bb4e-8eed74fa1bf6",
+          "name": "Get Cognito Token"
+        }
+      ]
+    },
+    "dashboard": {
+      "name": "Dashboard",
+      "description": "Dashboard data endpoints including services, KPIs, evangelism stats, souls assigned, and follow-up interactions",
+      "requests": [
+        {
+          "id": "dash-001",
+          "name": "Get Services",
+          "method": "GET",
+          "url": "{{API_URL}}/query/dashboard?type=services",
+          "exampleResponse": {
+            "success": true,
+            "data": [
+              {
+                "id": "rec123abc",
+                "fields": {
+                  "Service Code": "January 15, 2024 - Sunday Service",
+                  "Service Date": "2024-01-15",
+                  "Service Type": "Sunday Service",
+                  "Notes": "Great service with powerful worship"
+                },
+                "createdTime": "2024-01-15T08:00:00.000Z"
+              },
+              {
+                "id": "rec456def",
+                "fields": {
+                  "Service Code": "January 17, 2024 - Midweek Service",
+                  "Service Date": "2024-01-17",
+                  "Service Type": "Midweek Service",
+                  "Notes": "Bible study on faith"
+                },
+                "createdTime": "2024-01-17T18:00:00.000Z"
+              }
+            ],
+            "timestamp": "2024-01-20T10:30:00.000Z"
+          }
+        },
+        {
+          "id": "dash-002",
+          "name": "Get Evangelism Stats",
+          "method": "GET",
+          "url": "{{API_URL}}/query/dashboard?type=evangelism",
+          "exampleResponse": {
+            "success": true,
+            "data": [
+              {
+                "id": "recEvg123",
+                "fields": {
+                  "Full Name": "John Smith",
+                  "First Name": "John",
+                  "Last Name": "Smith",
+                  "Phone": "+233501234567",
+                  "Email": "john.smith@example.com",
+                  "Date": "2024-01-15",
+                  "Soul Type": "New Believer",
+                  "Evangelism Type": "Town - Lapaz",
+                  "Notes / Prayer points": "Interested in joining Bible study",
+                  "Data Completeness": "Complete"
+                },
+                "createdTime": "2024-01-15T14:30:00.000Z"
+              }
+            ],
+            "timestamp": "2024-01-20T10:30:00.000Z"
+          }
+        }
+      ]
+    },
+    "attendance": {
+      "name": "Attendance",
+      "description": "Attendance tracking and reporting endpoints",
+      "requests": [
+        {
+          "id": "att-001",
+          "name": "Get Attendance Records",
+          "method": "GET",
+          "url": "{{API_URL}}/query/attendance?serviceId=rec123abc",
+          "exampleResponse": {
+            "success": true,
+            "data": [
+              {
+                "id": "recAtt001",
+                "fields": {
+                  "Present?": true,
+                  "Group Tag": "Youth",
+                  "Source Form": "Manual"
+                },
+                "createdTime": "2024-01-15T10:00:00.000Z"
+              },
+              {
+                "id": "recAtt002",
+                "fields": {
+                  "Present?": true,
+                  "Group Tag": "Adults",
+                  "Source Form": "First Timer"
+                },
+                "createdTime": "2024-01-15T10:05:00.000Z"
+              }
+            ],
+            "timestamp": "2024-01-20T10:30:00.000Z"
+          }
+        }
+      ]
+    },
+    "members": {
+      "name": "Members",
+      "description": "Member management and journey tracking endpoints",
+      "requests": [
+        {
+          "id": "mem-001",
+          "name": "Get Member Details",
+          "method": "GET",
+          "url": "{{API_URL}}/query/members?memberId=recMem123",
+          "exampleResponse": {
+            "success": true,
+            "data": {
+              "id": "recMem123",
+              "fields": {
+                "Full Name": "Jane Doe",
+                "First Name": "Jane",
+                "Last Name": "Doe",
+                "Phone": "+233501234567",
+                "Email": "jane.doe@example.com",
+                "Gender": "Female",
+                "Age Bracket": "Adult",
+                "Address": "123 Main Street, Accra",
+                "GhanaPost Code": "GA-123-4567",
+                "Status": "Member",
+                "Source": "First Timer Form",
+                "Member Type": "Local",
+                "Date First Captured": "2023-06-15",
+                "Follow-up Status": "Integrated",
+                "Data Completeness": "Complete"
+              },
+              "createdTime": "2023-06-15T10:00:00.000Z"
+            },
+            "timestamp": "2024-01-20T10:30:00.000Z"
+          }
+        },
+        {
+          "id": "mem-002",
+          "name": "Search Members",
+          "method": "GET",
+          "url": "{{API_URL}}/query/members?q=Jane",
+          "exampleResponse": {
+            "success": true,
+            "data": [
+              {
+                "id": "recMem123",
+                "fields": {
+                  "Full Name": "Jane Doe",
+                  "Phone": "+233501234567",
+                  "Email": "jane.doe@example.com",
+                  "Status": "Member"
+                },
+                "createdTime": "2023-06-15T10:00:00.000Z"
+              },
+              {
+                "id": "recMem456",
+                "fields": {
+                  "Full Name": "Jane Smith",
+                  "Phone": "+233509876543",
+                  "Email": "jane.smith@example.com",
+                  "Status": "First Timer"
+                },
+                "createdTime": "2024-01-10T14:30:00.000Z"
+              }
+            ],
+            "timestamp": "2024-01-20T10:30:00.000Z"
+          }
+        },
+        {
+          "id": "mem-003",
+          "name": "Get Member Journey",
+          "method": "GET",
+          "url": "{{API_URL}}/query/journey?memberId=recMem123",
+          "exampleResponse": {
+            "success": true,
+            "data": {
+              "member": {
+                "id": "recMem123",
+                "fields": {
+                  "Full Name": "Jane Doe",
+                  "Phone": "+233501234567",
+                  "Status": "Member",
+                  "Date First Captured": "2023-06-15"
+                }
+              },
+              "attendance": [
+                {
+                  "id": "recAtt001",
+                  "fields": {
+                    "Present?": true,
+                    "Group Tag": "Adults"
+                  },
+                  "createdTime": "2024-01-15T10:00:00.000Z"
+                }
+              ],
+              "evangelism": [],
+              "followUpInteractions": [
+                {
+                  "id": "recInt001",
+                  "fields": {
+                    "Interaction Date": "2023-06-20",
+                    "Type": "Call",
+                    "Comments": "Welcomed to church, invited to next service",
+                    "Follow Up Outcome": "coming on sunday"
+                  },
+                  "createdTime": "2023-06-20T15:00:00.000Z"
+                }
+              ]
+            },
+            "timestamp": "2024-01-20T10:30:00.000Z"
+          }
+        }
+      ]
+    },
+    "followup": {
+      "name": "Follow-up",
+      "description": "Follow-up task and interaction management endpoints",
+      "requests": [
+        {
+          "id": "fup-001",
+          "name": "Get Follow-up Assignments",
+          "method": "GET",
+          "url": "{{API_URL}}/query/follow-up?type=assignments",
+          "exampleResponse": {
+            "success": true,
+            "data": [
+              {
+                "id": "recFup001",
+                "fields": {
+                  "Assigned Date": "2024-01-15",
+                  "Due Date": "2024-01-22",
+                  "Status": "In Progress",
+                  "Latest Comment": "Called member, will visit this weekend"
+                },
+                "createdTime": "2024-01-15T09:00:00.000Z"
+              },
+              {
+                "id": "recFup002",
+                "fields": {
+                  "Assigned Date": "2024-01-10",
+                  "Due Date": "2024-01-17",
+                  "Status": "Completed",
+                  "Latest Comment": "Successfully visited, member integrated"
+                },
+                "createdTime": "2024-01-10T11:00:00.000Z"
+              }
+            ],
+            "timestamp": "2024-01-20T10:30:00.000Z"
+          }
+        },
+        {
+          "id": "fup-002",
+          "name": "Get Follow-up Interactions",
+          "method": "GET",
+          "url": "{{API_URL}}/query/follow-up?type=interactions",
+          "exampleResponse": {
+            "success": true,
+            "data": [
+              {
+                "id": "recInt001",
+                "fields": {
+                  "Interaction Date": "2024-01-18",
+                  "Type": "Call",
+                  "Comments": "Member confirmed attendance for Sunday service",
+                  "Follow Up Outcome": "coming on sunday"
+                },
+                "createdTime": "2024-01-18T16:30:00.000Z"
+              },
+              {
+                "id": "recInt002",
+                "fields": {
+                  "Interaction Date": "2024-01-16",
+                  "Type": "WhatsApp",
+                  "Comments": "Sent welcome message and service details",
+                  "Follow Up Outcome": "can be visited"
+                },
+                "createdTime": "2024-01-16T14:00:00.000Z"
+              }
+            ],
+            "timestamp": "2024-01-20T10:30:00.000Z"
+          }
+        }
+      ]
+    },
+    "admin": {
+      "name": "Admin",
+      "description": "Administrative endpoints for system stats and cache management",
+      "requests": [
+        {
+          "id": "adm-001",
+          "name": "Get First Timers",
+          "method": "GET",
+          "url": "{{API_URL}}/query/admin?type=first-timers",
+          "exampleResponse": {
+            "success": true,
+            "data": [
+              {
+                "id": "recFT001",
+                "fields": {
+                  "Full Name": "Michael Johnson",
+                  "First Name": "Michael",
+                  "Last Name": "Johnson",
+                  "Phone": "+233501112222",
+                  "Email": "michael.j@example.com",
+                  "Address": "456 Oak Avenue, Accra",
+                  "GhanaPost Code": "GA-456-7890",
+                  "How did you hear about us?": "Social Media",
+                  "Age Bracket": "Adult",
+                  "Visitor?": true
+                },
+                "createdTime": "2024-01-15T10:30:00.000Z"
+              }
+            ],
+            "timestamp": "2024-01-20T10:30:00.000Z"
+          }
+        },
+        {
+          "id": "adm-002",
+          "name": "Get Returners",
+          "method": "GET",
+          "url": "{{API_URL}}/query/admin?type=returners",
+          "exampleResponse": {
+            "success": true,
+            "data": [
+              {
+                "id": "recRet001",
+                "fields": {},
+                "createdTime": "2024-01-15T11:00:00.000Z"
+              }
+            ],
+            "timestamp": "2024-01-20T10:30:00.000Z"
+          }
+        },
+        {
+          "id": "adm-003",
+          "name": "Get Departments",
+          "method": "GET",
+          "url": "{{API_URL}}/query/admin?type=departments",
+          "exampleResponse": {
+            "success": true,
+            "data": [
+              {
+                "id": "recDept001",
+                "fields": {
+                  "Department Name": "Ushering",
+                  "Category": "Front Facing"
+                },
+                "createdTime": "2023-01-01T00:00:00.000Z"
+              },
+              {
+                "id": "recDept002",
+                "fields": {
+                  "Department Name": "Media",
+                  "Category": "Back End"
+                },
+                "createdTime": "2023-01-01T00:00:00.000Z"
+              }
+            ],
+            "timestamp": "2024-01-20T10:30:00.000Z"
+          }
+        }
+      ]
+    }
+  },
+  "note": "This file tracks the Postman workspace and collection structure for the API Performance Optimization project. Example responses are based on actual Airtable schema fetched via Airtable MCP.",
+  "status": {
+    "workspace_created": true,
+    "collection_created": true,
+    "authentication_folder": "complete",
+    "pre_request_scripts": "complete",
+    "test_scripts": "complete",
+    "environments_configured": "complete",
+    "example_responses": "complete",
+    "dashboard_folder": "complete",
+    "attendance_folder": "complete",
+    "members_folder": "complete",
+    "followup_folder": "complete",
+    "admin_folder": "complete",
+    "performance_test_scenarios": "complete"
+  },
+  "test_scripts": {
+    "response_time_validation": "complete",
+    "status_code_validation": "complete",
+    "schema_validation": "complete",
+    "data_integrity_validation": "complete",
+    "template_created": true,
+    "sample_request_added": "Get Dashboard Data"
+  },
+  "performance_test_scenarios": {
+    "dashboard_load_test": {
+      "name": "Dashboard Load Test",
+      "description": "Validate parallel loading performance for main dashboard",
+      "iterations": 100,
+      "delay": 0,
+      "virtual_users": "10-500 (scale gradually)",
+      "duration": "5 minutes",
+      "target_p95": "2000ms",
+      "target_success_rate": "99%"
+    },
+    "member_journey_load_test": {
+      "name": "Member Journey Load Test",
+      "description": "Test member-specific queries with parallel Airtable execution",
+      "iterations": 50,
+      "delay": 100,
+      "virtual_users": 100,
+      "duration": "3 minutes",
+      "target_p95": "2000ms",
+      "target_cache_hit_rate": "60%"
+    },
+    "mixed_workload_test": {
+      "name": "Mixed Workload Test",
+      "description": "Simulate realistic production traffic with mixed request types",
+      "iterations": 200,
+      "delay": 50,
+      "virtual_users": 250,
+      "duration": "10 minutes",
+      "target_p95": "2000ms",
+      "target_cache_hit_rate": "70%"
+    },
+    "cache_performance_test": {
+      "name": "Cache Performance Test",
+      "description": "Validate cache hit (<200ms) and miss (<2000ms) performance",
+      "phases": {
+        "warm_up": {
+          "iterations": 10,
+          "delay": 0,
+          "virtual_users": 1
+        },
+        "cache_hit_test": {
+          "iterations": 100,
+          "delay": 0,
+          "virtual_users": 50,
+          "target": "200ms average"
+        },
+        "cache_miss_test": {
+          "iterations": 50,
+          "delay": 0,
+          "virtual_users": 50,
+          "target": "2000ms average",
+          "note": "Run after 16 minutes to ensure cache expiry"
+        }
+      }
+    },
+    "stress_test": {
+      "name": "Stress Test (Maximum Capacity)",
+      "description": "Determine system breaking point and validate graceful degradation",
+      "iterations": 500,
+      "delay": 0,
+      "virtual_users": "100-1000 (gradual increase)",
+      "duration": "15 minutes",
+      "targets": {
+        "100_users": "1500ms p95, 99% success",
+        "250_users": "1800ms p95, 99% success",
+        "500_users": "2000ms p95, 99% success (target)",
+        "750_users": "2500ms p95, 98% success (graceful degradation)",
+        "1000_users": "3000ms p95, 95% success (system limit)"
+      }
+    }
+  },
+  "newman_cli_configuration": {
+    "installation": "npm install -g newman newman-reporter-html",
+    "basic_run": "newman run collection.json -e environment.json --iteration-count 100 --delay-request 0",
+    "parallel_execution_500_users": "newman run collection.json -e environment.json --iteration-count 100 --delay-request 0 --parallel 500 --reporters cli,json,html",
+    "continuous_testing": "Run every hour with automated result analysis",
+    "note": "Newman CLI required for true concurrent load testing (500+ users). Postman UI Collection Runner is limited to sequential execution."
+  },
+  "documentation": "See docs/POSTMAN_COLLECTION_SETUP.md for setup and docs/POSTMAN_PERFORMANCE_TEST_SCENARIOS.md for performance testing",
+  "environments": {
+    "development": {
+      "id": "f57d5634-bbbb-4606-97fd-bc37e2fdc88c",
+      "uid": "51684623-f57d5634-bbbb-4606-97fd-bc37e2fdc88c",
+      "name": "Development",
+      "variables": {
+        "API_URL": "https://dev-api.example.com",
+        "USER_POOL_ID": "us-east-1_devPoolId",
+        "CLIENT_ID": "dev_client_id_placeholder",
+        "TEST_USER_EMAIL": "test@example.com",
+        "TEST_USER_PASSWORD": "(secret - set in Postman)"
+      }
+    },
+    "staging": {
+      "id": "8ebf4c18-9ae2-46f4-a1b3-fbb3c3588353",
+      "uid": "51684623-8ebf4c18-9ae2-46f4-a1b3-fbb3c3588353",
+      "name": "Staging",
+      "variables": {
+        "API_URL": "https://staging-api.example.com",
+        "USER_POOL_ID": "us-east-1_stagingPoolId",
+        "CLIENT_ID": "staging_client_id_placeholder",
+        "TEST_USER_EMAIL": "test@example.com",
+        "TEST_USER_PASSWORD": "(secret - set in Postman)"
+      }
+    },
+    "production": {
+      "id": "ec42406e-3bc1-47ed-9e70-5c91744e9eea",
+      "uid": "51684623-ec42406e-3bc1-47ed-9e70-5c91744e9eea",
+      "name": "Production",
+      "variables": {
+        "API_URL": "https://api.example.com",
+        "USER_POOL_ID": "us-east-1_prodPoolId",
+        "CLIENT_ID": "prod_client_id_placeholder",
+        "TEST_USER_EMAIL": "test@example.com",
+        "TEST_USER_PASSWORD": "(secret - set in Postman)"
+      }
+    }
+  }
+}

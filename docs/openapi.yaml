@@ -1,0 +1,496 @@
+openapi: 3.0.0
+info:
+  title: Church Management API
+  version: 1.0.0
+  description: |
+    API for church management system with performance optimizations.
+    
+    **Performance Features:**
+    - Stale-while-revalidate caching (15-minute TTL)
+    - Request deduplication (1-second window)
+    - Parallel query execution
+    - Rate limiting (5 requests/second to Airtable)
+  contact:
+    name: API Support
+    email: support@example.com
+
+servers:
+  - url: https://api.example.com/v1
+    description: Production
+  - url: https://staging-api.example.com/v1
+    description: Staging
+  - url: https://dev-api.example.com/v1
+    description: Development
+
+security:
+  - CognitoAuth: []
+
+components:
+  securitySchemes:
+    CognitoAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: AWS Cognito JWT token
+
+  schemas:
+    SuccessResponse:
+      type: object
+      required:
+        - success
+        - data
+        - timestamp
+      properties:
+        success:
+          type: boolean
+          example: true
+        data:
+          type: object
+        timestamp:
+          type: string
+          format: date-time
+
+    ErrorResponse:
+      type: object
+      required:
+        - success
+        - error
+        - timestamp
+      properties:
+        success:
+          type: boolean
+          example: false
+        error:
+          type: string
+        details:
+          type: object
+        timestamp:
+          type: string
+          format: date-time
+
+paths:
+  /query/dashboard:
+    get:
+      summary: Get dashboard data
+      description: Retrieve dashboard data including services, KPIs, and evangelism stats
+      operationId: getDashboard
+      tags:
+        - Dashboard
+      parameters:
+        - name: type
+          in: query
+          schema:
+            type: string
+        - name: refresh
+          in: query
+          schema:
+            type: boolean
+      responses:
+        '200':
+          description: Successful operation
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessResponse'
+        '400':
+          description: Bad request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Forbidden
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+      security:
+        - CognitoAuth: []
+
+  /query/attendance:
+    get:
+      summary: Get attendance data
+      description: Retrieve attendance data for services
+      operationId: getAttendance
+      tags:
+        - Attendance
+      parameters:
+        - name: type
+          in: query
+          schema:
+            type: string
+        - name: serviceId
+          in: query
+          schema:
+            type: string
+        - name: refresh
+          in: query
+          schema:
+            type: boolean
+      responses:
+        '200':
+          description: Successful operation
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessResponse'
+        '400':
+          description: Bad request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Forbidden
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+      security:
+        - CognitoAuth: []
+
+  /query/members:
+    get:
+      summary: Get member data
+      description: Search for members or retrieve member details
+      operationId: getMembers
+      tags:
+        - Members
+      parameters:
+        - name: type
+          in: query
+          schema:
+            type: string
+        - name: q
+          in: query
+          schema:
+            type: string
+        - name: memberId
+          in: query
+          schema:
+            type: string
+        - name: refresh
+          in: query
+          schema:
+            type: boolean
+      responses:
+        '200':
+          description: Successful operation
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessResponse'
+        '400':
+          description: Bad request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Forbidden
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+      security:
+        - CognitoAuth: []
+
+  /query/journey:
+    get:
+      summary: Get member journey
+      description: Retrieve complete journey for a member
+      operationId: getMemberJourney
+      tags:
+        - Members
+      parameters:
+        - name: memberId
+          in: query
+          required: true
+          schema:
+            type: string
+          example: "rec456def"
+        - name: refresh
+          in: query
+          schema:
+            type: boolean
+      responses:
+        '200':
+          description: Successful operation
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessResponse'
+        '400':
+          description: Bad request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Forbidden
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+      security:
+        - CognitoAuth: []
+
+  /query/follow-up:
+    get:
+      summary: Get follow-up data
+      description: Retrieve follow-up assignments and interactions
+      operationId: getFollowUp
+      tags:
+        - Follow-up
+      parameters:
+        - name: type
+          in: query
+          schema:
+            type: string
+        - name: refresh
+          in: query
+          schema:
+            type: boolean
+      responses:
+        '200':
+          description: Successful operation
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessResponse'
+        '400':
+          description: Bad request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Forbidden
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+      security:
+        - CognitoAuth: []
+
+  /query/admin:
+    get:
+      summary: Get administrative views
+      description: Retrieve administrative data
+      operationId: getAdmin
+      tags:
+        - Admin
+      parameters:
+        - name: type
+          in: query
+          schema:
+            type: string
+        - name: refresh
+          in: query
+          schema:
+            type: boolean
+      responses:
+        '200':
+          description: Successful operation
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessResponse'
+        '400':
+          description: Bad request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Forbidden
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+      security:
+        - CognitoAuth: []
+
+  /health:
+    get:
+      summary: Health check endpoint
+      description: Check system health
+      operationId: healthCheck
+      tags:
+        - System
+      responses:
+        '200':
+          description: System healthy
+          content:
+            application/json:
+              schema:
+                type: object
+              example:
+                status: "ok"
+                timestamp: "2024-01-15T10:30:00Z"
+                version: "1.0.0"
+                environment: "production"
+                checks:
+                  lambda:
+                    status: "ok"
+                    message: "Lambda function running"
+                  airtable:
+                    status: "ok"
+                    latencyMs: 250
+                    message: "Connected successfully"
+                  dynamodb:
+                    status: "ok"
+                    latencyMs: 15
+                    message: "Connected successfully"
+                  configuration:
+                    status: "ok"
+                    latencyMs: 10
+                    message: "Configuration loaded successfully"
+                uptime: 3600
+        '400':
+          description: Bad request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '503':
+          description: System unhealthy
+          content:
+            application/json:
+              schema:
+                type: object
+      security: []
+
+tags:
+  - name: Dashboard
+    description: Dashboard data and KPIs
+  - name: Attendance
+    description: Service attendance tracking
+  - name: Members
+    description: Member management
+  - name: Follow-up
+    description: Follow-up assignments
+  - name: Admin
+    description: Administrative views
+  - name: System
+    description: System health

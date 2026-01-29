@@ -6,6 +6,7 @@
  */
 
 import { AirtableClient, AIRTABLE_TABLES } from './airtable-client';
+import { ParallelAirtableExecutor } from './parallel-airtable-executor';
 import {
   Member,
   MemberStatus,
@@ -119,12 +120,14 @@ export interface EvangelismRecord {
  */
 export class QueryService {
   private readonly attendanceThreshold: number;
+  private readonly parallelExecutor: ParallelAirtableExecutor;
 
   constructor(
     private readonly airtableClient: AirtableClient,
     config?: { attendanceThreshold?: number }
   ) {
     this.attendanceThreshold = config?.attendanceThreshold ?? 85;
+    this.parallelExecutor = new ParallelAirtableExecutor(airtableClient, 5);
   }
 
   // ============================================
@@ -144,18 +147,13 @@ export class QueryService {
     const serviceRecord = await this.airtableClient.getRecord(AIRTABLE_TABLES.SERVICES, serviceId);
     const attendanceIds = (serviceRecord.fields['Attendance'] as string[]) || [];
 
-    // Fetch attendance records that are marked present
-    const attendanceRecords: AirtableRecord[] = [];
-    for (const attendanceId of attendanceIds) {
-      try {
-        const record = await this.airtableClient.getRecord(AIRTABLE_TABLES.ATTENDANCE, attendanceId);
-        if (record.fields['Present?'] === true) {
-          attendanceRecords.push(record);
-        }
-      } catch {
-        // Skip if record not found
-      }
-    }
+    // Fetch attendance records in parallel that are marked present
+    const attendanceQueries = attendanceIds.map(attendanceId => 
+      () => this.airtableClient.getRecord(AIRTABLE_TABLES.ATTENDANCE, attendanceId)
+    );
+
+    const attendanceResults = await this.parallelExecutor.executeParallelWithPartialFailure(attendanceQueries);
+    const attendanceRecords = attendanceResults.filter(record => record.fields['Present?'] === true);
 
     // Get member details for each attendance record
     const memberIds = attendanceRecords
@@ -219,30 +217,41 @@ export class QueryService {
       // We need to look up each junction record to get the actual Department ID
       const memberDeptJunctionIds = member.fields['Member Departments'] as string[] | undefined;
       if (memberDeptJunctionIds) {
-        for (const junctionId of memberDeptJunctionIds) {
-          try {
-            // Get the junction record to find the actual department ID
-            const junctionRecord = await this.airtableClient.getRecord(AIRTABLE_TABLES.MEMBER_DEPARTMENTS, junctionId);
-            const deptId = this.extractLinkedRecordId(junctionRecord.fields['Department']);
-            if (deptId) {
-              departmentCounts.set(deptId, (departmentCounts.get(deptId) || 0) + 1);
-            }
-          } catch {
-            // Skip if junction record not found
+        // Fetch junction records in parallel
+        const junctionQueries = memberDeptJunctionIds.map(junctionId =>
+          () => this.airtableClient.getRecord(AIRTABLE_TABLES.MEMBER_DEPARTMENTS, junctionId)
+        );
+        
+        const junctionRecords = await this.parallelExecutor.executeParallelWithPartialFailure(junctionQueries);
+        
+        for (const junctionRecord of junctionRecords) {
+          const deptId = this.extractLinkedRecordId(junctionRecord.fields['Department']);
+          if (deptId) {
+            departmentCounts.set(deptId, (departmentCounts.get(deptId) || 0) + 1);
           }
         }
       }
     }
 
-    // Get department names
+    // Get department names in parallel
     const departmentBreakdown: { department: string; count: number }[] = [];
-    for (const [deptId, count] of departmentCounts) {
-      try {
-        const deptRecord = await this.airtableClient.getRecord(AIRTABLE_TABLES.DEPARTMENTS, deptId);
-        const deptName = (deptRecord.fields['Department Name'] as string) || deptId;
+    const deptIds = Array.from(departmentCounts.keys());
+    
+    if (deptIds.length > 0) {
+      const deptQueries = deptIds.map(deptId =>
+        () => this.airtableClient.getRecord(AIRTABLE_TABLES.DEPARTMENTS, deptId)
+          .then(deptRecord => ({
+            deptId,
+            deptName: (deptRecord.fields['Department Name'] as string) || deptId
+          }))
+          .catch(() => ({ deptId, deptName: deptId }))
+      );
+      
+      const deptResults = await this.parallelExecutor.executeParallelWithPartialFailure(deptQueries);
+      
+      for (const { deptId, deptName } of deptResults) {
+        const count = departmentCounts.get(deptId) || 0;
         departmentBreakdown.push({ department: deptName, count });
-      } catch {
-        departmentBreakdown.push({ department: deptId, count });
       }
     }
 
@@ -884,200 +893,281 @@ export class QueryService {
 
     const member = this.mapRecordToMember(memberRecord);
 
-    // Build timeline from multiple sources
+    // Build timeline from multiple sources in parallel
     // Each source is wrapped in try-catch to allow partial data retrieval
     const timeline: TimelineEvent[] = [];
 
-    // 1. Evangelism events - use linked records from member instead of formula query
-    try {
-      const evangelismIds = (memberRecord.fields['Evangelism'] as string[]) || [];
-      
-      for (const evangelismId of evangelismIds) {
+    // Fetch all timeline data sources in parallel
+    const [
+      evangelismRecords,
+      firstTimerRecords,
+      attendanceRecords,
+      homeVisitRecords,
+      followUpRecords,
+      memberDeptRecords
+    ] = await Promise.all([
+      // 1. Evangelism events
+      (async () => {
         try {
-          const record = await this.airtableClient.getRecord(AIRTABLE_TABLES.EVANGELISM, evangelismId);
-          const date = this.parseDate(record.fields['Date'] as string);
-          if (date) {
-            timeline.push({
-              date,
-              type: 'evangelism',
-              title: 'Evangelism Contact',
-              description: `First contacted through evangelism`,
-              metadata: {
-                recordId: record.id,
-                capturedBy: this.extractLinkedRecordId(record.fields['Captured By']),
-              },
-            });
-          }
-        } catch { /* skip if record not found */ }
-      }
-    } catch (error) {
-      console.error(`[getMemberJourney] Failed to fetch evangelism records for ${memberId}:`, error instanceof Error ? error.message : error);
-      // Continue building timeline with other sources
-    }
-
-    // 2. First Timer registration - use linked records from member instead of formula query
-    try {
-      const firstTimerIds = (memberRecord.fields['First Timers Register'] as string[]) || [];
-      
-      for (const firstTimerId of firstTimerIds) {
-        try {
-          const record = await this.airtableClient.getRecord(AIRTABLE_TABLES.FIRST_TIMERS_REGISTER, firstTimerId);
-          const date = this.parseDate(record.fields['Date'] as string) || 
-                       this.parseDate(record.createdTime);
-          if (date) {
-            timeline.push({
-              date,
-              type: 'first_timer',
-              title: 'First Timer Registration',
-              description: 'Registered as a first-time visitor',
-              metadata: { recordId: record.id },
-            });
-          }
-        } catch { /* skip if record not found */ }
-      }
-    } catch (error) {
-      console.error(`[getMemberJourney] Failed to fetch first timer records for ${memberId}:`, error instanceof Error ? error.message : error);
-      // Continue building timeline with other sources
-    }
-
-    // 3. Attendance records - use linked records from member instead of formula query
-    // The FIND/ARRAYJOIN formula doesn't work with linked record IDs
-    try {
-      const attendanceIds = (memberRecord.fields['Attendance'] as string[]) || [];
-      
-      for (const attendanceId of attendanceIds) {
-        try {
-          const record = await this.airtableClient.getRecord(AIRTABLE_TABLES.ATTENDANCE, attendanceId);
+          const evangelismIds = (memberRecord.fields['Evangelism'] as string[]) || [];
+          if (evangelismIds.length === 0) return [];
           
-          // Only include records where member was present
-          if (record.fields['Present?'] !== true) {
-            continue;
-          }
+          const queries = evangelismIds.map(id => 
+            () => this.airtableClient.getRecord(AIRTABLE_TABLES.EVANGELISM, id)
+          );
+          return await this.parallelExecutor.executeParallelWithPartialFailure(queries);
+        } catch (error) {
+          console.error(`[getMemberJourney] Failed to fetch evangelism records for ${memberId}:`, error instanceof Error ? error.message : error);
+          return [];
+        }
+      })(),
+      
+      // 2. First Timer registration
+      (async () => {
+        try {
+          const firstTimerIds = (memberRecord.fields['First Timers Register'] as string[]) || [];
+          if (firstTimerIds.length === 0) return [];
           
-          const serviceId = this.extractLinkedRecordId(record.fields['Service']);
-          if (serviceId) {
-            try {
-              const serviceRecord = await this.airtableClient.getRecord(AIRTABLE_TABLES.SERVICES, serviceId);
-              const serviceDate = this.parseDate(serviceRecord.fields['Service Date'] as string);
-              const serviceName = (serviceRecord.fields['Service Code'] as string) || 'Service';
+          const queries = firstTimerIds.map(id =>
+            () => this.airtableClient.getRecord(AIRTABLE_TABLES.FIRST_TIMERS_REGISTER, id)
+          );
+          return await this.parallelExecutor.executeParallelWithPartialFailure(queries);
+        } catch (error) {
+          console.error(`[getMemberJourney] Failed to fetch first timer records for ${memberId}:`, error instanceof Error ? error.message : error);
+          return [];
+        }
+      })(),
+      
+      // 3. Attendance records
+      (async () => {
+        try {
+          const attendanceIds = (memberRecord.fields['Attendance'] as string[]) || [];
+          if (attendanceIds.length === 0) return [];
+          
+          const queries = attendanceIds.map(id =>
+            () => this.airtableClient.getRecord(AIRTABLE_TABLES.ATTENDANCE, id)
+          );
+          return await this.parallelExecutor.executeParallelWithPartialFailure(queries);
+        } catch (error) {
+          console.error(`[getMemberJourney] Failed to fetch attendance records for ${memberId}:`, error instanceof Error ? error.message : error);
+          return [];
+        }
+      })(),
+      
+      // 4. Home visits
+      (async () => {
+        try {
+          const homeVisitIds = (memberRecord.fields['Visits Received'] as string[]) || [];
+          if (homeVisitIds.length === 0) return [];
+          
+          const queries = homeVisitIds.map(id =>
+            () => this.airtableClient.getRecord(AIRTABLE_TABLES.HOME_VISITS, id)
+          );
+          return await this.parallelExecutor.executeParallelWithPartialFailure(queries);
+        } catch (error) {
+          console.error(`[getMemberJourney] Failed to fetch home visit records for ${memberId}:`, error instanceof Error ? error.message : error);
+          return [];
+        }
+      })(),
+      
+      // 5. Follow-up interactions
+      (async () => {
+        try {
+          const followUpIds = (memberRecord.fields['Follow-up Interactions'] as string[]) || [];
+          if (followUpIds.length === 0) return [];
+          
+          const queries = followUpIds.map(id =>
+            () => this.airtableClient.getRecord(AIRTABLE_TABLES.FOLLOW_UP_INTERACTIONS, id)
+          );
+          return await this.parallelExecutor.executeParallelWithPartialFailure(queries);
+        } catch (error) {
+          console.error(`[getMemberJourney] Failed to fetch follow-up records for ${memberId}:`, error instanceof Error ? error.message : error);
+          return [];
+        }
+      })(),
+      
+      // 6. Department joins
+      (async () => {
+        try {
+          const memberDeptIds = (memberRecord.fields['Member Departments'] as string[]) || [];
+          if (memberDeptIds.length === 0) return [];
+          
+          const queries = memberDeptIds.map(id =>
+            () => this.airtableClient.getRecord(AIRTABLE_TABLES.MEMBER_DEPARTMENTS, id)
+          );
+          return await this.parallelExecutor.executeParallelWithPartialFailure(queries);
+        } catch (error) {
+          console.error(`[getMemberJourney] Failed to fetch department records for ${memberId}:`, error instanceof Error ? error.message : error);
+          return [];
+        }
+      })()
+    ]);
 
-              if (serviceDate) {
-                timeline.push({
-                  date: serviceDate,
-                  type: 'attendance',
-                  title: 'Service Attendance',
-                  description: `Attended ${serviceName}`,
-                  metadata: { serviceId, recordId: record.id },
-                });
-              }
-            } catch { /* skip if service not found */ }
-          }
-        } catch { /* skip if attendance record not found */ }
+    // Process evangelism events
+    for (const record of evangelismRecords) {
+      const date = this.parseDate(record.fields['Date'] as string);
+      if (date) {
+        timeline.push({
+          date,
+          type: 'evangelism',
+          title: 'Evangelism Contact',
+          description: `First contacted through evangelism`,
+          metadata: {
+            recordId: record.id,
+            capturedBy: this.extractLinkedRecordId(record.fields['Captured By']),
+          },
+        });
       }
-    } catch (error) {
-      console.error(`[getMemberJourney] Failed to fetch attendance records for ${memberId}:`, error instanceof Error ? error.message : error);
-      // Continue building timeline with other sources
     }
 
-    // 4. Home visits - use linked records from member instead of formula query
-    try {
-      const homeVisitIds = (memberRecord.fields['Visits Received'] as string[]) || [];
-      
-      for (const homeVisitId of homeVisitIds) {
-        try {
-          const record = await this.airtableClient.getRecord(AIRTABLE_TABLES.HOME_VISITS, homeVisitId);
-          const date = this.parseDate(record.fields['Visit Date'] as string);
-          const visitorId = this.extractLinkedRecordId(record.fields['Conducted By?']);
-          let visitorName = 'Unknown';
-
-          if (visitorId) {
-            try {
-              // Conducted By? field links to Members table
-              const visitorRecord = await this.airtableClient.getRecord(AIRTABLE_TABLES.MEMBERS, visitorId);
-              visitorName = (visitorRecord.fields['Full Name'] as string) || visitorId;
-            } catch { /* use default */ }
-          }
-
-          if (date) {
-            timeline.push({
-              date,
-              type: 'home_visit',
-              title: 'Home Visit',
-              description: `Visited by ${visitorName}`,
-              metadata: { recordId: record.id, visitorId, visitorName },
-            });
-          }
-        } catch { /* skip if record not found */ }
+    // Process first timer registrations
+    for (const record of firstTimerRecords) {
+      const date = this.parseDate(record.fields['Date'] as string) || 
+                   this.parseDate(record.createdTime);
+      if (date) {
+        timeline.push({
+          date,
+          type: 'first_timer',
+          title: 'First Timer Registration',
+          description: 'Registered as a first-time visitor',
+          metadata: { recordId: record.id },
+        });
       }
-    } catch (error) {
-      console.error(`[getMemberJourney] Failed to fetch home visit records for ${memberId}:`, error instanceof Error ? error.message : error);
-      // Continue building timeline with other sources
     }
 
-    // 5. Follow-up interactions - use linked records from member instead of formula query
-    try {
-      const followUpIds = (memberRecord.fields['Follow-up Interactions'] as string[]) || [];
+    // Process attendance records - fetch service details in parallel
+    const presentAttendance = attendanceRecords.filter(record => record.fields['Present?'] === true);
+    const serviceIds = presentAttendance
+      .map(r => this.extractLinkedRecordId(r.fields['Service']))
+      .filter((id): id is string => !!id);
+    
+    if (serviceIds.length > 0) {
+      const serviceQueries = serviceIds.map(serviceId =>
+        () => this.airtableClient.getRecord(AIRTABLE_TABLES.SERVICES, serviceId)
+          .then(serviceRecord => ({
+            serviceId,
+            serviceDate: this.parseDate(serviceRecord.fields['Service Date'] as string),
+            serviceName: (serviceRecord.fields['Service Code'] as string) || 'Service'
+          }))
+          .catch(() => null)
+      );
       
-      for (const followUpId of followUpIds) {
-        try {
-          const record = await this.airtableClient.getRecord(AIRTABLE_TABLES.FOLLOW_UP_INTERACTIONS, followUpId);
-          const date = this.parseDate(record.fields['Interaction Date'] as string);
-          // Note: Follow-up Interactions table doesn't have a Volunteer field based on schema
-          // It has: Member, Interaction Date, Type, Comments, Related Source
-
-          if (date) {
+      const serviceResults = await this.parallelExecutor.executeParallelWithPartialFailure(serviceQueries);
+      const serviceMap = new Map(
+        serviceResults.filter((s): s is NonNullable<typeof s> => s !== null)
+          .map(s => [s.serviceId, s])
+      );
+      
+      for (const record of presentAttendance) {
+        const serviceId = this.extractLinkedRecordId(record.fields['Service']);
+        if (serviceId) {
+          const serviceInfo = serviceMap.get(serviceId);
+          if (serviceInfo?.serviceDate) {
             timeline.push({
-              date,
-              type: 'follow_up',
-              title: 'Follow-up Interaction',
-              description: `Follow-up interaction`,
-              metadata: {
-                recordId: record.id,
-                comment: record.fields['Comments'] as string,
-                type: record.fields['Type'] as string,
-              },
+              date: serviceInfo.serviceDate,
+              type: 'attendance',
+              title: 'Service Attendance',
+              description: `Attended ${serviceInfo.serviceName}`,
+              metadata: { serviceId, recordId: record.id },
             });
           }
-        } catch { /* skip if record not found */ }
+        }
       }
-    } catch (error) {
-      console.error(`[getMemberJourney] Failed to fetch follow-up records for ${memberId}:`, error instanceof Error ? error.message : error);
-      // Continue building timeline with other sources
     }
 
-    // 6. Department joins - use linked records from member instead of formula query
-    try {
-      const memberDeptIds = (memberRecord.fields['Member Departments'] as string[]) || [];
+    // Process home visits - fetch visitor names in parallel
+    const visitorIds = homeVisitRecords
+      .map(r => this.extractLinkedRecordId(r.fields['Conducted By?']))
+      .filter((id): id is string => !!id);
+    
+    const visitorMap = new Map<string, string>();
+    if (visitorIds.length > 0) {
+      const visitorQueries = visitorIds.map(visitorId =>
+        () => this.airtableClient.getRecord(AIRTABLE_TABLES.MEMBERS, visitorId)
+          .then(visitorRecord => ({
+            visitorId,
+            visitorName: (visitorRecord.fields['Full Name'] as string) || visitorId
+          }))
+          .catch(() => ({ visitorId, visitorName: 'Unknown' }))
+      );
       
-      for (const memberDeptId of memberDeptIds) {
-        try {
-          const record = await this.airtableClient.getRecord(AIRTABLE_TABLES.MEMBER_DEPARTMENTS, memberDeptId);
-          const date = this.parseDate(record.fields['Sign Up Date'] as string) ||
-                       this.parseDate(record.createdTime);
-          const deptId = this.extractLinkedRecordId(record.fields['Department']);
-          let deptName = 'Unknown Department';
-
-          if (deptId) {
-            try {
-              const deptRecord = await this.airtableClient.getRecord(AIRTABLE_TABLES.DEPARTMENTS, deptId);
-              deptName = (deptRecord.fields['Department Name'] as string) || deptId;
-            } catch { /* use default */ }
-          }
-
-          if (date) {
-            timeline.push({
-              date,
-              type: 'department_join',
-              title: 'Department Join',
-              description: `Joined ${deptName}`,
-              metadata: { recordId: record.id, departmentId: deptId, departmentName: deptName },
-            });
-          }
-        } catch { /* skip if record not found */ }
+      const visitorResults = await this.parallelExecutor.executeParallelWithPartialFailure(visitorQueries);
+      for (const { visitorId, visitorName } of visitorResults) {
+        visitorMap.set(visitorId, visitorName);
       }
-    } catch (error) {
-      console.error(`[getMemberJourney] Failed to fetch department records for ${memberId}:`, error instanceof Error ? error.message : error);
-      // Continue building timeline with other sources
+    }
+    
+    for (const record of homeVisitRecords) {
+      const date = this.parseDate(record.fields['Visit Date'] as string);
+      const visitorId = this.extractLinkedRecordId(record.fields['Conducted By?']);
+      const visitorName = visitorId ? (visitorMap.get(visitorId) || 'Unknown') : 'Unknown';
+
+      if (date) {
+        timeline.push({
+          date,
+          type: 'home_visit',
+          title: 'Home Visit',
+          description: `Visited by ${visitorName}`,
+          metadata: { recordId: record.id, visitorId, visitorName },
+        });
+      }
+    }
+
+    // Process follow-up interactions
+    for (const record of followUpRecords) {
+      const date = this.parseDate(record.fields['Interaction Date'] as string);
+      if (date) {
+        timeline.push({
+          date,
+          type: 'follow_up',
+          title: 'Follow-up Interaction',
+          description: `Follow-up interaction`,
+          metadata: {
+            recordId: record.id,
+            comment: record.fields['Comments'] as string,
+            type: record.fields['Type'] as string,
+          },
+        });
+      }
+    }
+
+    // Process department joins - fetch department names in parallel
+    const deptIds = memberDeptRecords
+      .map(r => this.extractLinkedRecordId(r.fields['Department']))
+      .filter((id): id is string => !!id);
+    
+    const deptMap = new Map<string, string>();
+    if (deptIds.length > 0) {
+      const deptQueries = deptIds.map(deptId =>
+        () => this.airtableClient.getRecord(AIRTABLE_TABLES.DEPARTMENTS, deptId)
+          .then(deptRecord => ({
+            deptId,
+            deptName: (deptRecord.fields['Department Name'] as string) || deptId
+          }))
+          .catch(() => ({ deptId, deptName: 'Unknown Department' }))
+      );
+      
+      const deptResults = await this.parallelExecutor.executeParallelWithPartialFailure(deptQueries);
+      for (const { deptId, deptName } of deptResults) {
+        deptMap.set(deptId, deptName);
+      }
+    }
+    
+    for (const record of memberDeptRecords) {
+      const date = this.parseDate(record.fields['Sign Up Date'] as string) ||
+                   this.parseDate(record.createdTime);
+      const deptId = this.extractLinkedRecordId(record.fields['Department']);
+      const deptName = deptId ? (deptMap.get(deptId) || 'Unknown Department') : 'Unknown Department';
+
+      if (date) {
+        timeline.push({
+          date,
+          type: 'department_join',
+          title: 'Department Join',
+          description: `Joined ${deptName}`,
+          metadata: { recordId: record.id, departmentId: deptId, departmentName: deptName },
+        });
+      }
     }
 
     // 7. Program sessions

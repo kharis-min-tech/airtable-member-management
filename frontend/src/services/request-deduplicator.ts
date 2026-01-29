@@ -6,11 +6,6 @@
  * underlying API call, reducing backend load and improving performance.
  */
 
-interface RequestKey {
-  endpoint: string;
-  params: Record<string, any>;
-}
-
 interface InFlightRequest {
   promise: Promise<any>;
   timestamp: number;

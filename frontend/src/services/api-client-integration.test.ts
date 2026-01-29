@@ -141,16 +141,17 @@ describe('API Client + Request Deduplicator Integration Tests', () => {
     const mockData2 = { id: 2, name: 'Data 2' };
     
     let fetchCallCount = 0;
-    const mockFetch = vi.fn(async (url: string) => {
+    const mockFetch = vi.fn(async (url: string | URL | Request) => {
       fetchCallCount++;
       await new Promise(resolve => setTimeout(resolve, 50));
-      const data = url.includes('endpoint1') ? mockData1 : mockData2;
+      const urlString = typeof url === 'string' ? url : url.toString();
+      const data = urlString.includes('endpoint1') ? mockData1 : mockData2;
       return new Response(
         JSON.stringify({ success: true, data }),
         { status: 200, headers: { 'Content-Type': 'application/json' } }
       );
     });
-    global.fetch = mockFetch;
+    global.fetch = mockFetch as any;
 
     // Make simultaneous requests to different endpoints
     const requests = [

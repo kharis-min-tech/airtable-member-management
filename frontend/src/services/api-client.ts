@@ -104,6 +104,9 @@ function getFromCache<T>(key: string): CacheEntry<T> | undefined {
   return entry;
 }
 
+// Export for testing
+export { isCacheStale, isCacheFresh, getFromCache };
+
 // Background refresh for stale cache entries
 async function backgroundRefresh<T>(
   cacheKey: string,
