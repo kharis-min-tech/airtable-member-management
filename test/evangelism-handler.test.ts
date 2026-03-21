@@ -153,7 +153,7 @@ describe('Evangelism Handler - Webhook Parsing', () => {
             fields: {
               'First Name': data.firstName,
               'Last Name': data.lastName,
-              'Phone': data.phone,
+              'Old Phone': data.phone,
               'Email': data.email,
               'GhanaPost Code': data.ghanaPostCode,
               'Date': data.date,
@@ -328,7 +328,7 @@ describe('Property 1: Evangelism to Member Creation Completeness', () => {
         if (event.phone) {
           // Phone is normalized, so we check it contains the digits
           const normalizedPhone = event.phone.replace(/\D/g, '');
-          expect((createdMemberFields['Phone'] as string).replace(/\D/g, '')).toBe(normalizedPhone);
+          expect((createdMemberFields['Old Phone'] as string).replace(/\D/g, '')).toBe(normalizedPhone);
         }
 
         // Verify Email is copied if provided (Requirement 1.2)
@@ -458,7 +458,7 @@ describe('Property 1: Evangelism to Member Creation Completeness', () => {
           fields: {
             'First Name': event.firstName,
             'Last Name': event.lastName,
-            'Phone': event.phone,
+            'Old Phone': event.phone,
             'Email': event.email,
             'Status': 'Member',
             'Source': 'Other',

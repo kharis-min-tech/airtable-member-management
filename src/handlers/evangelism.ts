@@ -32,7 +32,7 @@ export function parseEvangelismWebhook(payload: EvangelismWebhookPayload): Evang
     recordId: record.id,
     firstName: fields['First Name'] || '',
     lastName: fields['Last Name'] || '',
-    phone: fields['Phone'],
+    phone: fields['Old Phone'],
     email: fields['Email'],
     ghanaPostCode: fields['GhanaPost Code'],
     date: dateValue,

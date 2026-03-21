@@ -54,7 +54,7 @@ interface PostmanCollection {
 // Airtable schema definitions based on actual tables
 const AIRTABLE_SCHEMAS = {
   [AIRTABLE_TABLES.MEMBERS]: {
-    requiredFields: ['Name', 'Phone', 'Email'],
+    requiredFields: ['Name', 'Old Phone', 'Email'],
     optionalFields: ['Department', 'Role', 'Status', 'Date Joined', 'Address', 'City', 'State', 'Zip Code'],
     fieldTypes: {
       Name: 'string',
@@ -108,7 +108,7 @@ const AIRTABLE_SCHEMAS = {
     }
   },
   [AIRTABLE_TABLES.FIRST_TIMERS_REGISTER]: {
-    requiredFields: ['Name', 'Phone', 'Service'],
+    requiredFields: ['Name', 'Old Phone', 'Service'],
     optionalFields: ['Email', 'Address', 'Age', 'Visitor Type', 'Notes', 'Follow-up Status'],
     fieldTypes: {
       Name: 'string',
@@ -123,7 +123,7 @@ const AIRTABLE_SCHEMAS = {
     }
   },
   [AIRTABLE_TABLES.RETURNERS_REGISTER]: {
-    requiredFields: ['Name', 'Phone', 'Service'],
+    requiredFields: ['Name', 'Old Phone', 'Service'],
     optionalFields: ['Email', 'Last Visit Date', 'Notes', 'Follow-up Status'],
     fieldTypes: {
       Name: 'string',

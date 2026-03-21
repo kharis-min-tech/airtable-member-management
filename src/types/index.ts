@@ -226,7 +226,7 @@ export interface EvangelismWebhookPayload {
     fields: {
       'First Name'?: string;
       'Last Name'?: string;
-      'Phone'?: string;
+      'Old Phone'?: string;
       'Email'?: string;
       'GhanaPost Code'?: string;
       'Date'?: string;

@@ -47,7 +47,7 @@ export interface FirstTimerWebhookPayload {
     fields: {
       "First Name"?: string;
       "Last Name"?: string;
-      Phone?: string;
+      "Old Phone"?: string;
       Email?: string;
       Address?: string;
       "GhanaPost Code"?: string;
@@ -61,7 +61,7 @@ export interface FirstTimerWebhookPayload {
   fields?: {
     "First Name"?: string;
     "Last Name"?: string;
-    Phone?: string;
+    "Old Phone"?: string;
     Email?: string;
     Address?: string;
     "GhanaPost Code"?: string;
@@ -152,7 +152,7 @@ export function parseFirstTimerWebhook(
     recordId,
     firstName: fields["First Name"] || "",
     lastName: fields["Last Name"] || "",
-    phone: fields["Phone"],
+    phone: fields["Old Phone"],
     email: fields["Email"],
     address: fields["Address"],
     ghanaPostCode: fields["GhanaPost Code"],

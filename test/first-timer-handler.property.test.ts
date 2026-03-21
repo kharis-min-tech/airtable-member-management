@@ -157,7 +157,7 @@ describe('First Timer Handler - Webhook Parsing', () => {
             fields: {
               'First Name': data.firstName,
               'Last Name': data.lastName,
-              'Phone': data.phone,
+              'Old Phone': data.phone,
               'Email': data.email,
               'Address': data.address,
               'GhanaPost Code': data.ghanaPostCode,
@@ -393,7 +393,7 @@ describe('Property 4: First Timer New Member Creation', () => {
         // Verify Phone is copied if provided
         if (event.phone) {
           const normalizedPhone = event.phone.replace(/\D/g, '');
-          expect((createdMemberFields['Phone'] as string).replace(/\D/g, '')).toBe(normalizedPhone);
+          expect((createdMemberFields['Old Phone'] as string).replace(/\D/g, '')).toBe(normalizedPhone);
         }
 
         // Verify Email is copied if provided
@@ -556,7 +556,7 @@ describe('Property 4: First Timer New Member Creation', () => {
           fields: {
             'First Name': event.firstName,
             'Last Name': event.lastName,
-            'Phone': event.phone,
+            'Old Phone': event.phone,
             'Email': event.email,
             'Status': 'Evangelism Contact',
             'Source': 'Evangelism',
@@ -1128,7 +1128,7 @@ describe('Property 2: Status Determination Based on Visitor Flag', () => {
             fields: {
               'First Name': firstName,
               'Last Name': lastName,
-              'Phone': phone,
+              'Old Phone': phone,
               'Status': 'Evangelism Contact',
               'Source': 'Evangelism',
               'Date First Captured': '2023-01-01',
@@ -1557,7 +1557,7 @@ describe('Integration: Backward Compatibility with Existing Webhooks', () => {
               fields: {
                 'First Name': firstName,
                 'Last Name': lastName,
-                'Phone': phone,
+                'Old Phone': phone,
                 // No 'Age Bracket' or 'Visitor?' fields
               },
             },
@@ -1672,7 +1672,7 @@ describe('Integration: Backward Compatibility with Existing Webhooks', () => {
               fields: {
                 'First Name': firstName,
                 'Last Name': lastName,
-                'Phone': phone,
+                'Old Phone': phone,
                 // No Visitor field
               },
             },
@@ -1930,7 +1930,7 @@ describe('Integration: Complete Registration Flow', () => {
               fields: {
                 'First Name': firstName,
                 'Last Name': lastName,
-                'Phone': phone,
+                'Old Phone': phone,
                 'Email': email,
                 'Age Bracket': 'Adult',
                 'Visitor?': false,

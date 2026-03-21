@@ -667,7 +667,7 @@ export class QueryService {
       id: record.id,
       fullName: (fields['Full Name'] as string) ||
         `${(fields['First Name'] as string) || ''} ${(fields['Last Name'] as string) || ''}`.trim(),
-      phone: (fields['Phone'] as string) || undefined,
+      phone: (fields['Old Phone'] as string) || undefined,
       email: (fields['Email'] as string) || undefined,
       status: (fields['Status'] as string) || 'Unknown',
     };
@@ -1340,7 +1340,7 @@ export class QueryService {
       id: r.id,
       firstName: (r.fields['First Name'] as string) || '',
       lastName: (r.fields['Last Name'] as string) || '',
-      phone: (r.fields['Phone'] as string) || undefined,
+      phone: (r.fields['Old Phone'] as string) || undefined,
       email: (r.fields['Email'] as string) || undefined,
       date: this.parseDate(r.fields['Date'] as string) || new Date(),
       dataCompleteness: (r.fields['Data Completeness'] as number) || 0,
@@ -1979,7 +1979,7 @@ export class QueryService {
       lastName: (fields['Last Name'] as string) || '',
       fullName: (fields['Full Name'] as string) ||
         `${(fields['First Name'] as string) || ''} ${(fields['Last Name'] as string) || ''}`.trim(),
-      phone: (fields['Phone'] as string) || '',
+      phone: (fields['Old Phone'] as string) || '',
       email: (fields['Email'] as string) || undefined,
       status: (fields['Status'] as MemberStatus) || 'Evangelism Contact',
       source: (fields['Source'] as MemberSource) || 'Other',

@@ -477,7 +477,7 @@ interface MembersTable {
   'Full Name': string;           // Formula
   'First Name': string;
   'Last Name': string;
-  'Phone': string;
+  'Old Phone': string;
   'Email': string;
   'Gender': 'Male' | 'Female';
   'DOB': Date;
@@ -537,7 +537,7 @@ interface EvangelismTable {
   'First Name': string;
   'Last Name': string;
   'Full Name': string;                 // Formula
-  'Phone': string;
+  'Old Phone': string;
   'Email': string;
   'GhanaPost Code': string;
   'Notes / Prayer points': string;
@@ -563,7 +563,7 @@ interface FollowUpAssignmentsTable {
 interface VolunteersTable {
   'Name': string;
   'Role': 'Pastor' | 'Admin' | 'Follow-up' | 'Department Lead' | 'Evangelism';
-  'Phone': string;
+  'Old Phone': string;
   'Email': string;
   'Active': boolean;
   'Capacity': number;

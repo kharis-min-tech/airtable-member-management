@@ -40,7 +40,7 @@ export interface ReturnerWebhookPayload {
     id: string;
     fields: {
       'Name'?: string;
-      'Phone'?: string;
+      'Old Phone'?: string;
       'Email'?: string;
       'Service'?: string[];
       'Linked Member'?: string[];
@@ -105,7 +105,7 @@ export function parseReturnerWebhook(payload: ReturnerWebhookPayload): ReturnerE
   return {
     recordId: record.id,
     name: name.trim(), // Trim whitespace but preserve the name if provided
-    phone: fields['Phone'] as string | undefined,
+    phone: fields['Old Phone'] as string | undefined,
     email: fields['Email'] as string | undefined,
     serviceId,
     linkedMemberId,

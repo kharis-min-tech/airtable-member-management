@@ -135,7 +135,7 @@ describe('Returner Handler - Webhook Parsing', () => {
             id: data.recordId,
             fields: {
               'Name': data.name,
-              'Phone': data.phone,
+              'Old Phone': data.phone,
               'Email': data.email,
               'Service': data.serviceId ? [data.serviceId] : undefined,
             },
@@ -202,7 +202,7 @@ describe('Property 5: Returner Processing Rules', () => {
             fields: {
               'First Name': 'John',
               'Last Name': 'Doe',
-              'Phone': event.phone,
+              'Old Phone': event.phone,
               'Email': event.email,
               'Status': originalStatus,
               'Source': 'Evangelism',
@@ -272,7 +272,7 @@ describe('Property 5: Returner Processing Rules', () => {
             fields: {
               'First Name': 'John',
               'Last Name': 'Doe',
-              'Phone': event.phone,
+              'Old Phone': event.phone,
               'Email': event.email,
               'Status': originalStatus,
               'Source': 'First Timer Form',
@@ -381,7 +381,7 @@ describe('Property 5: Returner Processing Rules', () => {
             fields: {
               'First Name': 'John',
               'Last Name': 'Doe',
-              'Phone': event.phone,
+              'Old Phone': event.phone,
               'Email': event.email,
               'Status': originalStatus,
               'Source': 'Evangelism',

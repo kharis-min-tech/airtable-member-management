@@ -50,7 +50,7 @@ function IncompleteEvangelismView({ data, isLoading = false }: IncompleteEvangel
     const missing: string[] = [];
     if (!record.firstName) missing.push('First Name');
     if (!record.lastName) missing.push('Last Name');
-    if (!record.phone) missing.push('Phone');
+    if (!record.phone) missing.push('Old Phone');
     if (!record.email) missing.push('Email');
     return missing;
   };

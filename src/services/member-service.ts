@@ -122,7 +122,7 @@ export class MemberService {
 
     // Add optional fields if provided
     if (input.phone) {
-      fields['Phone'] = this.airtableClient.normalizePhone(input.phone);
+      fields['Old Phone'] = this.airtableClient.normalizePhone(input.phone);
     }
     if (input.email) {
       fields['Email'] = input.email.toLowerCase().trim();
@@ -165,7 +165,7 @@ export class MemberService {
       fields['Last Name'] = input.lastName;
     }
     if (input.phone !== undefined) {
-      fields['Phone'] = this.airtableClient.normalizePhone(input.phone);
+      fields['Old Phone'] = this.airtableClient.normalizePhone(input.phone);
     }
     if (input.email !== undefined) {
       fields['Email'] = input.email.toLowerCase().trim();
@@ -251,7 +251,7 @@ export class MemberService {
     const fieldsToMerge = [
       'First Name',
       'Last Name',
-      'Phone',
+      'Old Phone',
       'Email',
       'Address',
       'GhanaPost Code',
@@ -332,8 +332,8 @@ export class MemberService {
     if (!currentFields['Email'] && sourceFields.email) {
       updateFields['Email'] = sourceFields.email.toLowerCase().trim();
     }
-    if (!currentFields['Phone'] && sourceFields.phone) {
-      updateFields['Phone'] = this.airtableClient.normalizePhone(sourceFields.phone);
+    if (!currentFields['Old Phone'] && sourceFields.phone) {
+      updateFields['Old Phone'] = this.airtableClient.normalizePhone(sourceFields.phone);
     }
 
     // Update First Service Attended if empty (Requirement 2.6)
@@ -461,7 +461,7 @@ export class MemberService {
       lastName: (fields['Last Name'] as string) || '',
       fullName: (fields['Full Name'] as string) || 
         `${(fields['First Name'] as string) || ''} ${(fields['Last Name'] as string) || ''}`.trim(),
-      phone: (fields['Phone'] as string) || '',
+      phone: (fields['Old Phone'] as string) || '',
       email: (fields['Email'] as string) || undefined,
       status: (fields['Status'] as MemberStatus) || 'Evangelism Contact',
       source: (fields['Source'] as MemberSource) || 'Evangelism',

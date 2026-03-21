@@ -6,7 +6,7 @@
   "scripts": {
     "build": "tsc",
     "watch": "tsc -w",
-    "test": "jest",
+    "test": "jest --runInBand",
     "test:watch": "jest --watch",
     "cdk": "cdk",
     "cdk:synth": "cdk synth",

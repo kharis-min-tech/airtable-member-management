@@ -375,7 +375,7 @@ export class FollowUpService {
       id: record.id,
       name: (fields['Full Name'] as string) || '',
       role: (fields['Role'] as MemberRole) || 'Follow-up',
-      phone: (fields['Phone'] as string) || '',
+      phone: (fields['Old Phone'] as string) || '',
       email: (fields['Email'] as string) || undefined,
       active: (fields['Active'] as boolean) || false,
       capacity: (fields['Capacity'] as number) || this.memberCapacityLimit,

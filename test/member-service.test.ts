@@ -150,7 +150,7 @@ describe('Property 3: First Timer Merge Preserves Existing Data', () => {
             fields: {
               'First Name': existingMember.firstName,
               'Last Name': existingMember.lastName,
-              'Phone': existingMember.phone,
+              'Old Phone': existingMember.phone,
               'Email': existingMember.email,
               'Address': existingMember.address,
               'GhanaPost Code': existingMember.ghanaPostCode,
@@ -200,7 +200,7 @@ describe('Property 3: First Timer Merge Preserves Existing Data', () => {
             expect(updatedFields['Email']).toBeUndefined();
           }
           if (existingMember.phone) {
-            expect(updatedFields['Phone']).toBeUndefined();
+            expect(updatedFields['Old Phone']).toBeUndefined();
           }
           if (existingMember.firstServiceAttended) {
             expect(updatedFields['First Service Attended']).toBeUndefined();
@@ -236,7 +236,7 @@ describe('Property 3: First Timer Merge Preserves Existing Data', () => {
             fields: {
               'First Name': existingMember.firstName,
               'Last Name': existingMember.lastName,
-              'Phone': existingMember.phone,
+              'Old Phone': existingMember.phone,
               'Status': 'Evangelism Contact' as MemberStatus,
               'Source': 'Evangelism' as MemberSource,
               'Date First Captured': existingMember.dateFirstCaptured.toISOString().split('T')[0],
@@ -301,7 +301,7 @@ describe('Property 3: First Timer Merge Preserves Existing Data', () => {
             fields: {
               'First Name': existingMember.firstName,
               'Last Name': existingMember.lastName,
-              'Phone': existingMember.phone,
+              'Old Phone': existingMember.phone,
               'Status': 'Evangelism Contact' as MemberStatus,
               'Source': 'Evangelism' as MemberSource,
               'Date First Captured': existingMember.dateFirstCaptured.toISOString().split('T')[0],
@@ -351,7 +351,7 @@ describe('Property 3: First Timer Merge Preserves Existing Data', () => {
             fields: {
               'First Name': existingMember.firstName,
               'Last Name': existingMember.lastName,
-              'Phone': existingMember.phone,
+              'Old Phone': existingMember.phone,
               'Status': 'Evangelism Contact' as MemberStatus,
               'Source': 'Evangelism' as MemberSource,
               'Date First Captured': existingMember.dateFirstCaptured.toISOString().split('T')[0],
@@ -402,7 +402,7 @@ describe('Property 3: First Timer Merge Preserves Existing Data', () => {
             fields: {
               'First Name': existingMember.firstName,
               'Last Name': existingMember.lastName,
-              'Phone': existingMember.phone,
+              'Old Phone': existingMember.phone,
               'Status': 'Evangelism Contact' as MemberStatus,
               'Source': 'Evangelism' as MemberSource,
               'Date First Captured': existingMember.dateFirstCaptured.toISOString().split('T')[0],
@@ -492,7 +492,7 @@ describe('Property 10: Duplicate Detection and Merge Correctness', () => {
             fields: {
               'First Name': firstName,
               'Last Name': lastName,
-              'Phone': phone,
+              'Old Phone': phone,
               'Status': 'First Timer' as MemberStatus,
               'Source': 'First Timer Form' as MemberSource,
               'Date First Captured': newerDate.toISOString().split('T')[0],
@@ -506,7 +506,7 @@ describe('Property 10: Duplicate Detection and Merge Correctness', () => {
             fields: {
               'First Name': firstName,
               'Last Name': lastName,
-              'Phone': phone,
+              'Old Phone': phone,
               'Status': 'Evangelism Contact' as MemberStatus,
               'Source': 'Evangelism' as MemberSource,
               'Date First Captured': olderDate.toISOString().split('T')[0],
@@ -565,7 +565,7 @@ describe('Property 10: Duplicate Detection and Merge Correctness', () => {
             fields: {
               'First Name': 'John',
               'Last Name': 'Doe',
-              'Phone': '1234567890',
+              'Old Phone': '1234567890',
               'Status': 'First Timer' as MemberStatus,
               'Source': 'First Timer Form' as MemberSource,
               'Date First Captured': '2024-01-01',
@@ -581,7 +581,7 @@ describe('Property 10: Duplicate Detection and Merge Correctness', () => {
             fields: {
               'First Name': 'John',
               'Last Name': 'Doe',
-              'Phone': '1234567890',
+              'Old Phone': '1234567890',
               'Status': 'Evangelism Contact' as MemberStatus,
               'Source': 'Evangelism' as MemberSource,
               'Date First Captured': '2023-06-01',
@@ -654,7 +654,7 @@ describe('Property 10: Duplicate Detection and Merge Correctness', () => {
             fields: {
               'First Name': 'John',
               'Last Name': 'Doe',
-              'Phone': '1234567890',
+              'Old Phone': '1234567890',
               'Status': 'First Timer' as MemberStatus,
               'Source': 'First Timer Form' as MemberSource,
               'Date First Captured': '2024-01-01',
@@ -670,7 +670,7 @@ describe('Property 10: Duplicate Detection and Merge Correctness', () => {
             fields: {
               'First Name': 'John',
               'Last Name': 'Doe',
-              'Phone': '1234567890',
+              'Old Phone': '1234567890',
               'Status': 'Evangelism Contact' as MemberStatus,
               'Source': 'Evangelism' as MemberSource,
               'Date First Captured': '2023-06-01',
@@ -739,7 +739,7 @@ describe('Property 10: Duplicate Detection and Merge Correctness', () => {
             fields: {
               'First Name': 'Existing',
               'Last Name': 'Member',
-              'Phone': phone,
+              'Old Phone': phone,
               'Status': 'Member' as MemberStatus,
               'Source': 'Other' as MemberSource,
               'Date First Captured': '2023-01-01',
