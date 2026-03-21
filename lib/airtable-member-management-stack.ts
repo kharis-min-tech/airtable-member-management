@@ -273,13 +273,16 @@ export class AirtableMemberManagementStack extends cdk.Stack {
     });
 
     // Query Service Handler
+    // Memory increased from 256MB to 512MB for performance optimization
+    // This provides ~2x CPU allocation for faster parallel query processing
+    // Validates: Requirements 5.1, 5.2
     const queryHandler = new lambdaNodejs.NodejsFunction(this, 'QueryHandler', {
       functionName: `${this.stackName}-QueryHandler`,
       entry: path.join(__dirname, '../src/handlers/query.ts'),
       handler: 'handler',
       runtime: lambda.Runtime.NODEJS_18_X,
       timeout: cdk.Duration.seconds(60),
-      memorySize: 256,
+      memorySize: 512, // Increased from 256MB for better CPU allocation and faster execution
       environment: commonEnv,
       bundling: commonBundling,
       description: 'Handles dashboard and query requests',
@@ -328,6 +331,9 @@ export class AirtableMemberManagementStack extends cdk.Stack {
         stageName: 'v1',
         throttlingBurstLimit: 100,
         throttlingRateLimit: 50,
+        // Enable API Gateway documentation
+        // Validates: Requirements 7.8
+        documentationVersion: '1.0.0',
       },
       defaultCorsPreflightOptions: {
         allowOrigins: apigateway.Cors.ALL_ORIGINS,
@@ -414,7 +420,324 @@ export class AirtableMemberManagementStack extends cdk.Stack {
       new apigateway.LambdaIntegration(lambdaFunctions.healthHandler)
     );
 
+    // Configure API Gateway documentation parts
+    // Links OpenAPI specification to API Gateway console
+    // Validates: Requirements 7.8
+    this.configureApiDocumentation(api);
+
     return api;
+  }
+
+  /**
+   * Configure API Gateway documentation parts for each endpoint
+   * This enables documentation in the API Gateway console
+   * Validates: Requirements 7.8
+   */
+  private configureApiDocumentation(api: apigateway.RestApi): void {
+    // API-level documentation
+    new apigateway.CfnDocumentationPart(this, 'ApiDocumentation', {
+      restApiId: api.restApiId,
+      location: {
+        type: 'API',
+      },
+      properties: JSON.stringify({
+        info: {
+          title: 'Church Management API',
+          version: '1.0.0',
+          description: 'API for church management system with performance optimizations. Features include stale-while-revalidate caching (15-minute TTL), request deduplication (1-second window), parallel query execution, and rate limiting (5 requests/second to Airtable).',
+        },
+      }),
+    });
+
+    // Dashboard endpoint documentation
+    new apigateway.CfnDocumentationPart(this, 'DashboardDocumentation', {
+      restApiId: api.restApiId,
+      location: {
+        type: 'METHOD',
+        path: '/query/dashboard',
+        method: 'GET',
+      },
+      properties: JSON.stringify({
+        summary: 'Get dashboard data',
+        description: 'Retrieve dashboard data including services, KPIs, and evangelism stats',
+        tags: ['Dashboard'],
+        parameters: [
+          {
+            name: 'type',
+            in: 'query',
+            required: false,
+            schema: { type: 'string' },
+            description: 'Type of dashboard data to retrieve',
+          },
+          {
+            name: 'refresh',
+            in: 'query',
+            required: false,
+            schema: { type: 'boolean' },
+            description: 'Force cache refresh',
+          },
+        ],
+        responses: {
+          '200': { description: 'Successful operation' },
+          '400': { description: 'Bad request' },
+          '401': { description: 'Unauthorized - Invalid or missing JWT token' },
+          '403': { description: 'Forbidden - Insufficient permissions' },
+          '404': { description: 'Not found' },
+          '500': { description: 'Internal server error' },
+        },
+        security: [{ CognitoAuth: [] }],
+      }),
+    });
+
+    // Attendance endpoint documentation
+    new apigateway.CfnDocumentationPart(this, 'AttendanceDocumentation', {
+      restApiId: api.restApiId,
+      location: {
+        type: 'METHOD',
+        path: '/query/attendance',
+        method: 'GET',
+      },
+      properties: JSON.stringify({
+        summary: 'Get attendance data',
+        description: 'Retrieve attendance data for services',
+        tags: ['Attendance'],
+        parameters: [
+          {
+            name: 'type',
+            in: 'query',
+            required: false,
+            schema: { type: 'string' },
+            description: 'Type of attendance data to retrieve',
+          },
+          {
+            name: 'serviceId',
+            in: 'query',
+            required: false,
+            schema: { type: 'string' },
+            description: 'Specific service ID to filter by',
+          },
+          {
+            name: 'refresh',
+            in: 'query',
+            required: false,
+            schema: { type: 'boolean' },
+            description: 'Force cache refresh',
+          },
+        ],
+        responses: {
+          '200': { description: 'Successful operation' },
+          '400': { description: 'Bad request' },
+          '401': { description: 'Unauthorized - Invalid or missing JWT token' },
+          '403': { description: 'Forbidden - Insufficient permissions' },
+          '404': { description: 'Not found' },
+          '500': { description: 'Internal server error' },
+        },
+        security: [{ CognitoAuth: [] }],
+      }),
+    });
+
+    // Members endpoint documentation
+    new apigateway.CfnDocumentationPart(this, 'MembersDocumentation', {
+      restApiId: api.restApiId,
+      location: {
+        type: 'METHOD',
+        path: '/query/members',
+        method: 'GET',
+      },
+      properties: JSON.stringify({
+        summary: 'Get member data',
+        description: 'Search for members or retrieve member details',
+        tags: ['Members'],
+        parameters: [
+          {
+            name: 'type',
+            in: 'query',
+            required: false,
+            schema: { type: 'string' },
+            description: 'Type of member data to retrieve',
+          },
+          {
+            name: 'q',
+            in: 'query',
+            required: false,
+            schema: { type: 'string' },
+            description: 'Search query for member name',
+          },
+          {
+            name: 'memberId',
+            in: 'query',
+            required: false,
+            schema: { type: 'string' },
+            description: 'Specific member ID to retrieve',
+          },
+          {
+            name: 'refresh',
+            in: 'query',
+            required: false,
+            schema: { type: 'boolean' },
+            description: 'Force cache refresh',
+          },
+        ],
+        responses: {
+          '200': { description: 'Successful operation' },
+          '400': { description: 'Bad request' },
+          '401': { description: 'Unauthorized - Invalid or missing JWT token' },
+          '403': { description: 'Forbidden - Insufficient permissions' },
+          '404': { description: 'Not found' },
+          '500': { description: 'Internal server error' },
+        },
+        security: [{ CognitoAuth: [] }],
+      }),
+    });
+
+    // Journey endpoint documentation
+    new apigateway.CfnDocumentationPart(this, 'JourneyDocumentation', {
+      restApiId: api.restApiId,
+      location: {
+        type: 'METHOD',
+        path: '/query/journey',
+        method: 'GET',
+      },
+      properties: JSON.stringify({
+        summary: 'Get member journey',
+        description: 'Retrieve complete journey for a member',
+        tags: ['Members'],
+        parameters: [
+          {
+            name: 'memberId',
+            in: 'query',
+            required: true,
+            schema: { type: 'string' },
+            description: 'Member ID to retrieve journey for',
+          },
+          {
+            name: 'refresh',
+            in: 'query',
+            required: false,
+            schema: { type: 'boolean' },
+            description: 'Force cache refresh',
+          },
+        ],
+        responses: {
+          '200': { description: 'Successful operation' },
+          '400': { description: 'Bad request' },
+          '401': { description: 'Unauthorized - Invalid or missing JWT token' },
+          '403': { description: 'Forbidden - Insufficient permissions' },
+          '404': { description: 'Not found' },
+          '500': { description: 'Internal server error' },
+        },
+        security: [{ CognitoAuth: [] }],
+      }),
+    });
+
+    // Follow-up endpoint documentation
+    new apigateway.CfnDocumentationPart(this, 'FollowUpDocumentation', {
+      restApiId: api.restApiId,
+      location: {
+        type: 'METHOD',
+        path: '/query/follow-up',
+        method: 'GET',
+      },
+      properties: JSON.stringify({
+        summary: 'Get follow-up data',
+        description: 'Retrieve follow-up assignments and interactions',
+        tags: ['Follow-up'],
+        parameters: [
+          {
+            name: 'type',
+            in: 'query',
+            required: false,
+            schema: { type: 'string' },
+            description: 'Type of follow-up data to retrieve',
+          },
+          {
+            name: 'refresh',
+            in: 'query',
+            required: false,
+            schema: { type: 'boolean' },
+            description: 'Force cache refresh',
+          },
+        ],
+        responses: {
+          '200': { description: 'Successful operation' },
+          '400': { description: 'Bad request' },
+          '401': { description: 'Unauthorized - Invalid or missing JWT token' },
+          '403': { description: 'Forbidden - Insufficient permissions' },
+          '404': { description: 'Not found' },
+          '500': { description: 'Internal server error' },
+        },
+        security: [{ CognitoAuth: [] }],
+      }),
+    });
+
+    // Admin endpoint documentation
+    new apigateway.CfnDocumentationPart(this, 'AdminDocumentation', {
+      restApiId: api.restApiId,
+      location: {
+        type: 'METHOD',
+        path: '/query/admin',
+        method: 'GET',
+      },
+      properties: JSON.stringify({
+        summary: 'Get administrative views',
+        description: 'Retrieve administrative data',
+        tags: ['Admin'],
+        parameters: [
+          {
+            name: 'type',
+            in: 'query',
+            required: false,
+            schema: { type: 'string' },
+            description: 'Type of administrative data to retrieve',
+          },
+          {
+            name: 'refresh',
+            in: 'query',
+            required: false,
+            schema: { type: 'boolean' },
+            description: 'Force cache refresh',
+          },
+        ],
+        responses: {
+          '200': { description: 'Successful operation' },
+          '400': { description: 'Bad request' },
+          '401': { description: 'Unauthorized - Invalid or missing JWT token' },
+          '403': { description: 'Forbidden - Insufficient permissions' },
+          '404': { description: 'Not found' },
+          '500': { description: 'Internal server error' },
+        },
+        security: [{ CognitoAuth: [] }],
+      }),
+    });
+
+    // Health endpoint documentation
+    new apigateway.CfnDocumentationPart(this, 'HealthDocumentation', {
+      restApiId: api.restApiId,
+      location: {
+        type: 'METHOD',
+        path: '/health',
+        method: 'GET',
+      },
+      properties: JSON.stringify({
+        summary: 'Health check endpoint',
+        description: 'Check system health',
+        tags: ['System'],
+        responses: {
+          '200': { description: 'System healthy' },
+          '400': { description: 'Bad request' },
+          '404': { description: 'Not found' },
+          '500': { description: 'Internal server error' },
+          '503': { description: 'System unhealthy' },
+        },
+      }),
+    });
+
+    // Create documentation version
+    new apigateway.CfnDocumentationVersion(this, 'ApiDocumentationVersion', {
+      restApiId: api.restApiId,
+      documentationVersion: '1.0.0',
+      description: 'Initial API documentation version with performance optimizations',
+    });
   }
 
   private createFrontendHosting(): {
@@ -584,6 +907,18 @@ export class AirtableMemberManagementStack extends cdk.Stack {
       value: this.websiteBucket.bucketName,
       description: 'S3 Bucket for frontend assets',
       exportName: `${this.stackName}-WebsiteBucketName`,
+    });
+
+    new cdk.CfnOutput(this, 'ApiDocumentationUrl', {
+      value: `https://console.aws.amazon.com/apigateway/home?region=${this.region}#/apis/${this.api.restApiId}/documentation`,
+      description: 'API Gateway Documentation Console URL',
+      exportName: `${this.stackName}-ApiDocumentationUrl`,
+    });
+
+    new cdk.CfnOutput(this, 'OpenApiSpecLocation', {
+      value: 'docs/openapi.yaml',
+      description: 'OpenAPI 3.0 specification file location',
+      exportName: `${this.stackName}-OpenApiSpecLocation`,
     });
   }
 }

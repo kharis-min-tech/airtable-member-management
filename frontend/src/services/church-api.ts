@@ -295,3 +295,96 @@ export const churchApi = {
 };
 
 export default churchApi;
+
+
+/**
+ * Parallel Dashboard Loading Helper
+ * Loads all dashboard data in parallel using Promise.allSettled() for resilience
+ * Requirements: 1.1, 1.2, 1.3, 1.4
+ */
+export interface DashboardData {
+  services: Service[];
+  serviceKPIs: ServiceKPIs | null;
+  evangelismStats: EvangelismStats | null;
+  soulsAssigned: SoulsAssignedByMember[];
+  followUpInteractions: FollowUpInteraction[];
+  errors: {
+    services?: string;
+    serviceKPIs?: string;
+    evangelismStats?: string;
+    soulsAssigned?: string;
+    followUpInteractions?: string;
+  };
+}
+
+export const loadDashboardDataParallel = async (
+  serviceId?: string,
+  period: 'week' | 'month' = 'week'
+): Promise<DashboardData> => {
+  // Execute all API calls in parallel using Promise.allSettled()
+  const [
+    servicesResult,
+    kpisResult,
+    evangelismResult,
+    soulsResult,
+    followUpsResult
+  ] = await Promise.allSettled([
+    churchApi.services.getAll(),
+    serviceId ? churchApi.dashboard.getServiceKPIs(serviceId) : Promise.resolve(null),
+    churchApi.dashboard.getEvangelismStats(period),
+    churchApi.followUp.getSoulsAssignedByMember(),
+    churchApi.followUp.getInteractions()
+  ]);
+
+  // Extract successful results and capture errors
+  const result: DashboardData = {
+    services: [],
+    serviceKPIs: null,
+    evangelismStats: null,
+    soulsAssigned: [],
+    followUpInteractions: [],
+    errors: {}
+  };
+
+  // Process services result
+  if (servicesResult.status === 'fulfilled') {
+    result.services = servicesResult.value.data;
+  } else {
+    result.errors.services = servicesResult.reason?.message || 'Failed to load services';
+    console.error('Failed to load services:', servicesResult.reason);
+  }
+
+  // Process service KPIs result
+  if (kpisResult.status === 'fulfilled' && kpisResult.value !== null) {
+    result.serviceKPIs = kpisResult.value.data;
+  } else if (kpisResult.status === 'rejected') {
+    result.errors.serviceKPIs = kpisResult.reason?.message || 'Failed to load service KPIs';
+    console.error('Failed to load service KPIs:', kpisResult.reason);
+  }
+
+  // Process evangelism stats result
+  if (evangelismResult.status === 'fulfilled') {
+    result.evangelismStats = evangelismResult.value.data;
+  } else {
+    result.errors.evangelismStats = evangelismResult.reason?.message || 'Failed to load evangelism stats';
+    console.error('Failed to load evangelism stats:', evangelismResult.reason);
+  }
+
+  // Process souls assigned result
+  if (soulsResult.status === 'fulfilled') {
+    result.soulsAssigned = soulsResult.value.data;
+  } else {
+    result.errors.soulsAssigned = soulsResult.reason?.message || 'Failed to load souls assigned';
+    console.error('Failed to load souls assigned:', soulsResult.reason);
+  }
+
+  // Process follow-up interactions result
+  if (followUpsResult.status === 'fulfilled') {
+    result.followUpInteractions = followUpsResult.value.data;
+  } else {
+    result.errors.followUpInteractions = followUpsResult.reason?.message || 'Failed to load follow-up interactions';
+    console.error('Failed to load follow-up interactions:', followUpsResult.reason);
+  }
+
+  return result;
+};

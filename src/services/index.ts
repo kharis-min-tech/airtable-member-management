@@ -18,6 +18,7 @@ export { FollowUpService, FollowUpError, FollowUpErrorCode } from './follow-up-s
 export { AttendanceService, AttendanceError, AttendanceErrorCode } from './attendance-service';
 export type { MarkPresentResult } from './attendance-service';
 export { QueryService } from './query-service';
+export { ParallelAirtableExecutor } from './parallel-airtable-executor';
 export type {
   EvangelismStats,
   FollowUpSummary,
